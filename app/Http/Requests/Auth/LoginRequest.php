@@ -38,25 +38,29 @@ class LoginRequest extends FormRequest
      *
      * @throws ValidationException
      */
-    public function authenticate(): void
-    {
-        $this->ensureIsNotRateLimited();
+   public function authenticate(): void
+{
+    $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt([
-            'username' => $this->username,
-            'password' => $this->password,
-            'status' => 'ACTIVE'
-        ], $this->boolean('remember'))) {
+    $user = \App\Models\Admin::where('username', $this->username)
+        ->where('status', 'ACTIVE')
+        ->first();
 
-            RateLimiter::hit($this->throttleKey());
-       
-            throw ValidationException::withMessages([
-                'username' => trans('auth.failed'),
-            ]);
-        }
+    if (
+        ! $user ||
+        $user->password !== $this->password
+    ) {
+        RateLimiter::hit($this->throttleKey());
 
-        RateLimiter::clear($this->throttleKey());
+        throw ValidationException::withMessages([
+            'username' => trans('auth.failed'),
+        ]);
     }
+
+    Auth::login($user, $this->boolean('remember'));
+
+    RateLimiter::clear($this->throttleKey());
+}
 
     /**
      * Ensure the login request is not rate limited.
