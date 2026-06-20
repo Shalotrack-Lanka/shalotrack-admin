@@ -38,11 +38,25 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])
         ->name('profile.destroy');
 
-Route::get('/dashboard', function () {
-    return redirect('/admin/dashboard');
+  // ADMIN PROFILE
+    Route::get('/admin/profile', [AdminProfileController::class, 'show'])
+        ->name('admin.profile');
+
+    Route::get('/dashboard', function () {
+        return redirect('/admin/dashboard');
+    });
+
+    Route::get('/profile', [ProfileController::class, 'edit'])
+        ->name('profile.edit');
+
+    Route::patch('/profile', [ProfileController::class, 'update'])
+        ->name('profile.update');
+
+    Route::delete('/profile', [ProfileController::class, 'destroy'])
+        ->name('profile.destroy');
 });
 
-});
+
 
 require __DIR__.'/auth.php';
 

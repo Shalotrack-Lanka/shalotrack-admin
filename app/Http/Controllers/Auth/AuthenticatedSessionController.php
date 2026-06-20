@@ -30,6 +30,7 @@ public function store(LoginRequest $request): RedirectResponse
 
    $user = auth()->user();
 
+
     if ($user->role === 'ADMIN') {
         return redirect()->route('admin.dashboard');
     }
