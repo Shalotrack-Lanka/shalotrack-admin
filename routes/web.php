@@ -9,25 +9,10 @@ Route::get('/', function () {
 
 Route::middleware('auth')->group(function () {
 
-    Route::view(
-        '/admin/dashboard',
-        'admin.dashboard'
-    )->name('admin.dashboard');
-
-    Route::view(
-        '/dealer/dashboard',
-        'dealer.dashboard'
-    )->name('dealer.dashboard');
-
-    Route::view(
-        '/finance/dashboard',
-        'finance.dashboard'
-    )->name('finance.dashboard');
-
-    Route::view(
-        '/technician/dashboard',
-        'technician.dashboard'
-    )->name('technician.dashboard');
+    Route::view('/admin/dashboard', 'admin.dashboard')->name('admin.dashboard');
+    Route::view('/dealer/dashboard','dealer.dashboard')->name('dealer.dashboard');
+    Route::view('/finance/dashboard','finance.dashboard')->name('finance.dashboard');
+    Route::view('/technician/dashboard','technician.dashboard')->name('technician.dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])
         ->name('profile.edit');
@@ -39,8 +24,11 @@ Route::middleware('auth')->group(function () {
         ->name('profile.destroy');
 
   // ADMIN PROFILE
-    Route::get('/admin/profile', [AdminProfileController::class, 'show'])
-        ->name('admin.profile');
+    Route::get('/admin/profile', [AdminProfileController::class, 'show'])->name('admin.profile');
+
+  // DEALER PROFILE
+    Route::get('/dealer/profile', [AdminProfileController::class, 'show'])->name('dealer.profile');
+
 
     Route::get('/dashboard', function () {
         return redirect('/admin/dashboard');
