@@ -32,6 +32,9 @@ Route::middleware('auth')->group(function () {
   // FINANCE PROFILE
     Route::get('/finance/profile', [AdminProfileController::class, 'show'])->name('finance.profile');
 
+  // TECHNICIAN PROFILE
+    Route::get('/technician/profile', [AdminProfileController::class, 'show'])->name('technician.profile');
+
     Route::get('/dashboard', function () {
         return redirect('/admin/dashboard');
     });
