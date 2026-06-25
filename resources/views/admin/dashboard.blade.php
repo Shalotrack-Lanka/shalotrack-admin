@@ -219,7 +219,7 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 ml-72 bg-white min-h-screen">
+    <div class="flex-1  bg-white min-h-screen pl-72">
 
         <header class="bg-white shadow-lg px-6 py-4 flex items-center justify-between">
 
@@ -278,14 +278,179 @@
 
 </header>
 
-        <main class="p-6">
+        <main class="px-10 p-6">
             @yield('content')
         </main>
+
+
+         
+     <!-- Dashboard Statistics -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 max-w-7xl mx-auto px-4">
+    <div class="bg-gradient-to-r from-blue-900 to-blue-700 text-white rounded-xl shadow-md p-4 hover:-translate-y-1 transition duration-300">        <p class="text-blue-100">Total Customers</p>
+        <h2 class="text-4xl font-bold mt-2">1,245</h2>
+        <p class="text-sm mt-2 text-blue-200">+12% this month</p>
+    </div>
+
+    <div class="bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl shadow-md p-4 hover:-translate-y-1 transition duration-300">
+        <p class="text-green-100">Active Devices</p>
+        <h2 class="text-4xl font-bold mt-2">987</h2>
+        <p class="text-sm mt-2 text-green-100">Online Now</p>
+    </div>
+
+    <div class="bg-gradient-to-r from-orange-500 to-orange-400 text-white rounded-xl shadow-md p-4 hover:-translate-y-1 transition duration-300">
+        <p class="text-orange-100">Monthly Revenue</p>
+        <h2 class="text-4xl font-bold mt-2">LKR 450K</h2>
+        <p class="text-sm mt-2 text-orange-100">+8% Growth</p>
+     </div>
+
+    <div class="bg-gradient-to-r from-red-600 to-red-500 text-white rounded-xl shadow-md p-4 hover:-translate-y-1 transition duration-300">
+        <p class="text-red-100">Support Tickets</p>
+        <h2 class="text-4xl font-bold mt-2">24</h2>
+        <p class="text-sm mt-2 text-red-100">Needs Attention</p>
+    </div>
+
+</div>
+    
+
+        <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 px-4">
+
+        <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl transition duration-300">
+            <h3 class="font-bold text-lg text-gray-700 mb-4">
+                Customer Growth
+            </h3>
+            <div class="h-[280px]">
+            <canvas id="customerChart"></canvas>
+            </div>
+
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition duration-300">
+            <h3 class="font-bold text-lg text-gray-700 mb-4">
+                Device Status
+            </h3>
+            <div class="h-[280px]">
+                <canvas id="deviceChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+     <!-- Recent Customers -->
+   <div class="bg-white rounded-2xl shadow-lg p-6">
+
+    <div class="flex justify-between items-center mb-4">
+
+        <h3 class="font-bold text-xl text-gray-800">
+            Recent Customers
+        </h3>
+
+        <button class="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition">
+            View All
+        </button>
+
+    </div>
+
+    <div class="overflow-x-auto">
+
+        <table class="w-full">
+
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="text-left p-4">Customer</th>
+                    <th class="text-left p-4">Device</th>
+                    <th class="text-left p-4">Package</th>
+                    <th class="text-left p-4">Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <tr class="border-b hover:bg-gray-50 transition">
+                    <td class="p-4">Kasun Perera</td>
+                    <td>ST1001</td>
+                    <td>Premium</td>
+                    <td>
+                        <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                            Active
+                        </span>
+                    </td>
+                </tr>
+
+                <tr class="border-b hover:bg-gray-50 transition">
+                    <td class="p-4">Nuwan Silva</td>
+                    <td>ST1002</td>
+                    <td>Basic</td>
+                    <td>
+                        <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm">
+                            Pending
+                        </span>
+                    </td>
+                </tr>
+
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="p-4">Amal Fernando</td>
+                    <td>ST1003</td>
+                    <td>Premium</td>
+                    <td>
+                        <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                            Active
+                        </span>
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>
 
     </div>
 
 </div>
 
+    </div>
+
+    
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+new Chart(document.getElementById('customerChart'), {
+    type: 'line',
+    data: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun'],
+        datasets: [{
+            label: 'Customers',
+            data: [100,150,220,350,500,700],
+            borderColor: '#0B1B3F',
+            backgroundColor: 'rgba(11,27,63,0.15)',
+            fill: true,
+            tension: 0.4
+        }]
+    }
+});
+
+new Chart(document.getElementById('deviceChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Active','Inactive','Testing'],
+        datasets: [{
+            data: [70,20,10],
+            backgroundColor: [
+                '#16a34a',
+                '#f59e0b',
+                '#dc2626'
+            ]
+        }]
+    }
+});
+
+</script>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
