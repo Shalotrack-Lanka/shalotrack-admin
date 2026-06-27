@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
 
 
 use App\Http\Controllers\Admin\Supplier\AddSupplierController;
+use App\Http\Controllers\Admin\Supplier\AddProductPoController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -78,9 +79,13 @@ Route::middleware(['auth'])->group(function () {
 
 Route::prefix('admin/supplier')->group(function () {
 
-    Route::get('/add-supplier',
+        Route::get('/add-supplier',
         [AddSupplierController::class,'index'])
         ->name('admin.suppliers');
+
+         Route::get('/add-product-po',
+        [AddProductPoController::class,'index'])
+        ->name('admin.add-product-po');
 
 });
 
