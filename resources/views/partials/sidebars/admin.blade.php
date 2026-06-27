@@ -110,11 +110,7 @@
                 </a>
 
                 <a href="{{ route('admin.add-product-po') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Add Product PO
-                </a>
-
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                     Stock upload
+                    Add Product PO and Stock Upload
                 </a>
 
             </div>

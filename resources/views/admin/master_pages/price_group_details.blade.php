@@ -25,8 +25,10 @@
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
+      
 
          <div class="bg-white dark:bg-slate-800 rounded-xl shadow p-6">
+                <h2 class="text-2xl font-semibold mb-6">Price Group Details</h2>
              <div class="grid md:grid-cols-3 gap-4">
                  <div><label class="block mb-2">User Type</label>
                  <select class="w-full rounded-lg border-gray-300 dark:bg-slate-700">

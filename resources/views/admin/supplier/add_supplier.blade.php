@@ -17,33 +17,7 @@
     <main class="flex-1 overflow-y-auto p-6">
         @yield('content')
 
-        {{-- ── Top Action Buttons ── --}}
-        <div class="flex flex-wrap gap-2 mb-5">
-            <a href="#"
-               class="inline-flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700
-                      text-white text-sm font-medium px-4 py-2 rounded-md shadow-sm transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-                     viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round"
-                     d="M12 4v16m8-8H4"/></svg>
-                Add Supplier
-            </a>
-            <a href="#"
-               class="inline-flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700
-                      text-white text-sm font-medium px-4 py-2 rounded-md shadow-sm transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-                     viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round"
-                     d="M9 12h6m-3-3v6M4 6h16M4 18h16"/></svg>
-                Create PO
-            </a>
-            <a href="#"
-               class="inline-flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700
-                      text-white text-sm font-medium px-4 py-2 rounded-md shadow-sm transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-                     viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round"
-                     d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 12l-4-4-4 4M12 8v8"/></svg>
-                Stock Upload
-            </a>
-        </div>
+
 
         {{-- ── Page Title ── --}}
         <div class="mb-6">

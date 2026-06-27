@@ -27,18 +27,33 @@
 
 
        <div class="bg-white dark:bg-slate-800 rounded-xl shadow p-6 max-w-4xl">
-<h2 class="text-2xl font-semibold mb-6">Change Product Code</h2>
-<form class="space-y-4">
-<a href="#" class="text-blue-600 underline">Download Format</a>
-<div><label class="block mb-2">From Product</label><select class="w-full rounded-lg border-gray-300 dark:bg-slate-700"><option>--Select--</option></select></div>
-<div><label class="block mb-2">To Product</label><select class="w-full rounded-lg border-gray-300 dark:bg-slate-700"><option>--Select--</option></select></div>
-<label class="flex items-center gap-2"><input type="checkbox">Single IMEI</label>
-<div><label class="block mb-2">Import IMEI File</label><input type="file"></div>
-<p>Total IMEI Found : 0</p>
-<p>Valid IMEI Found : 0</p>
-<button class="px-6 py-2 bg-[#0B1B3F] text-white rounded-lg">Upload Excel</button>
-</form>
-</div>
+           <h2 class="text-2xl font-semibold mb-6">Change Product Code</h2>
+               <form class="space-y-4">
+                   <a href="#" class="text-blue-600 underline">Download Format</a>
+                   <div>
+                       <label class="block mb-2">From Product</label>
+                       <select class="w-full rounded-lg border-gray-300 dark:bg-slate-700">
+                           <option>--Select--</option>
+                       </select>
+                   </div>
+                   <div>
+                       <label class="block mb-2">To Product</label>
+                       <select class="w-full rounded-lg border-gray-300 dark:bg-slate-700">
+                           <option>--Select--</option>
+                       </select>
+                   </div>
+                   <label class="flex items-center gap-2">
+                       <input type="checkbox">Single IMEI
+                   </label>
+                   <div>
+                       <label class="block mb-2">Import IMEI File</label>
+                       <input type="file">
+                   </div>
+                   <p>Total IMEI Found : 0</p>
+                   <p>Valid IMEI Found : 0</p>
+                   <button class="px-6 py-2 bg-[#0B1B3F] text-white rounded-lg">Upload Excel</button>
+               </form>
+           </div>
 
 
         </main>
