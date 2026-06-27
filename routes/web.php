@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\MasterPages\PriceGroupController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupDetailsController;
 use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
 
+
+use App\Http\Controllers\Admin\Supplier\AddSupplierController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -66,6 +68,21 @@ Route::middleware(['auth'])->group(function () {
             ->name('admin.change-product-code');
 
     });
+
+
+    /*
+|--------------------------------------------------------------------------
+| Supplier
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/supplier')->group(function () {
+
+    Route::get('/add-supplier',
+        [AddSupplierController::class,'index'])
+        ->name('admin.suppliers');
+
+});
 
     /*
     |--------------------------------------------------------------------------

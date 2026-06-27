@@ -11,3 +11,4 @@ class AdminProfileController extends Controller
     return view('admin.profile');
 }
 }
+
