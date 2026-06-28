@@ -151,14 +151,48 @@
 
         </div>
 
-        <!-- DEVICE MANAGEMENT -->
+        <!-- COMPLAINTS & ENQUIRIES MANAGEMENT -->
         <div x-data="{open:false}">
 
             <button
                 @click="open=!open"
                 class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
 
-                <span>Device Management</span>
+                <span>Complains & Enquiries</span>
+
+                <svg :class="open ? 'rotate-180' : ''"
+                     class="w-4 h-4 transition-transform duration-200"
+                     fill="none"
+                     stroke="currentColor"
+                     viewBox="0 0 24 24">
+
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 9l-7 7-7-7"/>
+
+                </svg>
+
+            </button>
+
+            <div x-show="open" class="ml-5 text-sm">
+
+                <a href="{{ route('admin.troubleshoot') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Troubleshoot</a>
+                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">SIM Activation</a>
+                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Testing Devices</a>
+
+            </div>
+
+        </div>
+
+        <!-- ACTIVATION MANAGEMENT -->
+        <div x-data="{open:false}">
+
+            <button
+                @click="open=!open"
+                class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
+
+                <span>Activations</span>
 
                 <svg :class="open ? 'rotate-180' : ''"
                      class="w-4 h-4 transition-transform duration-200"
@@ -185,18 +219,40 @@
 
         </div>
 
-        <a href="#" class="block p-3 rounded text-white hover:bg-blue-900">
-            Activations
-        </a>
+       <!-- REPORT MANAGEMENT -->
+        <div x-data="{open:false}">
 
-        <a href="#" class="block p-3 rounded text-white hover:bg-blue-900">
-            Reports
-        </a>
+            <button
+                @click="open=!open"
+                class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
 
-        <a href="#" class="block p-3 rounded text-white hover:bg-blue-900">
-            User Management
-        </a>
+                <span>Reports</span>
 
+                <svg :class="open ? 'rotate-180' : ''"
+                     class="w-4 h-4 transition-transform duration-200"
+                     fill="none"
+                     stroke="currentColor"
+                     viewBox="0 0 24 24">
+
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 9l-7 7-7-7"/>
+
+                </svg>
+
+            </button>
+
+            <div x-show="open" class="ml-5 text-sm">
+
+                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Device List</a>
+                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">SIM Activation</a>
+                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Testing Devices</a>
+
+            </div>
+
+        </div>
+        
     </nav>
 
 </aside>

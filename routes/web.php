@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\Dealer\AddDealerController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 
+use App\Http\Controllers\Admin\Complains_Enquiries\TroubleshootController;
 
 /*
 |--------------------------------------------------------------------------
@@ -112,6 +113,21 @@ Route::prefix('admin/dealer')->group(function () {
 
     Route::get('/dealer-ledger',[DealerLedgerController::class,'index'])
         ->name('admin.dealer-ledger');
+
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Complains & Enquiries
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/complains')->group(function () {
+
+    Route::get('/troubleshoot',
+        [TroubleshootController::class,'index'])
+        ->name('admin.troubleshoot');
 
 });
 
