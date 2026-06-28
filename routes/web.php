@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\Supplier\AddProductPoController;
 
 use App\Http\Controllers\Admin\Dealer\AddDealerController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
+use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 
 
 /*
@@ -108,6 +109,9 @@ Route::prefix('admin/dealer')->group(function () {
 
     Route::get('/manage-replacement',[ManageReplacementController::class,'index'])
         ->name('admin.manage-replacement');
+
+    Route::get('/dealer-ledger',[DealerLedgerController::class,'index'])
+        ->name('admin.dealer-ledger');
 
 });
 

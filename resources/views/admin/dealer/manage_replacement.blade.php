@@ -23,7 +23,6 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
                 <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
                     
