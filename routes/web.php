@@ -13,6 +13,11 @@ use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
 
 use App\Http\Controllers\Admin\Supplier\AddSupplierController;
 use App\Http\Controllers\Admin\Supplier\AddProductPoController;
+
+use App\Http\Controllers\Admin\Dealer\AddDealerController;
+use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
+
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -86,6 +91,23 @@ Route::prefix('admin/supplier')->group(function () {
          Route::get('/add-product-po',
         [AddProductPoController::class,'index'])
         ->name('admin.add-product-po');
+
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Dealer
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/dealer')->group(function () {
+
+    Route::get('/add-dealer', [AddDealerController::class, 'index'])
+        ->name('admin.add-dealer');
+
+    Route::get('/manage-replacement',[ManageReplacementController::class,'index'])
+        ->name('admin.manage-replacement');
 
 });
 

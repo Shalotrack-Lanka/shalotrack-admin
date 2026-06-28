@@ -143,10 +143,9 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Dealer</a>
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Distributor</a>
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">LBC</a>
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Retailer</a>
+                <a href="{{ route('admin.add-dealer') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Dealer</a>
+                <a href="{{ route('admin.manage-replacement') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Manage Replacements</a>
+                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Dealer Ledger</a>
 
             </div>
 
