@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\Activations\ActivationReportController;
 use App\Http\Controllers\Admin\Activations\CustomerDocumentUploadController;
 
 use App\Http\Controllers\Admin\Reports\StockInReportController;
+use App\Http\Controllers\Admin\Reports\CreditInvoiceReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -183,6 +184,10 @@ Route::prefix('admin/report')->middleware(['auth'])->group(function () {
     Route::get('/stock-in-report',
         [StockInReportController::class,'index'])
         ->name('admin.stock-in-report');
+
+    Route::get('/credit-invoice-report',
+        [CreditInvoiceReportController::class,'index'])
+        ->name('admin.credit-invoice-report');
 
 });
 

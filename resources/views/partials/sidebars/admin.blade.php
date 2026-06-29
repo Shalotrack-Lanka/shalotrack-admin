@@ -246,7 +246,7 @@
             <div x-show="open" class="ml-5 text-sm">
 
                 <a href="{{ route('admin.stock-in-report') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Stock In Report</a>
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Credit Invoice Report</a>
+                <a href="{{ route('admin.credit-invoice-report') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Credit Invoice Report</a>
 
             </div>
 
