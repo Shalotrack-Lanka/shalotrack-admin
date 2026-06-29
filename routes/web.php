@@ -23,6 +23,8 @@ use App\Http\Controllers\Admin\Complains_Enquiries\ViewComplainsController;
 use App\Http\Controllers\Admin\Complains_Enquiries\FeedbackController;
 use App\Http\Controllers\Admin\Complains_Enquiries\DeviceReplaceRequestController;
 
+use App\Http\Controllers\Admin\Activations\ActivationReportController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -143,6 +145,21 @@ Route::prefix('admin/complains')->group(function () {
     Route::get('/device-replace-request',
         [DeviceReplaceRequestController::class,'index'])
         ->name('admin.device-replace-request');
+
+});
+
+/*
+|--------------------------------------------------------------------------
+| Activations
+|--------------------------------------------------------------------------
+*/
+
+
+Route::prefix('admin/activations')->middleware('auth')->group(function () {
+
+    Route::get('/activation-report',
+        [ActivationReportController::class,'index'])
+        ->name('admin.activation-report');
 
 });
 
