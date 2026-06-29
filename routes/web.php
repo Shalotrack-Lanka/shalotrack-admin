@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 
 use App\Http\Controllers\Admin\Complains_Enquiries\TroubleshootController;
+use App\Http\Controllers\Admin\Complains_Enquiries\ViewComplainsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -128,6 +129,10 @@ Route::prefix('admin/complains')->group(function () {
     Route::get('/troubleshoot',
         [TroubleshootController::class,'index'])
         ->name('admin.troubleshoot');
+
+     Route::get('/view-complaints',
+        [ViewComplainsController::class,'index'])
+        ->name('admin.view-complains');
 
 });
 
