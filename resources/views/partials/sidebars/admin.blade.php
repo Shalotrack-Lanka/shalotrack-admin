@@ -245,9 +245,8 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Device List</a>
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">SIM Activation</a>
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Testing Devices</a>
+                <a href="{{ route('admin.stock-in-report') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Stock In Report</a>
+                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Credit Invoice Report</a>
 
             </div>
 

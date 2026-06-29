@@ -26,6 +26,8 @@ use App\Http\Controllers\Admin\Complains_Enquiries\DeviceReplaceRequestControlle
 use App\Http\Controllers\Admin\Activations\ActivationReportController;
 use App\Http\Controllers\Admin\Activations\CustomerDocumentUploadController;
 
+use App\Http\Controllers\Admin\Reports\StockInReportController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -166,6 +168,21 @@ Route::prefix('admin/activations')->middleware('auth')->group(function () {
         [CustomerDocumentUploadController::class,'index'])
         ->name('admin.customer-document-upload');
     
+
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Reports
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/report')->middleware(['auth'])->group(function () {
+
+    Route::get('/stock-in-report',
+        [StockInReportController::class,'index'])
+        ->name('admin.stock-in-report');
 
 });
 
