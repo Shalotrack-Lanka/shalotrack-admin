@@ -179,8 +179,8 @@
 
                 <a href="{{ route('admin.troubleshoot') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Troubleshoot</a>
                 <a href="{{ route('admin.view-complains') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">View Complains</a>
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Feedbacks</a>
-                <a href="#" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Device Replace Requests</a>
+                <a href="{{ route('admin.feedback') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Feedbacks</a>
+                <a href="{{ route('admin.device-replace-request') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Device Replace Requests</a>
 
             </div>
 

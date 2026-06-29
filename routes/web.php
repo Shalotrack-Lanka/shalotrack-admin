@@ -20,6 +20,8 @@ use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 
 use App\Http\Controllers\Admin\Complains_Enquiries\TroubleshootController;
 use App\Http\Controllers\Admin\Complains_Enquiries\ViewComplainsController;
+use App\Http\Controllers\Admin\Complains_Enquiries\FeedbackController;
+use App\Http\Controllers\Admin\Complains_Enquiries\DeviceReplaceRequestController;
 
 /*
 |--------------------------------------------------------------------------
@@ -133,6 +135,14 @@ Route::prefix('admin/complains')->group(function () {
      Route::get('/view-complaints',
         [ViewComplainsController::class,'index'])
         ->name('admin.view-complains');
+
+     Route::get('/feedback',
+        [FeedbackController::class,'index'])
+        ->name('admin.feedback');
+
+    Route::get('/device-replace-request',
+        [DeviceReplaceRequestController::class,'index'])
+        ->name('admin.device-replace-request');
 
 });
 
