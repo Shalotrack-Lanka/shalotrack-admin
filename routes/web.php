@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\Complains_Enquiries\FeedbackController;
 use App\Http\Controllers\Admin\Complains_Enquiries\DeviceReplaceRequestController;
 
 use App\Http\Controllers\Admin\Activations\ActivationReportController;
+use App\Http\Controllers\Admin\Activations\CustomerDocumentUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -160,6 +161,11 @@ Route::prefix('admin/activations')->middleware('auth')->group(function () {
     Route::get('/activation-report',
         [ActivationReportController::class,'index'])
         ->name('admin.activation-report');
+    
+    Route::get('/customer-document-upload',
+        [CustomerDocumentUploadController::class,'index'])
+        ->name('admin.customer-document-upload');
+    
 
 });
 
