@@ -23,192 +23,54 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
-                            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div class="w-full space-y-6">
 
+                    <div class="flex flex-wrap gap-1.5 bg-gray-50 p-3 rounded-xl border border-gray-200 shadow-sm w-full">
+                        <a href="#" class="bg-[#17a2b8] hover:bg-[#138496] text-white font-semibold text-[11px] py-1.5 px-3 rounded shadow-sm transition">Add Supplier</a>
+                        <a href="#" class="bg-blue-600 text-white font-bold border border-blue-700 text-[11px] py-1.5 px-3 rounded shadow transition">Create PO & Stock Upload</a>
+                    </div>
 
-                                <div>
-
-                            <div class="flex justify-between items-center">
-
-                                <h1 class="text-5xl font-light text-gray-600">
-                                    Purchase Order
-                                </h1>
-
-                                <button onclick="printPO()"
-                                    class="bg-sky-500 hover:bg-sky-600 text-white px-8 py-2 rounded">
-
-                                    Save & Print
-
-                                </button>
-
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start w-full">
+                        
+                        <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
+                            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                                <h3 class="text-sm font-bold text-gray-800">Purchase Order</h3>
+                                <button type="button" class="bg-[#17a2b8] hover:bg-[#138496] text-white font-bold text-[10px] py-1.5 px-4 rounded shadow-sm transition">Save & Print</button>
                             </div>
-
-                            <hr class="border-sky-400 mt-2 mb-10">
-
+                            <div class="p-5 text-xs font-semibold text-gray-700 space-y-4">
+                                <div class="grid grid-cols-3 items-center gap-4">
+                                    <label>Select Supplier</label>
+                                    <div class="col-span-2">
+                                        <select name="supplier_id" class="w-full rounded-lg border-gray-300 text-xs h-9">
+                                            <option value="">--Select--</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-
-                        <div class="grid grid-cols-12 gap-4 items-center mb-12">
-
-                        <label class="col-span-2 text-xl text-gray-700">
-
-                            Select Supplier
-
-                        </label>
-
-                        <div class="col-span-4">
-
-                            <select
-                                class="w-full border rounded shadow px-4 py-2">
-
-                                <option>--Select--</option>
-
-                                <option>Dialog Axiata</option>
-
-                                <option>Mobitel</option>
-
-                                <option>Vertigo International</option>
-
-                            </select>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="border rounded overflow-hidden">
-
-                        <table class="w-full">
-
-                            <thead class="bg-gray-100">
-
-                                <tr>
-
-                                    <th class="border p-3">#</th>
-
-                                    <th class="border p-3">Product</th>
-
-                                    <th class="border p-3">Qty</th>
-
-                                    <th class="border p-3">Price</th>
-
-                                    <th class="border p-3">Total</th>
-
-                                </tr>
-
-                            </thead>
-
-                            <tbody>
-
-                                @for($i=1;$i<=8;$i++)
-
-                                <tr>
-
-                                    <td class="border p-2 text-center">{{ $i }}</td>
-
-                                    <td class="border p-2">
-
-                                        Product {{ $i }}
-
-                                    </td>
-
-                                    <td class="border p-2">
-
-                                        <input
-                                            type="number"
-                                            value="1"
-                                            class="w-24 border rounded px-2 py-1">
-
-                                    </td>
-
-                                    <td class="border p-2">
-
-                                        <input
-                                            type="number"
-                                            value="2500"
-                                            class="w-32 border rounded px-2 py-1">
-
-                                    </td>
-
-                                    <td class="border p-2 text-right">
-
-                                        Rs.2500
-
-                                    </td>
-
-                                </tr>
-
-                                @endfor
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-
-
-                    <div class="flex justify-end mt-8">
-
-                        <div class="w-96">
-
-                            <table class="w-full">
-
-                                <tr>
-
-                                    <td class="font-semibold text-xl py-3">
-
-                                        Grand Total
-
-                                    </td>
-
-                                    <td class="text-right text-2xl font-bold text-sky-600">
-
-                                        Rs. 20,000.00
-
-                                    </td>
-
-                                </tr>
-
-                            </table>
-
+                        <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
+                            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                                <h3 class="text-sm font-bold text-gray-800">Stock Upload</h3>
+                                <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-md flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    26<sup>th</sup> June 2026
+                                </span>
+                            </div>
+                            <div class="p-5 text-xs font-semibold text-gray-700 space-y-4">
+                                <div class="grid grid-cols-3 items-center gap-4">
+                                    <label>Select P.O.</label>
+                                    <div class="col-span-2">
+                                        <select name="po_id" class="w-full rounded-lg border-gray-300 text-xs h-9">
+                                            <option value="">--Select--</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                     </div>
-
-                    <!-- Title -->
-                    <div class="mb-10">
-
-                        <h1 class="text-5xl font-light text-gray-600">
-                            Stock Upload
-                        </h1>
-
-                        <hr class="mt-2 border-sky-400">
-
-                    </div>
-
-                <!-- Select Purchase Order -->
-                <div class="grid grid-cols-12 items-center gap-5">
-
-                    <label class="col-span-2 text-xl text-gray-700">
-                        Select P.O.
-                    </label>
-
-                    <div class="col-span-3">
-
-                        <select
-                            class="w-full border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400">
-
-                            <option>PO-1001</option>
-                            <option>PO-1002</option>
-                            <option>PO-1003</option>
-
-                        </select>
-
-                    </div>
-
                 </div>
-
 
         </main>
 
