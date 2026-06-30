@@ -399,10 +399,12 @@
                             </table>
 
                         </div>
-                    </div> </div>
-            </div> </main>
+                    </div> 
+                </div>
+            </div> 
+</main>
 
-    </div>
+</div>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 

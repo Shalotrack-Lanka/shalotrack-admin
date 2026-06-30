@@ -23,9 +23,6 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
-
-
-
               <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
                  <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
                      <h3 class="text-xl font-bold text-gray-800">Activation Report</h3>
@@ -166,7 +163,6 @@
                         </div>
                     </div>
                 </div> 
-
 
         </main>
 

@@ -158,7 +158,8 @@
                 <div x-show="activeTab === 'troubleshoot'" x-transition class="p-12 text-center text-gray-500" style="display: none;">Remote tracking signal inspection terminal pipeline module window.</div>
                 <div x-show="activeTab === 'complaint_dashboard'" x-transition class="p-12 text-center text-gray-500" style="display: none;">Analytics overview canvas mapping open vs closed trouble tickets.</div>
 
-            </div> </main>
+            </div> 
+        </main>
 
     </div>
 </div>
