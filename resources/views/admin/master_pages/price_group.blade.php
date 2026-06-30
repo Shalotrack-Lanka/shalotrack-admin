@@ -23,47 +23,46 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
+                  <div class="px-6 py-4 border-b border-gray-100 bg-gray-50"><h3 class="text-lg font-bold text-gray-800">Add Price Group</h3></div>
+        
+                        <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
+                            <form method="POST" action="#" class="lg:col-span-5 space-y-4 max-w-xl w-full text-xs font-semibold text-gray-700">
+                                @csrf
+                                <div><label class="block mb-1">Group Name</label><input type="text" name="group_name" class="w-full rounded-lg border-gray-300 h-9"></div>
+                                <div><label class="block mb-1">User Type</label><select name="user_type" class="w-full rounded-lg border-gray-300 h-9"><option value="">--Select--</option></select></div>
+                                <div class="flex gap-2 pt-2">
+                                    <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded font-bold shadow-sm">Reset</button>
+                                    <button type="submit" class="bg-[#17a2b8] hover:bg-[#138496] text-white px-5 py-2 rounded font-bold shadow-sm">Save Group</button>
+                                </div>
+                            </form>
 
-                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow p-6">
-                        <h2 class="text-2xl font-semibold mb-6">Add Price Group</h2>
-
-                      <form>
-                        <div class="space-y-4">
-                        <div><label class="block mb-2">Group Name</label><input class="w-full rounded-lg border-gray-300 dark:bg-slate-700"></div>
-                        <div><label class="block mb-2">User Type</label><select class="w-full rounded-lg border-gray-300 dark:bg-slate-700"><option>--Select--</option><option>Retail</option><option>Dealer</option><option>Distributor</option></select></div>
-                        <div class="flex gap-3"><button class="px-5 py-2 bg-[#0B1B3F] text-white rounded-lg">Save Group</button><button type="reset" class="px-5 py-2 bg-gray-300 rounded-lg">Reset</button></div>
+                            <div class="lg:col-span-7 border border-gray-200 rounded-lg overflow-hidden shadow-sm w-full text-xs font-semibold text-gray-700">
+                                <div class="flex bg-gray-100 border-b border-gray-200">
+                                    <button class="bg-white px-4 py-2 font-bold border-t-2 border-t-blue-500">Active</button>
+                                    <button class="px-4 py-2 text-gray-500 hover:bg-gray-50">Archived</button>
+                                </div>
+                                <div class="overflow-y-auto max-h-80 bg-white">
+                                    <table class="w-full border-collapse text-left">
+                                        <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 font-bold">
+                                            <tr>
+                                                <th class="p-2.5 text-center w-10">#</th>
+                                                <th class="p-2.5">Group Name</th>
+                                                <th class="p-2.5">User Type</th>
+                                                <th class="p-2.5">Date</th>
+                                                <th class="p-2.5 text-center w-24">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200 text-gray-600 font-medium">
+                                            <tr><td class="p-2.5 text-center">1.</td><td class="p-2.5 font-bold text-gray-900">VAT-BA</td><td class="p-2.5">BA</td><td class="p-2.5 text-gray-400">12 Oct 2019</td><td class="p-2.5 text-center flex justify-center gap-1.5"><button class="border border-gray-200 rounded px-2 py-0.5 hover:bg-gray-50 text-gray-700 font-bold text-[10px]">Edit</button><button class="text-gray-400 hover:text-red-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td></tr>
+                                            <tr><td class="p-2.5 text-center">2.</td><td class="p-2.5 font-bold text-gray-900">VAT-DIST</td><td class="p-2.5">Distributor</td><td class="p-2.5 text-gray-400">29 Jan 2021</td><td class="p-2.5 text-center flex justify-center gap-1.5"><button class="border border-gray-200 rounded px-2 py-0.5 hover:bg-gray-50 text-gray-700 font-bold text-[10px]">Edit</button><button class="text-gray-400 hover:text-red-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
-                      </form>
                     </div>
-
-              <div class="bg-white dark:bg-slate-800 rounded-xl shadow">
-                <div class="border-b px-6 py-4 flex gap-2">
-                    <button class="px-4 py-2 bg-[#0B1B3F] text-white rounded-lg">Active</button>
-                    <button class="px-4 py-2 bg-gray-300 rounded-lg">Archived</button>
                 </div>
-                <table class="w-full">
-                    <thead class="bg-gray-100 dark:bg-slate-700">
-                        <tr>
-                            <th class="p-3">Group</th>
-                            <th>User Type</th>
-                            <th>Date</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="p-3">Retail</td>
-                            <td>Retail</td>
-                            <td>2026-06-26</td>
-                            <td><button class="text-blue-600">Edit</button> | <button class="text-red-600">Delete</button></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-
         </main>
 
     </div>
