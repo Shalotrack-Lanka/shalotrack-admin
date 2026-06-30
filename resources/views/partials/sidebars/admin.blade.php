@@ -214,8 +214,8 @@
 
                 <a href="{{ route('admin.stock.summary') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Stock Summary</a>
                 <a href="{{ route('admin.current-stock') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Current Stock</a>
-                 <a href="{{ route('admin.credit-invoice-report') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Sold Device Report</a>
-                  <a href="{{ route('admin.credit-invoice-report') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Faulty Device</a>
+                <a href="{{ route('admin.sold-device-report') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Sold Device Report</a>
+                <a href="{{ route('admin.add-faulty-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Faulty Device</a>
 
             </div>
 

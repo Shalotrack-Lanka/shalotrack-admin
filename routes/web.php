@@ -31,6 +31,9 @@ use App\Http\Controllers\Admin\Reports\CreditInvoiceReportController;
 
 use App\Http\Controllers\Admin\Stock\StockSummaryController;
 use App\Http\Controllers\Admin\Stock\CurrentStockController;
+use App\Http\Controllers\Admin\Stock\SoldDeviceReportController;
+use App\Http\Controllers\Admin\Stock\AddFaultyDeviceController;
+
 
 
 
@@ -193,6 +196,14 @@ Route::prefix('admin/stock')->middleware('auth')->group(function () {
     Route::get('/current-stock',
          [CurrentStockController::class,'index'])
          ->middleware('auth')->name('admin.current-stock');
+
+    Route::get('/sold-device-report',
+        [SoldDeviceReportController::class,'index'])
+        ->middleware('auth')->name('admin.sold-device-report');
+
+    Route::get('/add-faulty-device',
+        [AddFaultyDeviceController::class,'index'])
+        ->middleware('auth')->name('admin.add-faulty-device');
 
 });
 
