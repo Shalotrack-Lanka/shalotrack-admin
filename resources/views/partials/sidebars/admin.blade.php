@@ -186,6 +186,41 @@
 
         </div>
 
+         <!-- STOCK MANAGEMENT -->
+        <div x-data="{open:false}">
+
+            <button
+                @click="open=!open"
+                class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
+
+                <span>Stock</span>
+
+                <svg :class="open ? 'rotate-180' : ''"
+                     class="w-4 h-4 transition-transform duration-200"
+                     fill="none"
+                     stroke="currentColor"
+                     viewBox="0 0 24 24">
+
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 9l-7 7-7-7"/>
+
+                </svg>
+
+            </button>
+
+            <div x-show="open" class="ml-5 text-sm">
+
+                <a href="{{ route('admin.stock.summary') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Stock Summary</a>
+                <a href="{{ route('admin.current-stock') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Current Stock</a>
+                 <a href="{{ route('admin.credit-invoice-report') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Sold Device Report</a>
+                  <a href="{{ route('admin.credit-invoice-report') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Faulty Device</a>
+
+            </div>
+
+        </div>
+
         <!-- ACTIVATION MANAGEMENT -->
         <div x-data="{open:false}">
 

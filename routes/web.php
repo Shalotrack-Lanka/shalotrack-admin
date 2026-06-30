@@ -29,6 +29,11 @@ use App\Http\Controllers\Admin\Activations\CustomerDocumentUploadController;
 use App\Http\Controllers\Admin\Reports\StockInReportController;
 use App\Http\Controllers\Admin\Reports\CreditInvoiceReportController;
 
+use App\Http\Controllers\Admin\Stock\StockSummaryController;
+use App\Http\Controllers\Admin\Stock\CurrentStockController;
+
+
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -172,6 +177,24 @@ Route::prefix('admin/activations')->middleware('auth')->group(function () {
 
 });
 
+
+/*
+|--------------------------------------------------------------------------
+| Stock
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/stock')->middleware('auth')->group(function () {
+
+    Route::get('/summary',
+        [StockSummaryController::class,'index'])
+        ->name('admin.stock.summary');
+
+    Route::get('/current-stock',
+         [CurrentStockController::class,'index'])
+         ->middleware('auth')->name('admin.current-stock');
+
+});
 
 /*
 |--------------------------------------------------------------------------
