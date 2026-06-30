@@ -23,88 +23,37 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
-                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow p-6">
-                            <h2 class="text-2xl font-semibold mb-6">Add Features</h2>
-
-            <form>
-                                <div class="space-y-4">
-
-                        <div>
-                            <label class="block mb-2 font-medium">Product Type</label>
-                            <select class="w-full rounded-lg border-gray-300 dark:bg-slate-700">
-                                <option>--Select--</option>
-                            </select>
-                        </div>
-
-                    <div>
-                        <label class="block mb-2 font-medium">Product Name</label>
-                        <select class="w-full rounded-lg border-gray-300 dark:bg-slate-700">
-                            <option>--Select--</option>
-                        </select>
-                    </div>
-
-                <div>
-                    <label class="block mb-2 font-medium">Feature Name</label>
-                    <input type="text" class="w-full rounded-lg border-gray-300 dark:bg-slate-700">
+                   <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50"><h3 class="text-lg font-bold text-gray-800">Add Features</h3></div>
+        
+        <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
+            <form method="POST" action="#" class="lg:col-span-5 space-y-4 max-w-xl w-full text-xs font-semibold text-gray-700">
+                @csrf
+                <div><label class="block mb-1">Product Type</label><select name="product_type" class="w-full rounded-lg border-gray-300 h-9"><option value="">--Select--</option></select></div>
+                <div><label class="block mb-1">Product Name</label><select name="product_name" class="w-full rounded-lg border-gray-300 h-9"><option value="">--Select--</option></select></div>
+                <div><label class="block mb-1">Feature Name</label><select name="feature_name" class="w-full rounded-lg border-gray-300 h-9"><option value="No Data">No Data</option></select></div>
+                <div><label class="block mb-1">Feature Remarks</label><textarea name="feature_remarks" rows="4" class="w-full rounded-lg border-gray-300"></textarea></div>
+                <div class="flex gap-2 pt-2">
+                    <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded font-bold shadow-sm">Reset</button>
+                    <button type="submit" class="bg-[#17a2b8] hover:bg-[#138496] text-white px-5 py-2 rounded font-bold shadow-sm">Add Feature</button>
                 </div>
+            </form>
 
-                <div>
-                    <label class="block mb-2 font-medium">Feature Remarks</label>
-                    <textarea rows="5" class="w-full rounded-lg border-gray-300 dark:bg-slate-700"></textarea>
+            <div class="lg:col-span-7 border border-gray-200 rounded-lg overflow-hidden shadow-sm w-full h-80 bg-gray-50 flex flex-col">
+                <div class="flex bg-gray-100 border-b border-gray-200 text-xs font-bold text-gray-700">
+                    <button class="bg-white px-4 py-2 border-r border-gray-200 font-bold border-t-2 border-t-blue-500">Active</button>
+                    <button class="px-4 py-2 text-gray-500 hover:bg-gray-50">Archived</button>
                 </div>
-
-                <div class="flex gap-3">
-                    <button class="px-5 py-2 bg-[#0B1B3F] text-white rounded-lg">Add Feature</button>
-                    <button type="reset" class="px-5 py-2 bg-gray-300 rounded-lg">Reset</button>
+                <div class="flex-1 p-6 flex flex-col items-center justify-center text-gray-400 text-xs font-medium">
+                    <svg class="w-10 h-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                    No feature telemetry logs active under this scope.
                 </div>
-
-               </div>
-           </form>
+            </div>
+        </div>
+    </div>
 </div>
 
-            <div class="bg-white dark:bg-slate-800 rounded-xl shadow">
-
-                <div class="border-b px-6 py-4 flex gap-2">
-                    <button class="px-4 py-2 bg-[#0B1B3F] text-white rounded-lg">Active</button>
-                    <button class="px-4 py-2 bg-gray-300 rounded-lg">Archived</button>
-                </div>
-
-                    <div class="overflow-x-auto">
-
-                        <table class="w-full">
-                            <thead class="bg-gray-100 dark:bg-slate-700">
-                                <tr>
-                                    <th class="p-3 text-left">Product</th>
-                                    <th>Feature</th>
-                                    <th>Remarks</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                <tr class="border-b">
-                                    <td class="p-3">ST-01 GPS</td>
-                                    <td>Engine Lock</td>
-                                    <td>Sample Feature</td>
-                                    <td>
-                                        <button class="text-blue-600">Edit</button> |
-                                        <button class="text-red-600">Delete</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-
-                        </table>
-                    </div>
-
-                </div>
-
-            </div>
-
-       </div>
-
-
+        
        </main>
 
     </div>
