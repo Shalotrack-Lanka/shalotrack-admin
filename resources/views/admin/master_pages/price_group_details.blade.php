@@ -23,50 +23,33 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
+                        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                            <h3 class="text-sm font-bold text-gray-800">Price Group Details</h3>
+                            <button class="bg-gray-800 text-white font-bold text-[10px] py-1.5 px-3 rounded hover:bg-gray-900 shadow transition flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg> Price Group
+                            </button>
+                        </div>
 
-      
-
-         <div class="bg-white dark:bg-slate-800 rounded-xl shadow p-6">
-                <h2 class="text-2xl font-semibold mb-6">Price Group Details</h2>
-             <div class="grid md:grid-cols-3 gap-4">
-                 <div><label class="block mb-2">User Type</label>
-                 <select class="w-full rounded-lg border-gray-300 dark:bg-slate-700">
-                    <option>--Select--</option></select>
+                        <div class="p-6 text-xs font-semibold text-gray-700 w-full">
+                            <form method="GET" action="#" class="bg-gray-50 border border-gray-150 p-5 rounded-xl max-w-4xl">
+                                <div class="flex flex-wrap items-end gap-6">
+                                    <div class="w-full sm:w-64">
+                                        <label class="block mb-1.5">User Type</label>
+                                        <select name="user_type" class="w-full rounded-lg border-gray-300 text-xs h-9"><option value="">-Select-</option></select>
+                                    </div>
+                                    <div class="w-full sm:w-64">
+                                        <label class="block mb-1.5">Price Group</label>
+                                        <select name="price_group" class="w-full rounded-lg border-gray-300 text-xs h-9"><option value="">-Select-</option></select>
+                                    </div>
+                                    <button type="submit" class="bg-[#17a2b8] hover:bg-[#138496] text-white font-bold h-9 px-6 rounded-lg shadow-sm flex items-center gap-1.5 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> Search
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-                 <div>
-                    <label class="block mb-2">Price Group</label>
-                    <select class="w-full rounded-lg border-gray-300 dark:bg-slate-700">
-                        <option>--Select--</option>
-                    </select>
-                </div>
-                 <div class="flex items-end">
-                     <button class="px-6 py-2 bg-[#0B1B3F] text-white rounded-lg">Search</button>
-                 </div>
-             </div>
-             <div class="overflow-x-auto mt-8">
-                 <table class="w-full">
-                    <thead class="bg-gray-100 dark:bg-slate-700">
-                        <tr>
-                            <th class="p-3">Product</th>
-                            <th>Price</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="p-3">ST-01 GPS</td>
-                            <td>LKR 12,000</td>
-                            <td>Active</td>
-                            <td><button class="text-blue-600">Edit</button></td>
-                        </tr>
-                    </tbody>
-                </table>
-             </div>
-         </div>
-
-
         </main>
 
     </div>
