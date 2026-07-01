@@ -36,11 +36,25 @@
                                 <div class="flex flex-wrap items-end gap-6">
                                     <div class="w-full sm:w-64">
                                         <label class="block mb-1.5">User Type</label>
-                                        <select name="user_type" class="w-full rounded-lg border-gray-300 text-xs h-9"><option value="">-Select-</option></select>
+                                        <select name="user_type" class="w-full rounded-lg border-gray-300 text-xs h-9 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10"">
+                                            <option value="" selected disabled>--Select--</option>
+                                            <option value="lbc">LBC</option>
+                                            <option value="distributor">Distributor</option>
+                                            <option value="retailer">Retailer</option>
+                                        </select>
                                     </div>
                                     <div class="w-full sm:w-64">
                                         <label class="block mb-1.5">Price Group</label>
-                                        <select name="price_group" class="w-full rounded-lg border-gray-300 text-xs h-9"><option value="">-Select-</option></select>
+                                        <select name="price_group" class="w-full rounded-lg border-gray-300 text-xs h-9">
+                                            <option value="" selected disabled>--Select--</option>
+                                            <option value="vat_lbc">VAT-LBC</option>
+                                            <option value="vat_dist">VAT-DIST</option>
+                                            <option value="vat_ret">VAT-RET</option>
+                                            <option value="vat_dsa">VAT-DSA</option>
+                                            <option value="vat_ba">VAT-BA</option>
+                                            <option value="vat_csa">VAT-CSA</option>
+                                            <option value="vat_ltpoint">VAT-LTPoint</option>    
+                                        </select>
                                     </div>
                                     <button type="submit" class="bg-[#17a2b8] hover:bg-[#138496] text-white font-bold h-9 px-6 rounded-lg shadow-sm flex items-center gap-1.5 transition">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> Search

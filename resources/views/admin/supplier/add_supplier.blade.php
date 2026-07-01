@@ -15,11 +15,7 @@
     @include('partials.header')
 
     <main class="flex-1 overflow-y-auto p-6">
-        @yield('content')
-                <div class="flex flex-wrap gap-1.5 bg-gray-50 p-3 rounded-xl border border-gray-200 shadow-sm w-full">
-                        <a href="#" class="bg-blue-600 text-white font-bold border border-blue-700 text-[11px] py-1.5 px-3 rounded shadow transition">Add Supplier</a>
-                        <a href="#" class="bg-[#17a2b8] hover:bg-[#138496] text-white font-semibold text-[11px] py-1.5 px-3 rounded shadow-sm transition">Create PO & Stock Upload</a>
-                    </div>
+        @yield('content')                   
 
                     <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
                         <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
@@ -30,15 +26,44 @@
                             
                             <form method="POST" action="#" class="lg:col-span-5 space-y-3 max-w-xl w-full text-xs font-semibold text-gray-700">
                                 @csrf
-                                <div><label class="block mb-1">Supplier Name</label><input type="text" name="supplier_name" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div><label class="block mb-1">Address</label><textarea name="address" rows="3" class="w-full rounded-lg border-gray-300"></textarea></div>
-                                <div><label class="block mb-1">Country</label><select name="country" class="w-full rounded-lg border-gray-300 h-9"><option value="">--Select--</option></select></div>
-                                <div><label class="block mb-1">State</label><select name="state" class="w-full rounded-lg border-gray-300 h-9"><option value="">--Select--</option></select></div>
-                                <div><label class="block mb-1">Phone Number</label><input type="text" name="phone_number" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div><label class="block mb-1">Email ID</label><input type="email" name="email_id" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div><label class="block mb-1">Website (if any)</label><input type="text" name="website" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div><label class="block mb-1">GSTIN Number</label><input type="text" name="gstin" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                
+                                <div>
+                                    <label class="block mb-1">Supplier Name</label>
+                                    <input type="text" name="supplier_name" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Address</label>
+                                    <textarea name="address" rows="3" class="w-full rounded-lg border-gray-300"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Country</label>
+                                    <select name="country" class="w-full rounded-lg border-gray-300 h-9">
+                                        <option value="" selected disable>--Select--</option>
+                                        <option value="srilanka">Sri Lanka</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block mb-1">State</label>
+                                    <select name="state" class="w-full rounded-lg border-gray-300 h-9">
+                                        <option value="">--Select--</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Phone Number</label>
+                                    <input type="text" name="phone_number" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Email ID</label>
+                                    <input type="email" name="email_id" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Website (if any)</label>
+                                    <input type="text" name="website" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+                                <div>
+                                    <label class="block mb-1">GSTIN Number</label>
+                                    <input type="text" name="gstin" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+
                                 <div class="flex gap-2 pt-2">
                                     <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded font-bold shadow-sm">Reset</button>
                                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded font-bold shadow-sm">Save</button>

@@ -112,16 +112,93 @@
                         <div class="p-5 text-xs font-semibold text-gray-700 space-y-4">
                             <form method="POST" action="#" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 @csrf
-                                <div><label class="block mb-1">Product Type</label><select name="product_type" class="w-full rounded-lg border-gray-300 h-9"><option value="">--Select--</option></select></div>
-                                <div><label class="block mb-1">Product Name</label><input type="text" name="product_name" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div class="md:col-span-2"><label class="block mb-1">Product Description</label><textarea name="product_description" rows="2" class="w-full rounded-lg border-gray-300"></textarea></div>
-                                <div><label class="block mb-1">Product Price</label><input type="text" name="product_price" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div><label class="block mb-1">Device Price</label><input type="text" name="device_price" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div><label class="block mb-1">Service Price</label><input type="text" name="service_price" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div><label class="block mb-1">Product Image</label><input type="file" name="product_image" class="w-full border border-gray-300 rounded-lg p-1.5 h-9 bg-white text-[11px]"></div>
-                                <div><label class="block mb-1">Trade Type</label><select name="trade_type" class="w-full rounded-lg border-gray-300 h-9"><option value="">Select</option></select></div>
-                                <div><label class="block mb-1">Minimum Alert Qty</label><input type="text" name="min_alert_qty" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div class="md:col-span-2 flex items-center gap-2"><input type="checkbox" name="testing_required" value="1" class="rounded border-gray-300 text-blue-600 w-4 h-4"> <label>Testing required</label></div>
+                                <div><label class="block mb-1">Product Type</label>
+                                <select name="product_type" class="w-full rounded-lg border-gray-300 h-9 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10"">
+                                    <option value="" selected >--Select--</option>
+                                    <option value="new_company_brochure">New Company Brochure</option>
+                                    <option value="news_paper_insert_day_1_20k">news paper insert day 1 20k</option>
+                                    <option value="news_paper_insert_day_2_20k">news paper insert day 2 20k</option>
+                                    <option value="news_paper_insert_day_3_20k">news paper insert day 3 20k</option>
+                                    <option value="photo_frame">photo frame</option>
+                                    <option value="port_in_device">Port In Device</option>
+                                    <option value="pragati_maidan_backdrop">pragati maidan Backdrop+fascia+2table front</option>
+                                    <option value="price_sticker_activation_box">price sticker activation box</option>
+                                    <option value="price_sticker_bottom">price sticker bottom</option>
+                                    <option value="printing_karnal">Printing (Karnal)</option>
+                                    <option value="printing_new_delhi">Printing (New Delhi)</option>
+                                    <option value="pvc_colour_tape_grey">PVC Colour tape(Grey)</option>
+                                    <option value="pvc_id_card">PVC I D Card</option>
+                                    <option value="rewards_points">Rewards Points</option>
+                                    <option value="sandee">Sandee</option>
+                                    <option value="sim">SIM</option>
+                                    <option value="single_sheet_leaflet">single sheet leaflet</option>
+                                    <option value="sl_1">SL 1</option>
+                                    <option value="t_shirts">T-Shirts</option>
+                                    <option value="visiting_card">visiting card</option>
+                                    <option value="12_pager_brochure">12 Pager Brochure</option>
+                                    <option value="a2_poster">A2 Poster</option>
+                                    <option value="a3_posters">A3 Posters</option>
+                                    <option value="accessories">Accessories</option>
+                                    <option value="activation_box_eva_shrink_packaging">activation box with eva+ shrink+ packaging</option>
+                                    <option value="canopy">canopy</option>
+                                    <option value="device">Device</option>
+                                    <option value="device_box">Device Box</option>
+                                    <option value="device_box_shrink">device box shrink</option>
+                                    <option value="device_sticker_mega">DEVICE STICKER MEGA</option>
+                                    <option value="fitters_required_item">Fitter(s) Required Item</option>
+                                    <option value="frame">Frame</option>
+                                    <option value="letter_head_extra">Letter Head Extra</option>
+                                    <option value="letter_head_normal">Letter Head Normal</option>
+                                    <option value="lt_branding_kit">LT Branding Kit</option>
+                                    <option value="mega_eva_sheet">MEGA EVA SHEET</option>
+                                    <option value="new_a5_promotional_leaflet">New A5 promotional leaflet</option>
+                                    <option value="new_company_brochure">New Company Brochure</option>
+                                    <option value="news_paper_insert_day_1_20k">news paper insert day 1 20k</option>
+                                </select>
+                            </div>
+
+                                <div>
+                                    <label class="block mb-1">Product Name</label>
+                                    <input type="text" name="product_name" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block mb-1">Product Description</label>
+                                    <textarea name="product_description" rows="2" class="w-full rounded-lg border-gray-300"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Product Price</label>
+                                    <input type="text" name="product_price" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Device Price</label>
+                                    <input type="text" name="device_price" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Service Price</label>
+                                    <input type="text" name="service_price" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Product Image</label>
+                                    <input type="file" name="product_image" class="w-full border border-gray-300 rounded-lg p-1.5 h-9 bg-white text-[11px]">
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Trade Type</label>
+                                    <select name="trade_type" class="w-full rounded-lg border-gray-300 h-9 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
+                                        <option value="" selected disabled >Select</option>
+                                        <option value="none">None</option>
+                                        <option value="online" >Online</option>
+                                        <option value="offline">Offline</option>
+                                        <option value="both">Both</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block mb-1">Minimum Alert Qty</label>
+                                    <input type="text" name="min_alert_qty" class="w-full rounded-lg border-gray-300 h-9">
+                                </div>
+                                <div class="md:col-span-2 flex items-center gap-2">
+                                    <input type="checkbox" name="testing_required" value="1" class="rounded border-gray-300 text-blue-600 w-4 h-4">
+                                    <label>Testing required</label>
+                                </div>
                                 <div class="md:col-span-2 flex gap-2 pt-2">
                                     <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded font-bold shadow-sm">Reset</button>
                                     <button type="submit" class="bg-[#17a2b8] hover:bg-[#138496] text-white px-4 py-2 rounded font-bold shadow-sm">Add Product</button>

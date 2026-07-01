@@ -29,11 +29,21 @@
                         <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
                             <form method="POST" action="#" class="lg:col-span-5 space-y-4 max-w-xl w-full text-xs font-semibold text-gray-700">
                                 @csrf
-                                <div><label class="block mb-1">Group Name</label><input type="text" name="group_name" class="w-full rounded-lg border-gray-300 h-9"></div>
-                                <div><label class="block mb-1">User Type</label><select name="user_type" class="w-full rounded-lg border-gray-300 h-9"><option value="">--Select--</option></select></div>
-                                <div class="flex gap-2 pt-2">
-                                    <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded font-bold shadow-sm">Reset</button>
-                                    <button type="submit" class="bg-[#17a2b8] hover:bg-[#138496] text-white px-5 py-2 rounded font-bold shadow-sm">Save Group</button>
+                                <div>
+                                    <label class="block mb-1">Group Name</label>
+                                <input type="text" name="group_name" class="w-full rounded-lg border-gray-300 h-9"></div>
+                                <div>
+                                    <label class="block mb-1">User Type</label>
+                                    <select name="user_type" class="w-full rounded-lg border-gray-300 h-9 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10"">
+                                        <option value="" selected disabled>--Select--</option>
+                                        <option value="lbc">LBC</option>
+                                        <option value="distributor">Distributor</option>
+                                        <option value="retailer">Retailer</option>
+                                        <option value="dsa">DSA</option>
+                                        <option value="ba">BA</option>
+                                        <option value="csa">CSA</option>
+                                        <option value="lt_point">LT Point</option>
+                                    </select>
                                 </div>
                             </form>
 

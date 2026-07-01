@@ -57,9 +57,14 @@
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Dealer Status</label>
                                 <select x-model="dealerData.dealerStatus" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none">
-                                    <option value="">Select</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
+                                    <option value="" selected disabled>Select</option>
+                                    <option value="lbc">LBC</option>
+                                    <option value="distributor" >Distributor</option>
+                                    <option value="retailer">Retailer</option>
+                                    <option value="dsa">DSA</option>
+                                    <option value="ba">BA</option>
+                                    <option value="csa">CSA</option>
+                                    <option value="lt_point">LT Point</option>
                                 </select>
                             </div>
                             <div>
@@ -97,7 +102,18 @@
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">State</label>
                                 <select x-model="dealerData.state" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none">
-                                    <option value="">--Select--</option>
+                                    <option value="" selected>--Select--</option>
+                                    <option value="central">Central</option>
+                                    <option value="colombo">Colombo</option>
+                                    <option value="eastern">Eastern</option>
+                                    <option value="gampaha">Gamapaha</option>
+                                    <option value="north_central">North Central</option>
+                                    <option value="north_western">North Western</option>
+                                    <option value="northern">Northern</option>
+                                    <option value="sabaragamuwa">Sabaragamuwa</option>
+                                    <option value="southern">Southern</option>
+                                    <option value="uva">Uva</option>
+                                    <option value="western">Western</option>
                                 </select>
                             </div>
                             <div>
@@ -134,9 +150,18 @@
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Region</label>
                                 <select x-model="dealerData.region" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none">
-                                    <option value="">--Select--</option>
-                                    <option value="Western">Western</option>
-                                    <option value="Eastern">Eastern</option>
+                                    <option value="" selected disabled>--Select--</option>
+                                    <option value="central" >Central</option>
+                                    <option value="colombo">Colombo</option>
+                                    <option value="eastern">Eastern</option>
+                                    <option value="gampaha">Gamapaha</option>
+                                    <option value="north_central">North Central</option>
+                                    <option value="north_western">North Western</option>
+                                    <option value="northern">Northern</option>
+                                    <option value="sabaragamuwa">Sabaragamuwa</option>
+                                    <option value="southern">Southern</option>
+                                    <option value="uva">Uva</option>
+                                    <option value="western">Western</option>
                                 </select>
                             </div>
                             <div>
@@ -154,7 +179,14 @@
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Price Group</label>
                                 <select x-model="dealerData.priceGroup" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none">
-                                    <option value="">--Select--</option>
+                                    <option value="" selected disabled>--Select--</option>
+                                    <option value="vat_ba">VAT-BA</option>
+                                    <option value="vat_csa" >VAT-CSA</option>
+                                    <option value="vat_dist">VAT-DIST</option>
+                                    <option value="vat_dsa">VAT-DSA</option>
+                                    <option value="vat_lbc">VAT-LBC</option>
+                                    <option value="vat_ltpoint">VAT-LTPoint</option>
+                                    <option value="vat_ret">VAT-RET</option>
                                 </select>
                             </div>
                             <div>
@@ -199,7 +231,9 @@
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Best Available Network</label>
                                 <select x-model="dealerData.network" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none">
-                                    <option value="">--Select--</option>
+                                    <option value="" selected disable>--Select--</option>
+                                    <option value="dialog_axiata">Dialog Axiata</option>
+                                    <option value="mobitel_sri_lanka">Mobitel Sri Lanka</option>
                                 </select>
                             </div>
                             <div>
@@ -216,13 +250,21 @@
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Type of Business Entity</label>
                                 <select x-model="dealerData.businessEntity" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none">
-                                    <option value="">Select</option>
+                                    <option value="" selected disabled>Select</option>
+                                    <option value="sole_proprietorship">Sole Proprietorship</option>
+                                    <option value="private_ltd_co">Private Ltd Co.</option>
+                                    <option value="partnership" >Partnership</option>
+                                    <option value="public_ltd_co">Public Ltd Co.</option>
+                                    <option value="other">Other</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Full Details of</label>
                                 <select x-model="dealerData.fullDetailsOf" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none">
-                                    <option value="">Select</option>
+                                    <option value="" selected disabled>Select</option>
+                                    <option value="proprietor">Proprietor</option>
+                                    <option value="partners">Partners</option>
+                                    <option value="directors">Directors</option>
                                 </select>
                             </div>
                             <div>

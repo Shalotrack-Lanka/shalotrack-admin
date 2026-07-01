@@ -36,7 +36,28 @@
                                 
                                 <div class="grid grid-cols-3 items-center gap-4">
                                     <label>From Product</label>
-                                    <div class="col-span-2"><select name="from_product" class="w-full rounded-lg border-gray-300 h-9"><option value="">--Select--</option></select></div>
+                                    <div class="col-span-2">
+                                        <select name="from_product" class="w-full rounded-lg border-gray-300 h-9">
+                                            <option value="" selected disable>--Select--</option>
+                                            <option value="basic_device">Basic Device</option>
+                                            <option value="basic_foc" >Basic FOC</option>
+                                            <option value="dash_cam">Dash cam</option>
+                                            <option value="dashcam">Dashcam</option>
+                                            <option value="fuel_device">Fuel Device</option>
+                                            <option value="letstrack_basic_series">Letstrack Basic Series</option>
+                                            <option value="letstrack_bike">Letstrack Bike</option>
+                                            <option value="letstrack_plus_series_lt05">Letstrack Plus Series LT05</option>
+                                            <option value="letstrack_premium_fuel_ltp001">Letstrack Premium Fuel -LTP001 (GPS Tracking Device)</option>
+                                            <option value="letstrack_prima_fuel_lt02">Letstrack Prima Fuel - LT02-Fuel (GPS Tracking Device)</option>
+                                            <option value="letstrack_prima_series_ltp001">Letstrack Prima Series - LTP001 (GPS Tracking Device)</option>
+                                            <option value="lt_bike_special">LT Bike Special</option>
+                                            <option value="lt_simple">LT Simple</option>
+                                            <option value="magnatic_device">Magnatic Device</option>
+                                            <option value="obd_device">OBD Device</option>
+                                            <option value="personal_mega">PERSONAL MEGA</option>
+                                            <option value="plus_device">Plus Device</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div class="grid grid-cols-3 items-center gap-4">

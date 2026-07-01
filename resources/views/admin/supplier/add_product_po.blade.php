@@ -41,8 +41,16 @@
                                 <div class="grid grid-cols-3 items-center gap-4">
                                     <label>Select Supplier</label>
                                     <div class="col-span-2">
-                                        <select name="supplier_id" class="w-full rounded-lg border-gray-300 text-xs h-9">
-                                            <option value="">--Select--</option>
+                                        <select name="supplier_id" class="w-full rounded-lg border-gray-300 text-xs h-9 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
+                                            <option value="" selected disable>--Select--</option>
+                                            <option value="amila_test">amila test</option>
+                                            <option value="dialog_axiata">Dialog Axiata</option>
+                                            <option value="mobitel_sri_lanka">Mobitel Sri Lanka</option>
+                                            <option value="test_supplier">Test Supplier</option>
+                                            <option value="test_supplier_2">Test_Supplier_2</option>
+                                            <option value="test_supplier_3">Test_Supplier_3</option>
+                                            <option value="tharika">Tharika</option>
+                                            <option value="vertigo_international">vertigo international</option>
                                         </select>
                                     </div>
                                 </div>
@@ -62,7 +70,22 @@
                                     <label>Select P.O.</label>
                                     <div class="col-span-2">
                                         <select name="po_id" class="w-full rounded-lg border-gray-300 text-xs h-9">
-                                            <option value="">--Select--</option>
+                                                <option value="" selected disable>--Select--</option>
+                                                <option value="po_lt23_24_00031">PO/LT23-24/00031 (Mobitel Sri Lanka)</option>
+                                                <option value="po_lt25_26_01006">PO/LT25-26/01006 (Mobitel Sri Lanka)</option>
+                                                <option value="po_lt25_26_01007">PO/LT25-26/01007 (vertigo international)</option>
+                                                <option value="po_lt25_26_01008">PO/LT25-26/01008 (Mobitel Sri Lanka)</option>
+                                                <option value="po_lt25_26_01009" >PO/LT25-26/01009 (vertigo international)</option>
+                                                <option value="po_lt25_26_01010">PO/LT25-26/01010 (vertigo international)</option>
+                                                <option value="po_lt25_26_01011">PO/LT25-26/01011 (Mobitel Sri Lanka)</option>
+                                                <option value="po_lt25_26_01012">PO/LT25-26/01012 (vertigo international)</option>
+                                                <option value="po_lt25_26_01013">PO/LT25-26/01013 (vertigo international)</option>
+                                                <option value="po_lt25_26_01014">PO/LT25-26/01014 (Mobitel Sri Lanka)</option>
+                                                <option value="po_lt25_26_01015">PO/LT25-26/01015 (Mobitel Sri Lanka)</option>
+                                                <option value="po_lt25_26_01016">PO/LT25-26/01016 (vertigo international)</option>
+                                                <option value="po_lt25_26_01017">PO/LT25-26/01017 (Mobitel Sri Lanka)</option>
+                                                <option value="po_lt26_27_01018">PO/LT26-27/01018 (vertigo international)</option>
+                                                <option value="po_lt26_27_01019">PO/LT26-27/01019 (vertigo international)</option>    
                                         </select>
                                     </div>
                                 </div>
