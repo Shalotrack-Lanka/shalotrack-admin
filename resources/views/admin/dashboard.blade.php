@@ -8,49 +8,6 @@
     @vite(['resources/css/app.css','resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-    <style>
-        /* ── LIGHT MODE (default) ── */
-        body { background:#f1f5f9; color:#1e293b; }
-        .main-content { background:#f1f5f9; }
-        .header-bar { background:#ffffff; border-bottom:1px solid #e2e8f0; }
-        .card { background:#ffffff; border:1px solid #e2e8f0; color:#1e293b; }
-        .card h3 { color:#1e293b; }
-        .table-head tr { background:#f1f5f9; }
-        .table-head th { color:#1e293b; border-bottom:1px solid #e2e8f0; }
-        .table-body td { color:#1e293b; border-bottom:1px solid #e2e8f0; }
-        .table-body tr:hover { background:#f8fafc; }
-        .username-text { color:#374151; }
-        .dropdown-menu { background:#ffffff; border:1px solid #e2e8f0; }
-        .dropdown-item { color:#374151; }
-        .dropdown-item:hover { background:#f1f5f9; }
-        .dropdown-info p { color:#1e293b; }
-        .dropdown-info span { color:#6b7280; }
-        .page-title { color:#1e293b; }
-        .toggle-btn { background:#f1f5f9; border:1px solid #e2e8f0; }
-        .chart-card { background:#ffffff; border:1px solid #e2e8f0; }
-        .chart-card h3 { color:#1e293b; }
-
-        /* ── DARK MODE ── */
-        .dark body { background:#0f172a; color:#f1f5f9; }
-        .dark .main-content { background:#0f172a; }
-        .dark .header-bar { background:#1e293b; border-bottom:1px solid #334155; }
-        .dark .card { background:#1e293b; border:1px solid #334155; color:#f1f5f9; }
-        .dark .card h3 { color:#f1f5f9; }
-        .dark .table-head tr { background:#0f172a; }
-        .dark .table-head th { color:#f1f5f9; border-bottom:1px solid #334155; }
-        .dark .table-body td { color:#f1f5f9; border-bottom:1px solid #334155; }
-        .dark .table-body tr:hover { background:#334155; }
-        .dark .username-text { color:#f1f5f9; }
-        .dark .dropdown-menu { background:#1e293b; border:1px solid #334155; }
-        .dark .dropdown-item { color:#f1f5f9; }
-        .dark .dropdown-item:hover { background:#334155; }
-        .dark .dropdown-info p { color:#f1f5f9; }
-        .dark .dropdown-info span { color:#94a3b8; }
-        .dark .page-title { color:#f1f5f9; }
-        .dark .toggle-btn { background:#334155; border:1px solid #475569; }
-        .dark .chart-card { background:#1e293b; border:none; }
-        .dark .chart-card h3 { color:#ffffff; }
-    </style>
 </head>
 <body x-data="{ sidebarOpen: false }" class="font-sans antialiased transition-colors duration-200">
 
@@ -248,33 +205,7 @@
     });
 </script>
 
-<script>
-    const html = document.documentElement;
 
-    function applyTheme(dark) {
-        if (dark) {
-            html.classList.add('dark');
-        } else {
-            html.classList.remove('dark');
-        }
-        // Rebuild charts to catch color switch variants dynamically
-        if (typeof buildCharts === 'function') {
-            setTimeout(buildCharts, 50);
-        }
-    }
-
-    // Set layout initialization based on stored profile state parameters
-    applyTheme(localStorage.getItem('theme') === 'dark');
-
-    // Listener hook for modern custom theme button clicks
-    document.addEventListener('click', (e) => {
-        const target = e.target.closest('#themeToggle');
-        if (target) {
-            const nowDark = !html.classList.contains('dark');
-            localStorage.setItem('theme', nowDark ? 'dark' : 'light');
-            applyTheme(nowDark);
-        }
-    });
 </script>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>

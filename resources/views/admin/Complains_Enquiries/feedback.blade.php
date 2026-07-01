@@ -107,9 +107,9 @@
                                     <select id="fb_type" name="feedback_type" x-model="feedbackType"
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
                                         <option value="All">All</option>
-                                        <option value="App Experience">App Experience</option>
-                                        <option value="Service">Service Delivery</option>
-                                        <option value="Hardware">Device Quality</option>
+                                        <option value="app_feedback">App Feedback</option>
+                                        <option value="web_feedback">Web Feedback</option>
+                                        <option value="fitter_feedback">Fitter Feedback</option>
                                     </select>
                                 </div>
                             </div>
@@ -119,12 +119,11 @@
                                 <div class="col-span-2">
                                     <select id="fb_rating" name="rating" x-model="ratingFilter"
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
-                                        <option value="All">All</option>
-                                        <option value="5">5 Stars</option>
-                                        <option value="4">4 Stars</option>
-                                        <option value="3">3 Stars</option>
-                                        <option value="2">2 Stars</option>
-                                        <option value="1">1 Star</option>
+                                        <option value="really_good">Really Good</option>
+                                        <option value="happy">Happy</option>
+                                        <option value="good">Good</option>
+                                        <option value="not_bad">Not Bad</option>
+                                        <option value="very_bad">Very Bad</option>
                                     </select>
                                 </div>
                             </div>

@@ -42,7 +42,17 @@
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-700 mb-1">Payment Mode</label>
                                         <select name="payment_mode" class="w-full rounded-lg border-gray-300 text-xs h-9">
-                                            <option value="">--Select--</option>
+                                            <option value="" selected disabled>--Select--</option>
+                                            <option value="pay_online">Pay Online</option>
+                                            <option value="emi">EMI</option>
+                                            <option value="cash_on_delivery">Cash On Delivery</option>
+                                            <option value="collect_cash">Collect Cash</option>
+                                            <option value="cheque">Cheque</option>
+                                            <option value="payment_pending">Payment Pending</option>
+                                            <option value="imps">IMPS</option>
+                                            <option value="neft">NEFT</option>
+                                            <option value="rtgs">RTGS</option>
+                                            <option value="online_payment">Online Payment</option>
                                         </select>
                                     </div>
                                     <div>
@@ -64,31 +74,74 @@
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-700 mb-1">State</label>
                                         <select name="state" class="w-full rounded-lg border-gray-300 text-xs h-9">
-                                            <option value="">--Select--</option>
+                                            <option value="" selected disabled>--Select--</option>
+                                            <option value="central">Central</option>
+                                            <option value="colombo">Colombo</option>
+                                            <option value="eastern">Eastern</option>
+                                            <option value="gampaha">Gamapaha</option>
+                                            <option value="north_central">North Central</option>
+                                            <option value="north_western">North Western</option>
+                                            <option value="northern">Northern</option>
+                                            <option value="sabaragamuwa">Sabaragamuwa</option>
+                                            <option value="southern">Southern</option>
+                                            <option value="uva">Uva</option>
+                                            <option value="western">Western</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-700 mb-1">Activation by</label>
                                         <select name="activation_by" class="w-full rounded-lg border-gray-300 text-xs h-9">
-                                            <option value="All">All</option>
+                                            <option value="all" selected>All</option>
+                                            <option value="company">Company</option>
+                                            <option value="other">other</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-700 mb-1">Status</label>
                                         <select name="status" class="w-full rounded-lg border-gray-300 text-xs h-9">
-                                            <option value="All">All</option>
+                                            <option value="all" selected>All</option>
+                                            <option value="cancel">Cancel</option>
+                                            <option value="sold">Sold</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-700 mb-1">Sale Type</label>
                                         <select name="sale_type" class="w-full rounded-lg border-gray-300 text-xs h-9">
-                                            <option value="All">All</option>
+                                            <option value="all" selected>All</option>
+                                            <option value="automobile_show_rooms">Automobile Show Rooms</option>
+                                            <option value="axis">Axis</option>
+                                            <option value="b2b">B2B</option>
+                                            <option value="ba">BA</option>
+                                            <option value="cars24">Cars24</option>
+                                            <option value="direct_sale">Direct Sale</option>
+                                            <option value="dsa">DSA</option>
+                                            <option value="employee_sample">Employee Sample</option>
+                                            <option value="foc">FOC</option>
+                                            <option value="mass_distribution">Mass Distribution</option>
+                                            <option value="online">Online</option>
+                                            <option value="schools">Schools</option>
+                                            <option value="temp_demo">Temp Demo</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-semibold text-gray-700 mb-1">Sale By</label>
                                         <select name="sale_by" class="w-full rounded-lg border-gray-300 text-xs h-9">
-                                            <option value="">--Select--</option>
+                                            <option value="" selected disabled>--Select--</option>
+                                            <option value="mvd_luke_nadeeja_perera">MVD LUKE NADEEJA PERERA</option>
+                                            <option value="prakashan_malrajitha_stephen_1">Prakashan Malrajitha Stephen</option>
+                                            <option value="shalaka_manoj_perera">Shalaka Manoj Perera</option>
+                                            <option value="letstrack_lanka_master_admin">Letstrack Lanka Master Admin</option>
+                                            <option value="test_lanka_fitter">Test Lanka Fitter</option>
+                                            <option value="danushka_namal">Danushka Namal</option>
+                                            <option value="aloka">Aloka</option>
+                                            <option value="prakashan_malrajitha_stephen_2">Prakashan Malrajitha Stephen</option>
+                                            <option value="nitin_sachdeva">NITIN SACHDEVA</option>
+                                            <option value="f1">F1</option>
+                                            <option value="ravinath_babu">Ravinath Babu</option>
+                                            <option value="puneet_sharma">Puneet Sharma</option>
+                                            <option value="dharmender_srilanka">Dharmender Srilanka</option>
+                                            <option value="pramod_kumar_pandey">Pramod Kumar Pandey</option>
+                                            <option value="pramod_pandey">Pramod Pandey</option>
                                         </select>
                                     </div>
                                 </div>

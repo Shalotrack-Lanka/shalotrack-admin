@@ -36,7 +36,48 @@
                                 <div class="grid grid-cols-3 items-center gap-2">
                                     <label class="text-sm font-semibold text-gray-700 text-left md:text-right pr-2">Product Type</label>
                                     <div class="col-span-2">
-                                        <select name="product_type" class="w-full rounded-lg border-gray-300 text-sm h-10"><option value="">--Select--</option></select>
+                                        <select name="product_type" class="w-full rounded-lg border-gray-300 text-sm h-10">
+                                            <option value="" selected disabled>--Select--</option>
+                                            <option value="12_pager_brochure">12 Pager Brochure</option>
+                                            <option value="a2_poster">A2 Poster</option>
+                                            <option value="a3_posters">A3 Posters</option>
+                                            <option value="accessories">Accessories</option>
+                                            <option value="activation_box_eva_shrink_packaging">activation box with eva+ shrink+ packaging</option>
+                                            <option value="canopy">canopy</option>
+                                            <option value="device">Device</option>
+                                            <option value="device_box">Device Box</option>
+                                            <option value="device_box_shrink" >device box shrink</option>
+                                            <option value="device_sticker_mega">DEVICE STICKER MEGA</option>
+                                            <option value="fitters_required_item">Fitter(s) Required Item</option>
+                                            <option value="frame">Frame</option>
+                                            <option value="letter_head_extra">Letter Head Extra</option>
+                                            <option value="letter_head_normal">Letter Head Normal</option>
+                                            <option value="lt_branding_kit">LT Branding Kit</option>
+                                            <option value="mega_eva_sheet">MEGA EVA SHEET</option>
+                                            <option value="new_a5_promotional_leaflet">New A5 promotional leaflet</option>
+                                            <option value="new_company_brochure">New Company Brochure</option>
+                                            <option value="news_paper_insert_day_1_20k">news paper insert day 1 20k</option>
+                                            <option value="new_company_brochure">New Company Brochure</option>
+                                            <option value="news_paper_insert_day_1_20k">news paper insert day 1 20k</option>
+                                            <option value="news_paper_insert_day_2_20k">news paper insert day 2 20k</option>
+                                            <option value="news_paper_insert_day_3_20k">news paper insert day 3 20k</option>
+                                            <option value="photo_frame">photo frame</option>
+                                            <option value="port_in_device">Port In Device</option>
+                                            <option value="pragati_maidan_backdrop">pragati maidan Backdrop+fascia+2table front</option>
+                                            <option value="price_sticker_activation_box">price sticker activation box</option>
+                                            <option value="price_sticker_bottom">price sticker bottom</option>
+                                            <option value="printing_karnal">Printing (Karnal)</option>
+                                            <option value="printing_new_delhi">Printing (New Delhi)</option>
+                                            <option value="pvc_colour_tape_grey">PVC Colour tape(Grey)</option>
+                                            <option value="pvc_id_card">PVC I D Card</option>
+                                            <option value="rewards_points">Rewards Points</option>
+                                            <option value="sandee">Sandee</option>
+                                            <option value="sim">SIM</option>
+                                            <option value="single_sheet_leaflet">single sheet leaflet</option>
+                                            <option value="sl_1">SL 1</option>
+                                            <option value="t_shirts">T-Shirts</option>
+                                            <option value="visiting_card">visiting card</option>
+                                        </select>
                                     </div>
                                 </div>
 

@@ -55,7 +55,25 @@
                                             <label class="text-sm font-semibold text-gray-700 text-left md:text-right pr-2">Select P.O.</label>
                                             <div class="col-span-2">
                                                 <select name="select_po" class="w-full rounded-lg border-gray-300 text-sm h-10">
-                                                    <option value="">--Select--</option>
+                                                    <option value="" selected disabled>--Select--</option>
+                                                    <option value="po_lt19_20_00001">PO/LT19-20/00001</option>
+                                                    <option value="po_lt19_20_00002">PO/LT19-20/00002</option>
+                                                    <option value="po_lt19_20_00003">PO/LT19-20/00003</option>
+                                                    <option value="po_lt19_20_00004">PO/LT19-20/00004</option>
+                                                    <option value="po_lt19_20_00005">PO/LT19-20/00005</option>
+                                                    <option value="po_lt19_20_00006">PO/LT19-20/00006</option>
+                                                    <option value="po_lt19_20_00007">PO/LT19-20/00007</option>
+                                                    <option value="po_lt19_20_00008">PO/LT19-20/00008</option>
+                                                    <option value="po_lt19_20_00009">PO/LT19-20/00009</option>
+                                                    <option value="po_lt19_20_00010">PO/LT19-20/00010</option>
+                                                    <option value="po_lt19_20_00011">PO/LT19-20/00011</option>
+                                                    <option value="po_lt19_20_00012">PO/LT19-20/00012</option>
+                                                    <option value="po_lt19_20_00013">PO/LT19-20/00013</option>
+                                                    <option value="po_lt19_20_00014">PO/LT19-20/00014</option>
+                                                    <option value="po_lt19_20_00015">PO/LT19-20/00015</option>
+                                                    <option value="po_lt19_20_00016">PO/LT19-20/00016</option>
+                                                    <option value="po_lt19_20_00017">PO/LT19-20/00017</option>
+                                                    <option value="po_lt19_20_00018">PO/LT19-20/00018</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -78,7 +96,15 @@
                                             <label class="text-sm font-semibold text-gray-700 text-left md:text-right pr-2">Supplier</label>
                                             <div class="col-span-2">
                                                 <select name="supplier" class="w-full rounded-lg border-gray-300 text-sm h-10">
-                                                    <option value="">--Select--</option>
+                                                    <option value="" selected disabled>--Select--</option>
+                                                    <option value="amila_test">amila test</option>
+                                                    <option value="dialog_axiata">Dialog Axiata</option>
+                                                    <option value="mobitel_sri_lanka">Mobitel Sri Lanka</option>
+                                                    <option value="test_supplier">Test Supplier</option>
+                                                    <option value="test_supplier_2">Test_Supplier_2</option>
+                                                    <option value="test_supplier_3">Test_Supplier_3</option>
+                                                    <option value="tharika">Tharika</option>
+                                                    <option value="vertigo_international">vertigo international</option>
                                                 </select>
                                             </div>
                                         </div>

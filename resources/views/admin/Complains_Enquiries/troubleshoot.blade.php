@@ -118,7 +118,7 @@
                                             <label for="lt_device_type" class="text-sm font-semibold text-gray-700 md:text-right">LT Device Type</label>
                                             <div class="md:col-span-2">
                                                 <select id="lt_device_type" name="lt_device_type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
-                                                    <option value="">Select</option>
+                                                    <option value="" selected disable>Select</option>
                                                     <option value="APM-AIS140">APM-AIS140</option>
                                                     <option value="Atlanta Personal">Atlanta Personal</option>
                                                     <option value="BMS EDS">BMS EDS</option>
@@ -129,7 +129,7 @@
                                                     <option value="LT02 - Prima - Black Connector - 8 Wires">LT02 - Prima - Black Connector - 8 Wires</option>
                                                     <option value="LT02 - Prima - White Connector - 8 Wires">LT02 - Prima - White Connector - 8 Wires</option>
                                                     <option value="LT02 - Prima Fuel - White Connector - 12 Wires">LT02 - Prima Fuel - White Connector - 12 Wires</option>
-                                                    <option value="LT04 - GT800-EmbededSIM" selected>LT04 - GT800-EmbededSIM</option>
+                                                    <option value="LT04 - GT800-EmbededSIM">LT04 - GT800-EmbededSIM</option>
                                                     <option value="LT04 - HVT001-USB_Charger">LT04 - HVT001-USB_Charger</option>
                                                     <option value="LT04 - WeTrack">LT04 - WeTrack</option>
                                                 </select>
@@ -140,8 +140,22 @@
                                             <label for="device_raw_type" class="text-sm font-semibold text-gray-700 md:text-right">Device Raw Type</label>
                                             <div class="md:col-span-2">
                                                 <select id="device_raw_type" name="device_raw_type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
-                                                    <option value="">Select</option>
-                                                    {{-- අමතර Raw types තිබේ නම් මෙතැනට ඇතුළත් කළ හැක --}}
+                                                    <option value="" selected disable>Select</option>
+                                                    <option value="lt04_buzzer_gt800">LT04 - Buzzer - GT800</option>
+                                                    <option value="lt04_gt800_embededsim">LT04 - GT800-EmbededSIM</option>
+                                                    <option value="lt04_hvt001_usb_charger">LT04 - HVT001-USB_Charger</option>
+                                                    <option value="lt04_wetrack">LT04 - WeTrack</option>
+                                                    <option value="lt04_wetrack_light">LT04 - WeTrack Light</option>
+                                                    <option value="lt04_wetrack_sos">LT04 - WeTrack-SOS</option>
+                                                    <option value="lt04_ais140_wetrack140_icat">LT04-AIS140-Wetrack140-ICAT</option>
+                                                    <option value="lt04_cycle_lock">LT04-Cycle-Lock</option>
+                                                    <option value="lt04_electricbike_v5">LT04-ElectricBike-V5</option>
+                                                    <option value="lt04_hotspot">LT04-Hotspot</option>
+                                                    <option value="lt04_nic_ais140">LT04-NIC-AIS140</option>
+                                                    <option value="lt04_nic_ais140_with_meter">LT04-NIC-AIS140-WITH-METER</option>
+                                                    <option value="lt04_obd">LT04-OBD</option>
+                                                    <option value="lt04_obd_can">LT04-OBD-CAN</option>
+                                                    <option value="lt04_personal">LT04-Personal</option>
                                                 </select>
                                             </div>
                                         </div>

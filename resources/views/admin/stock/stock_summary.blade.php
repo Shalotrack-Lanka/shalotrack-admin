@@ -40,14 +40,62 @@
                             <div class="flex items-center gap-2">
                                 <label for="expire_next">Expire in Next (?) Days</label>
                                 <select id="expire_next" name="expire_next" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs h-9 w-24">
-                                    <option value="">Select</option>
+                                    <option value="" selected disabled>Select</option>
+                                    <option value="1">1</option>
+                                    <option value="5">5</option>
+                                    <option value="10">10</option>
+                                    <option value="15">15</option>
+                                    <option value="20">20</option>
+                                    <option value="25">25</option>
+                                    <option value="30">30</option>
+                                    <option value="35">35</option>
+                                    <option value="40">40</option>
+                                    <option value="45">45</option>
+                                    <option value="50">50</option>
+                                    <option value="55">55</option>
+                                    <option value="60">60</option>
+                                    <option value="65">65</option>
+                                    <option value="70">70</option>
+                                    <option value="75">75</option>
+                                    <option value="80">80</option>
+                                    <option value="85">85</option>
+                                    <option value="90">90</option>
+                                    <option value="95">95</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                    <option value="300">300</option>
+                                    <option value="500">500</option>
                                 </select>
                             </div>
 
                             <div class="flex items-center gap-2">
                                 <label for="expired_before">Expired (?) Days Before</label>
                                 <select id="expired_before" name="expired_before" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs h-9 w-24">
-                                    <option value="">Select</option>
+                                    <option value="" selected disabled>Select</option>
+                                    <option value="1">1</option>
+                                    <option value="5">5</option>
+                                    <option value="10">10</option>
+                                    <option value="15">15</option>
+                                    <option value="20">20</option>
+                                    <option value="25">25</option>
+                                    <option value="30">30</option>
+                                    <option value="35">35</option>
+                                    <option value="40">40</option>
+                                    <option value="45">45</option>
+                                    <option value="50">50</option>
+                                    <option value="55">55</option>
+                                    <option value="60">60</option>
+                                    <option value="65">65</option>
+                                    <option value="70">70</option>
+                                    <option value="75">75</option>
+                                    <option value="80">80</option>
+                                    <option value="85">85</option>
+                                    <option value="90">90</option>
+                                    <option value="95">95</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                    <option value="300">300</option>
+                                    <option value="500">500</option>
                                 </select>
                             </div>
 

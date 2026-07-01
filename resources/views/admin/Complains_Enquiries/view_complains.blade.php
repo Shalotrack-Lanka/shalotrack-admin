@@ -69,9 +69,10 @@
                                 <div class="col-span-2">
                                     <select id="status" name="status" x-model="statusFilter"
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
-                                        <option value="Open">Open</option>
-                                        <option value="In Progress">In Progress</option>
-                                        <option value="Closed">Closed</option>
+                                        <option value="close">Close</option>
+                                        <option value="close_vehicle_na">Close-Vehicle NA</option>
+                                        <option value="in_process">InProcess</option>
+                                        <option value="all">All</option>
                                     </select>
                                 </div>
                             </div>
@@ -83,7 +84,7 @@
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
                                         <option value="All">All</option>
                                         <option value="Complaint">Complaint</option>
-                                        <option value="Enquiry">Enquiry</option>
+                                        <option value="New">New</option>
                                     </select>
                                 </div>
                             </div>
@@ -94,9 +95,12 @@
                                     <select id="source" name="source" x-model="complaintSource"
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
                                         <option value="All">All</option>
-                                        <option value="App">Mobile App</option>
-                                        <option value="Web">Web Portal</option>
-                                        <option value="Call">Hotline Call</option>
+                                        <option value="direct">Direct</option>
+                                        <option value="channel">Channel</option>
+                                        <option value="letstrack_app">Letstrack App</option>
+                                        <option value="letstrack_web">Letstrack Web</option>
+                                        <option value="event_leads_complaint" selected>Event Leads Complaint</option>
+                                        <option value="missed_call_complaint">Missed Call Complaint</option>
                                     </select>
                                 </div>
                             </div>
@@ -116,8 +120,11 @@
                                     <select id="fitter_visit" name="fitter_visit" x-model="fitterRequest"
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
                                         <option value="">--Select--</option>
-                                        <option value="fitter_visit">Fitter Visit</option>
-                                        <option value="device_replacement">Device Replacement</option>
+                                        <option value="fitter_visit_requested">Fitter visit Requested</option>
+                                        <option value="device_replace_requested" selected>Device Replace Requested</option>
+                                        <option value="fitter_visit_not_requested">Fitter visit Not Requested</option>
+                                        <option value="device_replace_not_requested">Device Replace Not Requested</option>
+                                        <option value="faulty_device_sent_to_ho">Faulty Device Sent to HO</option>
                                     </select>
                                 </div>
                             </div>

@@ -39,41 +39,6 @@
 
         <div class="flex items-center gap-2 md:gap-3">
 
-            <!-- Dark Mode -->
-
-            <button
-                id="themeToggle"
-                class="toggle-btn w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition duration-300 shadow">
-
-                <svg id="moonIcon"
-                     xmlns="http://www.w3.org/2000/svg"
-                     class="w-4 h-4 md:w-5 md:h-5 text-gray-700"
-                     fill="none"
-                     viewBox="0 0 24 24"
-                     stroke="currentColor">
-
-                    <path stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9 9 0 008.354-5.646z"/>
-
-                </svg>
-
-                <svg id="sunIcon"
-                     xmlns="http://www.w3.org/2000/svg"
-                     class="hidden w-4 h-4 md:w-5 md:h-5 text-yellow-400"
-                     fill="none"
-                     viewBox="0 0 24 24"
-                     stroke="currentColor">
-
-                    <path stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05 5.636 5.636m12.728 0L16.95 7.05M7.05 16.95l-1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z"/>
-
-                </svg>
-
-            </button>
 
             <!-- User Dropdown -->
 
@@ -110,10 +75,11 @@
 
                 <div
                     x-show="open"
-                    x-transition
-                    class="dropdown-menu absolute right-0 mt-2 w-48 rounded-lg shadow-lg z-50">
+                    x-transition.origin.top.right
+                    x-cloak
+                    class="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden z-[9999]">
 
-                    <div class="dropdown-info px-4 py-3 border-b">
+                    <div class="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700">
 
                         <p class="font-semibold">
                             {{ Auth::user()->full_name }}

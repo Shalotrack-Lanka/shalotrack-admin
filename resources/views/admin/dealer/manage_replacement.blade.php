@@ -55,10 +55,11 @@
                                     <label for="user_type" class="block text-sm font-semibold text-gray-700 mb-2">User Type</label>
                                     <select id="user_type" name="user_type" 
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
-                                        <option value="">--Select--</option>
+                                        <option value="" selected disable>--Select--</option>
                                         <option value="dealer">Dealer</option>
                                         <option value="distributor">Distributor</option>
                                         <option value="retailer">Retailer</option>
+                                        <option value="lt_point">LT Point</option>
                                     </select>
                                 </div>
 
@@ -75,8 +76,7 @@
                                     <select id="status" name="status" 
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
                                         <option value="pending" selected>Pending</option>
-                                        <option value="approved">Approved</option>
-                                        <option value="rejected">Rejected</option>
+                                        <option value="approved">Completed</option>
                                     </select>
                                 </div>
 
