@@ -4,7 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\AdminProfileController;
 
-use App\Http\Controllers\Admin\MasterPages\ProductController;
+use App\Http\Controllers\Admin\MasterPages\AddDeviceController;
+use App\Http\Controllers\Admin\MasterPages\AddSimController;
 use App\Http\Controllers\Admin\MasterPages\FeatureController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupDetailsController;
@@ -12,7 +13,7 @@ use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
 
 
 use App\Http\Controllers\Admin\Supplier\AddSupplierController;
-use App\Http\Controllers\Admin\Supplier\AddProductPoController;
+use App\Http\Controllers\Admin\Supplier\SupplierInvoiceController;
 
 use App\Http\Controllers\Admin\Dealer\AddDealerController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
@@ -29,7 +30,7 @@ use App\Http\Controllers\Admin\Activations\CustomerDocumentUploadController;
 use App\Http\Controllers\Admin\Reports\StockInReportController;
 use App\Http\Controllers\Admin\Reports\CreditInvoiceReportController;
 
-use App\Http\Controllers\Admin\Stock\StockSummaryController;
+use App\Http\Controllers\Admin\Stock\ManageStockController;
 use App\Http\Controllers\Admin\Stock\CurrentStockController;
 use App\Http\Controllers\Admin\Stock\SoldDeviceReportController;
 use App\Http\Controllers\Admin\Stock\AddFaultyDeviceController;
@@ -72,11 +73,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('admin/master-pages')->group(function () {
 
-        Route::get('/products',
-            [ProductController::class, 'index'])
-            ->name('admin.products');
+        Route::get('/add-device',
+            [AddDeviceController::class, 'index'])
+            ->name('admin.add-device');
 
-        Route::get('/features',
+        Route::get('/add-sim',
+            [AddSimController::class, 'index'])
+            ->name('admin.add-sim');
+
+    /*    Route::get('/features',
             [FeatureController::class, 'index'])
             ->name('admin.features');
 
@@ -90,7 +95,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/change-product-code',
             [ChangeProductCodeController::class, 'index'])
-            ->name('admin.change-product-code');
+            ->name('admin.change-product-code'); */
 
     });
 
@@ -107,9 +112,9 @@ Route::prefix('admin/supplier')->group(function () {
         [AddSupplierController::class,'index'])
         ->name('admin.suppliers');
 
-         Route::get('/add-product-po',
-        [AddProductPoController::class,'index'])
-        ->name('admin.add-product-po');
+         Route::get('/add-supplier-invoice',
+        [SupplierInvoiceController::class,'index'])
+        ->name('admin.supplier-invoice');
 
 });
 
@@ -189,22 +194,20 @@ Route::prefix('admin/activations')->middleware('auth')->group(function () {
 
 Route::prefix('admin/stock')->middleware('auth')->group(function () {
 
-    Route::get('/summary',
-        [StockSummaryController::class,'index'])
-        ->name('admin.stock.summary');
+    // 1. Manage Stock Routes (මෙහි name එක හරියටම 'admin.stock.store' ලෙස දී ඇත)
+    Route::get('/manage-stock', [ManageStockController::class, 'index'])->name('admin.stock.manage');
+    Route::post('/manage-stock', [ManageStockController::class, 'store'])->name('admin.stock.store');
+    Route::put('/manage-stock/{stock}', [ManageStockController::class, 'update'])->name('admin.stock.update');
+    Route::get('/manage-stock/{stock}/download', [ManageStockController::class, 'download'])->name('admin.stock.download');
 
-    Route::get('/current-stock',
-         [CurrentStockController::class,'index'])
-         ->middleware('auth')->name('admin.current-stock');
+    // 2. Current Stock Route
+    Route::get('/current-stock', [CurrentStockController::class, 'index'])->name('admin.current-stock');
 
-    Route::get('/sold-device-report',
-        [SoldDeviceReportController::class,'index'])
-        ->middleware('auth')->name('admin.sold-device-report');
+    // 3. Sold Device Report Route
+   // Route::get('/sold-device-report', [SoldDeviceReportController::class, 'index'])->name('admin.sold-device-report');
 
-    Route::get('/add-faulty-device',
-        [AddFaultyDeviceController::class,'index'])
-        ->middleware('auth')->name('admin.add-faulty-device');
-
+    // 4. Add Faulty Device Route
+   // Route::get('/add-faulty-device', [AddFaultyDeviceController::class, 'index'])->name('admin.add-faulty-device');
 });
 
 /*
@@ -263,5 +266,7 @@ Route::prefix('admin/report')->middleware(['auth'])->group(function () {
         ->name('profile.destroy');
 
 });
+
+
 
 require __DIR__.'/auth.php';

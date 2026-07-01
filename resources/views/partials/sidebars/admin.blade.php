@@ -55,25 +55,29 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.products') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Add Product
+                <a href="{{ route('admin.add-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                    Add Device
                 </a>
 
-                <a href="{{ route('admin.features') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.add-sim') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                    Add SIM
+                </a>
+
+             <!--   <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                     Add Features
-                </a>
+                </a> 
 
-                <a href="{{ route('admin.price-groups') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                     Add Price Group
                 </a>
 
-                <a href="{{ route('admin.price-group-details') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                    Add Price Group Details
                 </a>
 
-                <a href="{{ route('admin.change-product-code') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                     Change Product Codes
-                </a>
+                </a>  -->
 
             </div>
 
@@ -109,8 +113,8 @@
                     Add Supplier
                 </a>
 
-                <a href="{{ route('admin.add-product-po') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Add Product PO and Stock Upload
+                <a href="{{ route('admin.supplier-invoice') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                    Supplier Invoice
                 </a>
 
             </div>
@@ -212,10 +216,10 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.stock.summary') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Stock Summary</a>
+                <a href="{{ route('admin.stock.manage') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Manage Stock</a>
                 <a href="{{ route('admin.current-stock') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Current Stock</a>
-                <a href="{{ route('admin.sold-device-report') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Sold Device Report</a>
-                <a href="{{ route('admin.add-faulty-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Faulty Device</a>
+               <!-- <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Sold Device Report</a>  -->
+               <!-- <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Faulty Device</a> -->
 
             </div>
 
