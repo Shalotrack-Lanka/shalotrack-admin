@@ -16,20 +16,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to Azure Container Registry
-        uses: docker/login-action@v3
+      # Setup PHP & Composer dependencies for production optimization
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          registry: ${{ secrets.ACR_LOGIN_SERVER }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          php-version: '8.2'
+          extensions: mbstring, bcmath, xml, zip
 
-      - name: Build Docker image
+      - name: Install Composer Dependencies
         run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/shalotrack-admin:latest \
-                       -t ${{ secrets.ACR_LOGIN_SERVER }}/shalotrack-admin:${{ github.sha }} \
-                       --build-arg APP_KEY=${{ secrets.APP_KEY }} .
+          composer install --no-dev --optimize-autoloader --no-progress
 
-      - name: Push Docker image
+      # Authenticate securely with AWS Singapore Region
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Build and push the optimized Laravel Docker container to AWS
+      - name: Build, tag, and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: shalotrack-admin
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker push ${{ secrets.ACR_LOGIN_SERVER }}/shalotrack-admin:latest
-          docker push ${{ secrets.ACR_LOGIN_SERVER }}/shalotrack-admin:${{ github.sha }}
+          docker build \
+            --build-arg APP_KEY="${{ secrets.APP_KEY }}" \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
