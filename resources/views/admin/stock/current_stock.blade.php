@@ -3,156 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShaloTrack Admin</title>
-
+    <title>ShaloTrack Admin - Current Stock</title>
     @vite(['resources/css/app.css','resources/js/app.js'])
-
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
 </head>
-<body x-data="{ sidebarOpen: false }"> <!-- Added Alpine state for Mobile Menu Toggle -->
+<body x-data="{ sidebarOpen: false }">
 
-<div class="flex h-screen overflow-hidden"> <!-- Prevent double scrollbars -->
-
+<div class="flex h-screen overflow-hidden bg-gray-50">
     @include('partials.sidebars.admin')
 
+    <div class="flex-1 flex flex-col overflow-y-auto">
+        @include('partials.header')
 
-    @include('partials.header')
-
-
-        <main class="p-4 md:p-6 flex-1">
-            @yield('content')
-
-
-               <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
-                 <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
-                 <h3 class="text-xl font-bold text-gray-800">Current Stock</h3>
-               </div>
-
-                    <div class="p-6 space-y-6 w-full">
-                        <form method="GET" action="#" class="bg-gray-50 border border-gray-100 p-5 rounded-xl shadow-sm w-full space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-                                
-                                <div class="grid grid-cols-3 items-center gap-2">
-                                    <label class="text-sm font-semibold text-gray-700 text-left md:text-right pr-2">Product Type</label>
-                                    <div class="col-span-2">
-                                        <select name="product_type" class="w-full rounded-lg border-gray-300 text-sm h-10">
-                                            <option value="" selected disabled>--Select--</option>
-                                            <option value="12_pager_brochure">12 Pager Brochure</option>
-                                            <option value="a2_poster">A2 Poster</option>
-                                            <option value="a3_posters">A3 Posters</option>
-                                            <option value="accessories">Accessories</option>
-                                            <option value="activation_box_eva_shrink_packaging">activation box with eva+ shrink+ packaging</option>
-                                            <option value="canopy">canopy</option>
-                                            <option value="device">Device</option>
-                                            <option value="device_box">Device Box</option>
-                                            <option value="device_box_shrink" >device box shrink</option>
-                                            <option value="device_sticker_mega">DEVICE STICKER MEGA</option>
-                                            <option value="fitters_required_item">Fitter(s) Required Item</option>
-                                            <option value="frame">Frame</option>
-                                            <option value="letter_head_extra">Letter Head Extra</option>
-                                            <option value="letter_head_normal">Letter Head Normal</option>
-                                            <option value="lt_branding_kit">LT Branding Kit</option>
-                                            <option value="mega_eva_sheet">MEGA EVA SHEET</option>
-                                            <option value="new_a5_promotional_leaflet">New A5 promotional leaflet</option>
-                                            <option value="new_company_brochure">New Company Brochure</option>
-                                            <option value="news_paper_insert_day_1_20k">news paper insert day 1 20k</option>
-                                            <option value="new_company_brochure">New Company Brochure</option>
-                                            <option value="news_paper_insert_day_1_20k">news paper insert day 1 20k</option>
-                                            <option value="news_paper_insert_day_2_20k">news paper insert day 2 20k</option>
-                                            <option value="news_paper_insert_day_3_20k">news paper insert day 3 20k</option>
-                                            <option value="photo_frame">photo frame</option>
-                                            <option value="port_in_device">Port In Device</option>
-                                            <option value="pragati_maidan_backdrop">pragati maidan Backdrop+fascia+2table front</option>
-                                            <option value="price_sticker_activation_box">price sticker activation box</option>
-                                            <option value="price_sticker_bottom">price sticker bottom</option>
-                                            <option value="printing_karnal">Printing (Karnal)</option>
-                                            <option value="printing_new_delhi">Printing (New Delhi)</option>
-                                            <option value="pvc_colour_tape_grey">PVC Colour tape(Grey)</option>
-                                            <option value="pvc_id_card">PVC I D Card</option>
-                                            <option value="rewards_points">Rewards Points</option>
-                                            <option value="sandee">Sandee</option>
-                                            <option value="sim">SIM</option>
-                                            <option value="single_sheet_leaflet">single sheet leaflet</option>
-                                            <option value="sl_1">SL 1</option>
-                                            <option value="t_shirts">T-Shirts</option>
-                                            <option value="visiting_card">visiting card</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-3 items-center gap-2">
-                                    <label class="text-sm font-semibold text-gray-700 text-left md:text-right pr-2">Product</label>
-                                    <div class="col-span-2">
-                                        <select name="product" class="w-full rounded-lg border-gray-300 text-sm h-10"><option value="No Data">No Data</option></select>
-                                    </div>
-                                </div>
+        <main class="p-4 md:p-6 flex-1 space-y-6">
+            
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden w-full">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                    <h3 class="font-bold text-gray-800 text-sm">Current Stock Filter Matrix</h3>
+                </div>
+                
+                <div class="p-5 text-xs font-semibold text-gray-700">
+                    <form method="GET" action="{{ route('admin.current-stock') }}" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                            
+                            <div>
+                                <label class="block mb-1.5 text-gray-600">Product Type</label>
+                                <select name="product_type" class="w-full rounded-lg border-gray-300 h-9 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <option value="">--Select Type--</option>
+                                    @foreach($productTypes as $type)
+                                        <option value="{{ $type }}" {{ request('product_type') == $type ? 'selected' : '' }}>{{ $type }}</option>
+                                    @endforeach
+                                    <option value="Device" {{ request('product_type') == 'Device' ? 'selected' : '' }}>Device</option>
+                                    <option value="SIM" {{ request('product_type') == 'SIM' ? 'selected' : '' }}>SIM</option>
+                                </select>
                             </div>
 
-                            <div class="flex flex-wrap items-center gap-8 text-xs font-bold text-gray-700 pl-2">
-                                <label class="inline-flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="srilanka_branch" x-model="srilankaBranch" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"> Srilanka Branch
-                                </label>
-                                <label class="inline-flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="missing_stock" x-model="missingStock" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"> MISSING STOCK - LK
-                                </label>
+                            <div>
+                                <label class="block mb-1.5 text-gray-600">Product Model / Name</label>
+                                <input type="text" name="product_model" value="{{ request('product_model') }}" placeholder="Search model name..." class="w-full rounded-lg border-gray-300 h-9 text-xs shadow-sm">
                             </div>
 
-                            <div class="pt-2 flex justify-start">
-                                <button type="submit" class="bg-[#17a2b8] hover:bg-[#138496] text-white font-bold h-10 w-36 rounded-lg shadow-sm transition text-sm">
+                            <div class="flex gap-2">
+                                <a href="{{ route('admin.current-stock') }}" class="w-1/2 bg-gray-100 hover:bg-gray-200 text-gray-700 h-9 rounded font-bold shadow-xs transition flex items-center justify-center">Reset</a>
+                                <button type="submit" class="w-1/2 bg-[#17a2b8] hover:bg-[#138496] text-white h-9 rounded font-bold shadow-sm transition flex items-center justify-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                     Search
                                 </button>
                             </div>
-                        </form>
 
-                        <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm overflow-x-auto w-full">
-                            <table class="w-full text-left text-xs border-collapse">
-                                <thead class="bg-gray-100 text-gray-700 font-bold border-b border-gray-200">
-                                    <tr>
-                                        <th class="p-3 text-center w-12">#</th>
-                                        <th class="p-3">Product Type</th>
-                                        <th class="p-3">Product Name</th>
-                                        <th class="p-3 text-center w-24">Qty.</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 text-gray-600 bg-white font-medium">
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="p-3 text-center">1.</td>
-                                        <td class="p-3">Device</td>
-                                        <td class="p-3 text-gray-900 font-semibold">Basic Device</td>
-                                        <td class="p-3 text-center font-mono text-blue-600 font-bold"><a href="#" class="hover:underline">4</a></td>
-                                    </tr>
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="p-3 text-center">2.</td>
-                                        <td class="p-3">Device</td>
-                                        <td class="p-3 text-gray-900 font-semibold">Dash cam</td>
-                                        <td class="p-3 text-center font-mono text-blue-600 font-bold"><a href="#" class="hover:underline">5</a></td>
-                                    </tr>
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="p-3 text-center">3.</td>
-                                        <td class="p-3">Device</td>
-                                        <td class="p-3 text-gray-900 font-semibold">Fuel Device</td>
-                                        <td class="p-3 text-center font-mono text-blue-600 font-bold"><a href="#" class="hover:underline">7</a></td>
-                                    </tr>
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="p-3 text-center">4.</td>
-                                        <td class="p-3">Device</td>
-                                        <td class="p-3 text-gray-900 font-semibold">Letstrack Basic Series</td>
-                                        <td class="p-3 text-center font-mono text-blue-600 font-bold"><a href="#" class="hover:underline">580</a></td>
-                                    </tr>
-                                </tbody>
-                            </table>
                         </div>
+                    </form>
+                </div>
+            </div>
 
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
+                <div class="p-5">
+                    <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[650px]">
+                            <thead class="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-600 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-3 w-12 text-center">#</th>
+                                    <th class="p-3">Product Model / Type</th>
+                                    <th class="p-3">Product Display Name</th>
+                                    <th class="p-3 text-center w-36">Qty Available</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white text-xs font-semibold text-gray-700">
+                                @forelse($stocks as $index => $stock)
+                                    <tr class="hover:bg-gray-50/70 transition">
+                                        <td class="p-3 text-center text-gray-400 font-bold">{{ $index + 1 }}.</td>
+                                        <td class="p-3 text-gray-500 font-mono">{{ $stock->product_model }}</td>
+                                        <td class="p-3 text-gray-900 font-bold">{{ $stock->product_name }}</td>
+                                        <td class="p-3 text-center">
+                                            <span class="px-2.5 py-1 rounded-md text-xs font-bold {{ $stock->company_available_stock > 10 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50' }}">
+                                                {{ $stock->company_available_stock }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="p-6 text-center text-gray-400 font-medium italic">No dynamic records found inside matching criteria.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-                
+
         </main>
-
     </div>
-
-<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+</div>
 
 </body>
 </html>
