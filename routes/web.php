@@ -83,6 +83,8 @@ Route::middleware(['auth'])->group(function () {
             [AddSimController::class, 'index'])
             ->name('admin.add-sim');
 
+        Route::post('/add-sim', [AddSimController::class, 'store'])->name('admin.stock.sim.store');
+
     /*    Route::get('/features',
             [FeatureController::class, 'index'])
             ->name('admin.features');

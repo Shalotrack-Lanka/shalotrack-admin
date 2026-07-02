@@ -19,9 +19,14 @@ class Stock extends Model
         'sold_to_customer'
     ];
 
-    public function devices()
-{
-    return $this->hasMany(Device::class);
-}
+        public function devices()
+    {
+        return $this->hasMany(Device::class);
+    }
+
+    public function sims()
+    {
+        return $this->hasMany(Sim::class);
+    }
 
 }
