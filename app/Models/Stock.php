@@ -18,4 +18,10 @@ class Stock extends Model
         'dealer_available_stock',
         'sold_to_customer'
     ];
+
+    public function devices()
+{
+    return $this->hasMany(Device::class);
+}
+
 }

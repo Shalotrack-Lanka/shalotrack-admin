@@ -77,6 +77,8 @@ Route::middleware(['auth'])->group(function () {
             [AddDeviceController::class, 'index'])
             ->name('admin.add-device');
 
+        Route::post('/add-device', [AddFaultyDeviceController::class, 'store'])->name('admin.device.store');
+
         Route::get('/add-sim',
             [AddSimController::class, 'index'])
             ->name('admin.add-sim');

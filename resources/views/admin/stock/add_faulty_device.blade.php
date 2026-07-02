@@ -31,7 +31,7 @@
 
                         <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
                             
-                            <form method="POST" action="#" class="lg:col-span-7 space-y-4 max-w-2xl w-full">
+                            <form method="POST" action="{{ route('admin.device.store') }}" class="lg:col-span-7 space-y-4 max-w-2xl w-full">
                                 @csrf
                                 
                                 <div class="grid grid-cols-3 items-center gap-4">
@@ -64,6 +64,14 @@
                                     <div class="col-span-2">
                                         <input type="date" name="date" value="2026-06-26" class="w-full rounded-lg border-gray-300 text-sm h-10">
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label class="block mb-1">Branch Location</label>
+                                    <select name="branch_name" required class="w-full rounded-lg border-gray-300 h-9 text-xs shadow-sm">
+                                        <option value="Srilanka Branch">Srilanka Branch</option>
+                                        <option value="Overseas Branch">Overseas Branch</option>
+                                    </select>
                                 </div>
 
                                 <div class="grid grid-cols-3 items-start gap-4">
