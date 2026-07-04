@@ -1,6 +1,7 @@
 FROM php:8.2-fpm-alpine
 
 # Install system dependencies
+
 RUN apk add --no-cache \
     nginx \
     nodejs \
@@ -11,7 +12,8 @@ RUN apk add --no-cache \
     git \
     sqlite \
     sqlite-dev \
-    && docker-php-ext-install pdo pdo_sqlite
+    postgresql-dev \
+    && docker-php-ext-install pdo pdo_sqlite pdo_pgsql
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
