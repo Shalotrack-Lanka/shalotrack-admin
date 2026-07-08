@@ -103,6 +103,8 @@ Route::middleware(['auth'])->group(function () {
         [CancelSimController::class, 'update'])
         ->name('admin.cancel-sim.update');
 
+
+
  
 
     });
@@ -159,6 +161,9 @@ Route::prefix('admin/dealer')->group(function () {
 
     Route::get('/dealer-ledger',[DealerLedgerController::class,'index'])
         ->name('admin.dealer-ledger');
+
+    Route::post('/add-dealer', [AddDealerController::class, 'store'])
+    ->name('admin.dealer.store');
 
 });
 
