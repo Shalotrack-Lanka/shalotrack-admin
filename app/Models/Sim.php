@@ -9,10 +9,12 @@ class Sim extends Model
 {
     use HasFactory;
 
-    // සියලුම fields වලට දත්ත ඇතුළත් කිරීමට අවසර දීම
     protected $guarded = [];
 
-    // Master Stock එක සමඟ ඇති සබඳතාවය
+    protected $casts = [
+        'canceled_at' => 'datetime',
+    ];
+
     public function stock()
     {
         return $this->belongsTo(Stock::class, 'stock_id');
