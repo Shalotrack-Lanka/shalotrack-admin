@@ -99,6 +99,10 @@ Route::middleware(['auth'])->group(function () {
         [CancelSimController::class, 'index'])
         ->name('admin.cancel-sim');
 
+        Route::patch('/cancel-sim/{sim}',
+        [CancelSimController::class, 'update'])
+        ->name('admin.cancel-sim.update');
+
  
 
     });
