@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\AdminProfileController;
 
 use App\Http\Controllers\Admin\MasterPages\AddDeviceController;
 use App\Http\Controllers\Admin\MasterPages\AddSimController;
+use App\Http\Controllers\Admin\MasterPages\CancelDeviceController;
+use App\Http\Controllers\Admin\MasterPages\CancelSimController;
 use App\Http\Controllers\Admin\MasterPages\FeatureController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupDetailsController;
@@ -85,21 +87,19 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/add-sim', [AddSimController::class, 'store'])->name('admin.stock.sim.store');
 
-    /*    Route::get('/features',
-            [FeatureController::class, 'index'])
-            ->name('admin.features');
+        Route::get('/cancel-device',
+        [CancelDeviceController::class, 'index'])
+         ->name('admin.cancel-device');
 
-        Route::get('/price-groups',
-            [PriceGroupController::class, 'index'])
-            ->name('admin.price-groups');
+        Route::patch('/cancel-device/{device}',
+        [CancelDeviceController::class, 'update'])
+        ->name('admin.cancel-device.update');
 
-        Route::get('/price-group-details',
-            [PriceGroupDetailsController::class, 'index'])
-            ->name('admin.price-group-details');
+        Route::get('/cancel-sim',
+        [CancelSimController::class, 'index'])
+        ->name('admin.cancel-sim');
 
-        Route::get('/change-product-code',
-            [ChangeProductCodeController::class, 'index'])
-            ->name('admin.change-product-code'); */
+ 
 
     });
 
