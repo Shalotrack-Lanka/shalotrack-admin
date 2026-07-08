@@ -63,6 +63,14 @@
                     Add SIM
                 </a>
 
+                <a href="{{ route('admin.cancel-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                   Cancel Device
+                </a>
+
+                <a href="{{ route('admin.cancel-sim') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                   Cancel Sim
+                </a>
+
              <!--   <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                     Add Features
                 </a> 
