@@ -14,6 +14,31 @@
     @include('partials.sidebars.admin')
     @include('partials.header')
 
+    @if(session('success'))
+        <div x-data="{ show: true }"
+             x-show="show"
+             x-init="setTimeout(() => show = false, 4000)"
+             x-transition
+             class="fixed top-6 right-6 z-50 bg-green-600 text-white px-5 py-3 rounded-lg shadow-lg font-semibold text-sm">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div x-data="{ show: true }"
+             x-show="show"
+             x-init="setTimeout(() => show = false, 5000)"
+             x-transition
+             class="fixed top-6 right-6 z-50 bg-red-600 text-white px-5 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-sm">
+            <div class="font-bold mb-1">Please check the form:</div>
+            <ul class="list-disc list-inside">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <main class="flex-1 overflow-y-auto p-6">
         @yield('content')                   
 
@@ -24,7 +49,7 @@
 
                         <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
                             
-                            <form method="POST" action="#" class="lg:col-span-5 space-y-3 max-w-xl w-full text-xs font-semibold text-gray-700">
+                            <form method="POST" action="{{ route('admin.suppliers.store') }}" class="lg:col-span-5 space-y-3 max-w-xl w-full text-xs font-semibold text-gray-700">
                                 @csrf
                                 <div>
                                     <label class="block mb-1">Supplier Name</label>

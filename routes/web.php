@@ -120,6 +120,22 @@ Route::prefix('admin/supplier')->group(function () {
         [SupplierInvoiceController::class,'index'])
         ->name('admin.supplier-invoice');
 
+        Route::post('/add-supplier',
+        [AddSupplierController::class, 'store'])
+        ->name('admin.suppliers.store');
+
+        Route::get('/{id}/edit',
+        [AddSupplierController::class, 'edit'])
+        ->name('admin.suppliers.edit');
+
+        Route::put('/{id}',
+        [AddSupplierController::class, 'update'])
+        ->name('admin.suppliers.update');
+
+        Route::post('/{id}/attach-product',
+        [AddSupplierController::class, 'attachProduct'])
+        ->name('admin.suppliers.attach-product');
+
 });
 
 
