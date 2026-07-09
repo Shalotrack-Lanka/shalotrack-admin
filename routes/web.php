@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\Supplier\SupplierInvoiceController;
 use App\Http\Controllers\Admin\Dealer\AddDealerController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
+use App\Http\Controllers\Admin\Dealer\StockTransferController;
 
 use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 
@@ -158,6 +159,9 @@ Route::prefix('admin/dealer')->group(function () {
 
     Route::get('/add-dealer', [AddDealerController::class, 'index'])
         ->name('admin.add-dealer');
+
+    Route::get('/stock-transfer', [StockTransferController::class, 'index'])
+    ->name('admin.stock-transfer');
 
     Route::get('/manage-replacement',[ManageReplacementController::class,'index'])
         ->name('admin.manage-replacement');

@@ -156,6 +156,7 @@
             <div x-show="open" class="ml-5 text-sm">
 
                 <a href="{{ route('admin.add-dealer') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Dealer</a>
+                <a href="{{ route('admin.stock-transfer') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Stock Transfer</a>
                 <a href="{{ route('admin.manage-replacement') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Manage Replacements</a>
                 <a href="{{ route('admin.dealer-ledger') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Dealer Ledger</a>
 
