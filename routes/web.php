@@ -17,9 +17,12 @@ use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
 use App\Http\Controllers\Admin\Supplier\AddSupplierController;
 use App\Http\Controllers\Admin\Supplier\SupplierInvoiceController;
 
+
 use App\Http\Controllers\Admin\Dealer\AddDealerController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
+
+use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 
 use App\Http\Controllers\Admin\Complains_Enquiries\TroubleshootController;
 use App\Http\Controllers\Admin\Complains_Enquiries\ViewComplainsController;
@@ -164,6 +167,20 @@ Route::prefix('admin/dealer')->group(function () {
 
     Route::post('/add-dealer', [AddDealerController::class, 'store'])
     ->name('admin.dealer.store');
+
+});
+
+/*
+|--------------------------------------------------------------------------
+| Customer
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/customer')->middleware('auth')->group(function () {
+
+    Route::get('/setup',
+        [CustomerSetupController::class, 'index'])
+        ->name('admin.customer-setup');
 
 });
 
