@@ -81,11 +81,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('admin/master-pages')->group(function () {
 
-        Route::get('/add-device',
-            [AddDeviceController::class, 'index'])
-            ->name('admin.add-device');
-
-        Route::post('/add-device', [AddFaultyDeviceController::class, 'store'])->name('admin.device.store');
+        Route::get('/add-device', [AddDeviceController::class, 'index'])->name('admin.add-device');
+        Route::post('/add-device', [AddDeviceController::class, 'store'])->name('admin.device.store');
+        Route::get('/add-device/list', [AddDeviceController::class, 'list'])->name('admin.device.list');
 
         Route::get('/add-sim',
             [AddSimController::class, 'index'])

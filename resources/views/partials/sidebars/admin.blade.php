@@ -56,7 +56,7 @@
             <div x-show="open" class="ml-5 text-sm">
 
                 <a href="{{ route('admin.add-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Add Device
+                    Setup Shalotrack Device
                 </a>
 
                 <a href="{{ route('admin.add-sim') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
