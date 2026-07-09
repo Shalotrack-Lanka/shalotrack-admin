@@ -79,10 +79,15 @@
                             
                             <div>
                                 <label class="block mb-1">Device Category / Type</label>
-                                <select name="device_model" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
+                                <select name="device_model" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
                                     <option value="" selected disabled>--Select Device Type--</option>
-                                    <option value="v5_basic">Shalotrack V5 basic</option>
-                                    <option value="v5_plus">Shalotrack V5 plus</option>
+                                     @forelse($deviceTypes as $type)
+                                        <option value="{{ $type->device_category }} with {{ $type->model }}">
+                                            {{ $type->device_category }} with {{ $type->model }}
+                                        </option>
+                                        @empty
+                                        <option value="" disabled>No device types configured yet</option>
+                                    @endforelse
                                 </select>
                             </div>
 
