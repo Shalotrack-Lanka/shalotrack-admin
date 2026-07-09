@@ -21,6 +21,10 @@ return [
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],
+    
+    'shalotrack_api' => [
+    'base_url' => env('SHALOTRACK_API_URL', 'https://api.shalotrack.com'),
+    ],
 
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),

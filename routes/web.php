@@ -178,9 +178,17 @@ Route::prefix('admin/dealer')->group(function () {
 
 Route::prefix('admin/customer')->middleware('auth')->group(function () {
 
-    Route::get('/setup',
-        [CustomerSetupController::class, 'index'])
+    Route::get('/setup', [CustomerSetupController::class, 'index'])
         ->name('admin.customer-setup');
+
+    Route::put('/setup/{customerId}', [CustomerSetupController::class, 'update'])
+        ->name('admin.customer-setup.update');
+
+    Route::get('/setup/{customerId}/invoice', [CustomerSetupController::class, 'viewInvoice'])
+        ->name('admin.customer-setup.invoice');
+
+    Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])
+    ->name('admin.customer-setup.refresh');
 
 });
 
