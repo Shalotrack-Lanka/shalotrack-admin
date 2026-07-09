@@ -6,34 +6,50 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerAd;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Artisan;
 
 class CustomerSetupController extends Controller
 {
     public function index()
     {
-        CustomerAd::expireOverdueSubscriptions();
+    // 1. Run the sync command every time the page loads
+    \Illuminate\Support\Facades\Artisan::call('customers:sync');
 
-        $activeCustomers = CustomerAd::where('payment_status', 'paid')
-            ->orderBy('full_name')
-            ->get();
-
-        $inactiveCustomers = CustomerAd::where('payment_status', 'not_paid')
-            ->orderBy('full_name')
-            ->get();
-
-        
-        return view('admin.customer.customer_setup', compact('activeCustomers', 'inactiveCustomers'));
-    }
-    
-    public function refresh()
-    {
     CustomerAd::expireOverdueSubscriptions();
 
     $activeCustomers = CustomerAd::where('payment_status', 'paid')
         ->orderBy('full_name')
         ->get();
 
-    $inactiveCustomers = CustomerAd::where('payment_status', 'not_paid')
+    // 2. Make sure the NULL fix is here too!
+    $inactiveCustomers = CustomerAd::where(function($query) {
+            $query->where('payment_status', 'not_paid')
+                  ->orWhereNull('payment_status'); 
+        })
+        ->orderBy('full_name')
+        ->get();
+
+    return view('admin.customer.customer_setup', compact('activeCustomers', 'inactiveCustomers'));
+    }
+    
+    public function refresh()
+    {
+    // 1. Trigger the sync command to pull new API data first!
+    Artisan::call('customers:sync');
+
+    // 2. Do the normal database cleanup
+    CustomerAd::expireOverdueSubscriptions();
+
+    // 3. Fetch the newly updated data
+    $activeCustomers = CustomerAd::where('payment_status', 'paid')
+        ->orderBy('full_name')
+        ->get();
+
+    // (Make sure you are using the NULL fix we added earlier here)
+    $inactiveCustomers = CustomerAd::where(function($query) {
+            $query->where('payment_status', 'not_paid')
+                  ->orWhereNull('payment_status'); 
+        })
         ->orderBy('full_name')
         ->get();
 
