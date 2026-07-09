@@ -91,6 +91,40 @@
 
         </div>
 
+                    <!-- ADMIN -->
+        <div x-data="{open:false}">
+
+            <button
+                @click="open=!open"
+                class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
+
+                <span>Admin</span>
+
+            <svg :class="open ? 'rotate-180' : ''"
+                class="w-4 h-4 transition-transform duration-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24">
+
+            <path stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"/>
+
+            </svg>
+
+            </button>
+
+             <div x-show="open" class="ml-5 text-sm">
+
+                <a href="{{ route('admin.add-device-types') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                     Add Device Types
+                </a>
+
+            </div>
+
+        </div>
+
         <!-- SUPPLIERS -->
         <div x-data="{open:false}">
 
