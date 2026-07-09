@@ -8,7 +8,7 @@
     @vite(['resources/css/app.css','resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body x-data="{ sidebarOpen: false, editModal: false, editing: null, refreshing: false }">
+<body x-data="customerSetupData()">
 
 <div class="flex h-screen overflow-hidden">
 
@@ -109,17 +109,39 @@
 </div>
 
 <script>
-function refreshTables() {
-    return fetch("{{ route('admin.customer-setup.refresh') }}", {
-        headers: { 'Accept': 'application/json' }
-    })
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById('active-customers-panel').innerHTML = data.active_html;
-        document.getElementById('inactive-customers-panel').innerHTML = data.inactive_html;
-    })
-    .catch(err => console.error('Refresh failed:', err));
-}
+document.addEventListener('alpine:init', () => {
+    Alpine.data('customerSetupData', () => ({
+        sidebarOpen: false,
+        editModal: false,
+        editing: null,
+        refreshing: false,
+        
+        refreshTables() {
+            // Prevent spam-clicking
+            if (this.refreshing) return; 
+            
+            this.refreshing = true;
+            
+            fetch("{{ route('admin.customer-setup.refresh') }}", {
+                headers: { 
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Swap the HTML in the background
+                document.getElementById('active-customers-panel').innerHTML = data.active_html;
+                document.getElementById('inactive-customers-panel').innerHTML = data.inactive_html;
+            })
+            .catch(err => console.error('Refresh failed:', err))
+            .finally(() => {
+                // Always reset the button state, even if it fails
+                this.refreshing = false;
+            });
+        }
+    }));
+});
 </script>
 
 </body>
