@@ -11,6 +11,10 @@ class CustomerAd extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
+    protected $attributes = [
+        'payment_status' => 'not_paid',
+    ];
+
     protected $fillable = [
         'customer_id','full_name','email','phone_number','nic_number','address',
         'profile_image','vehicle_count','source_account_status',
