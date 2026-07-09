@@ -41,6 +41,8 @@ use App\Http\Controllers\Admin\Stock\CurrentStockController;
 use App\Http\Controllers\Admin\Stock\SoldDeviceReportController;
 use App\Http\Controllers\Admin\Stock\AddFaultyDeviceController;
 
+use App\Http\Controllers\Admin\AdminPanel\AddDeviceTypeController;
+
 
 
 
@@ -112,6 +114,29 @@ Route::middleware(['auth'])->group(function () {
  
 
     });
+
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Admin Panel (System Config)
+|--------------------------------------------------------------------------
+*/
+
+    Route::prefix('admin/admin-panel')->group(function () {
+
+        Route::get('/add-device-types',
+            [AddDeviceTypeController::class, 'index'])
+            ->name('admin.add-device-types');
+
+        Route::post('/add-device-types',
+           [AddDeviceTypeController::class, 'store'])
+            ->name('admin.device-types.store');
+
+        });
+
 
 
     /*
