@@ -13,9 +13,17 @@ class AddSimController extends Controller
 {
     public function index()
     {
-        $sims = Sim::with('stock')->latest()->get();
+        // $sims වෙනුවට, Activated සහ Not Activated කියලා variables දෙකකට data ගන්නවා
+        $activatedSims = Sim::with('stock')->where('sim_status', 'Activated')->latest()->get();
+        
+        // කලින් තිබ්බ පරණ SIM වලට sim_status එකක් නැති නිසා, orWhereNull එකකුත් දානවා එතකොට ඒවත් මේකටම වැටෙනවා
+        $notActivatedSims = Sim::with('stock')
+                            ->where('sim_status', 'Not Activated')
+                            ->orWhereNull('sim_status') 
+                            ->latest()
+                            ->get();
 
-        return view('admin.master_pages.add_sim', compact('sims'));
+        return view('admin.master_pages.add_sim', compact('activatedSims', 'notActivatedSims'));
     }
 
     public function store(Request $request)
@@ -24,6 +32,7 @@ class AddSimController extends Controller
             'sim_type'    => 'required|string|max:255',
             'sim_number'  => 'required|string|unique:sims,sim_number|max:255',
             'imei_number' => 'nullable|string|max:255',
+            'sim_status'  => 'required|string|in:Activated,Not Activated', // අලුත් Dropdown එකේ validation එක
         ]);
 
         // device_types.protocol is NOT NULL — 'N/A' is a placeholder because
@@ -48,7 +57,8 @@ class AddSimController extends Controller
                 'provider'            => $request->provider ?? ucwords($request->sim_type),
                 'imei_number'         => $request->imei_number,
                 'activation_required' => $request->has('activation_required') ? true : false,
-                'status'              => 'Available',
+                'status'              => 'Available', // පරණ column එක (වෙනස් කරලා නෑ)
+                'sim_status'          => $validated['sim_status'], // අලුතින් හදන column එකට data යනවා
             ]);
 
             $stock->increment('stock_in');

@@ -70,6 +70,15 @@
                                 <input type="text" name="imei_number" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
                             </div>
 
+                            <div>
+                                <label class="block mb-1">SIM Status</label>
+                                <select name="sim_status" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
+                                    <option value="" selected disabled>--Select SIM Status--</option>
+                                    <option value="Activated">Activated</option>
+                                    <option value="Not Activated">Not Activated</option>
+                                </select>
+                            </div>
+
                             <div class="md:col-span-2 flex items-center gap-2 pt-2">
                                 <input type="checkbox" name="testing_required" value="1" class="rounded border-gray-300 text-blue-600 w-4 h-4 shadow-sm">
                                 <label>Activation / Network Testing Required</label>
