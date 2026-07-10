@@ -21,38 +21,6 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
-                
-                <div class="lg:col-span-4 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">Active SIM Types</div>
-                    <div class="p-5">
-                        <div class="border border-gray-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto text-xs font-semibold text-gray-700">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th class="p-2.5">SIM Type</th>
-                                        <th class="p-2.5 text-center w-20">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 bg-white">
-                                    <tr>
-                                        <td class="p-2.5">Prepaid SIM</td>
-                                        <td class="p-2.5 text-center flex justify-center gap-1.5">
-                                            <button class="text-gray-500 hover:text-blue-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="p-2.5">Postpaid SIM</td>
-                                        <td class="p-2.5 text-center flex justify-center gap-1.5">
-                                            <button class="text-gray-500 hover:text-blue-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="lg:col-span-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                     <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">Add New SIM </div>
                     <div class="p-5 text-xs font-semibold text-gray-700 space-y-4">
@@ -78,7 +46,7 @@
                         @endforeach
                     </ul>
                 </div>
-@endif
+            @endif
 
                         <form method="POST" action="{{ route('admin.stock.sim.store') }}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             @csrf
