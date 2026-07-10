@@ -117,7 +117,10 @@
                                             <form action="{{ route('admin.stock.sim.update-status', $sim->id) }}" method="POST">
                                                 @csrf
                                                 @method('PATCH')
-                                                <select name="sim_status" onchange="this.form.submit()" class="rounded-lg border-gray-300 text-xs p-1 bg-red-50 text-red-700 font-bold focus:ring-0 focus:border-gray-300">
+                                                <select name="sim_status" 
+                                                        onfocus="this.oldValue = this.value;"
+                                                        onchange="if(confirm('do you want to change sim status active or not {{ $sim->sim_number }}?')) { this.form.submit(); } else { this.value = this.oldValue; }" 
+                                                        class="rounded-lg border-gray-300 text-xs p-1 bg-red-50 text-red-700 font-bold focus:ring-0 focus:border-gray-300 cursor-pointer">
                                                     <option value="Not Activated" {{ ($sim->sim_status == 'Not Activated' || is_null($sim->sim_status)) ? 'selected' : '' }}>Not Activated</option>
                                                     <option value="Activated">Activated</option>
                                                 </select>
@@ -160,7 +163,10 @@
                                             <form action="{{ route('admin.stock.sim.update-status', $sim->id) }}" method="POST">
                                                 @csrf
                                                 @method('PATCH')
-                                                <select name="sim_status" onchange="this.form.submit()" class="rounded-lg border-gray-300 text-xs p-1 bg-green-50 text-green-700 font-bold focus:ring-0 focus:border-gray-300">
+                                                <select name="sim_status" 
+                                                        onfocus="this.oldValue = this.value;"
+                                                        onchange="if(confirm('do you want to change sim status active or not {{ $sim->sim_number }}?')) { this.form.submit(); } else { this.value = this.oldValue; }" 
+                                                        class="rounded-lg border-gray-300 text-xs p-1 bg-green-50 text-green-700 font-bold focus:ring-0 focus:border-gray-300 cursor-pointer">
                                                     <option value="Not Activated">Not Activated</option>
                                                     <option value="Activated" {{ $sim->sim_status == 'Activated' ? 'selected' : '' }}>Activated</option>
                                                 </select>
