@@ -9,24 +9,28 @@ class Stock extends Model
 {
     use HasFactory;
 
-    // Database එකට එකවර ඇතුළත් කිරීමට ඉඩ දෙන Fields (Mass Assignment)
     protected $fillable = [
-        'product_name',
-        'product_model',
+        'device_type_id',
+        'supplier_id',
         'stock_in',
         'company_available_stock',
-        'dealer_available_stock',
-        'sold_to_customer'
+        'total_available',
+        'description',
+        'sort_order',
     ];
 
-        public function devices()
+    public function deviceType()
     {
-        return $this->hasMany(Device::class);
+        return $this->belongsTo(DeviceType::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function sims()
     {
         return $this->hasMany(Sim::class);
     }
-
 }
