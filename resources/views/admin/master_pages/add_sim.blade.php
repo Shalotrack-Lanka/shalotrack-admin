@@ -91,98 +91,125 @@
                         </form>
                     </div>
                 </div>
-
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
-                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">All / Not Activated SIMs</div>
-                <div class="p-5">
-                    <div class="border border-gray-200 rounded-lg overflow-x-auto text-xs font-semibold text-gray-700">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th class="p-3">SIM Number</th>
-                                    <th class="p-3">SIM Type</th>
-                                    <th class="p-3">Provider</th>
-                                    <th class="p-3">IMEI Number</th>
-                                    <th class="p-3">SIM Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 bg-white">
-                                @forelse($notActivatedSims as $sim)
+            {{-- ===================== NOT ACTIVATED SIMs ===================== --}}
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden w-full">
+                    <div class="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-red-50 to-white flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                            <h2 class="font-bold text-gray-800 text-sm tracking-wide">All / Not Activated SIMs</h2>
+                        </div>
+                        <span class="text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
+                            {{ $notActivatedSims->count() ?? 0 }} pending
+                        </span>
+                    </div>
+                    <div class="p-5">
+                        <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <td class="p-3">{{ $sim->sim_number }}</td>
-                                        <td class="p-3">{{ $sim->sim_type }}</td>
-                                        <td class="p-3">{{ $sim->provider }}</td>
-                                        <td class="p-3">{{ $sim->imei_number ?? '-' }}</td>
-                                        <td class="p-3">
-                                            <form action="{{ route('admin.stock.sim.update-status', $sim->id) }}" method="POST">
-                                                @csrf
-                                                @method('PATCH')
-                                                <select name="sim_status" 
-                                                        onfocus="this.oldValue = this.value;"
-                                                        onchange="if(confirm('do you want to change sim status active or not {{ $sim->sim_number }}?')) { this.form.submit(); } else { this.value = this.oldValue; }" 
-                                                        class="rounded-lg border-gray-300 text-xs p-1 bg-red-50 text-red-700 font-bold focus:ring-0 focus:border-gray-300 cursor-pointer">
-                                                    <option value="Not Activated" {{ ($sim->sim_status == 'Not Activated' || is_null($sim->sim_status)) ? 'selected' : '' }}>Not Activated</option>
-                                                    <option value="Activated">Activated</option>
-                                                </select>
-                                            </form>
-                                        </td>
+                                        <th class="p-3">SIM Number</th>
+                                        <th class="p-3">SIM Type</th>
+                                        <th class="p-3">Provider</th>
+                                        <th class="p-3">IMEI Number</th>
+                                        <th class="p-3">SIM Status</th>
                                     </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="p-6 text-center text-gray-400">No Pending SIMs Found.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 bg-white">
+                                    @forelse($notActivatedSims as $sim)
+                                        <tr class="hover:bg-gray-50 transition">
+                                            <td class="p-3">{{ $sim->sim_number }}</td>
+                                            <td class="p-3">{{ $sim->sim_type }}</td>
+                                            <td class="p-3">{{ $sim->provider }}</td>
+                                            <td class="p-3">{{ $sim->imei_number ?? '-' }}</td>
+                                            <td class="p-3">
+                                                <form action="{{ route('admin.stock.sim.update-status', $sim->id) }}" method="POST" class="m-0">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <div class="relative inline-block w-36">
+                                                        <select name="sim_status" 
+                                                                onfocus="this.oldValue = this.value;"
+                                                                onchange="if(confirm('Do you want to change SIM status to Active for {{ $sim->sim_number }}?')) { this.form.submit(); } else { this.value = this.oldValue; }" 
+                                                                class="appearance-none w-full bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold rounded-full px-3 py-1.5 pr-8 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer shadow-sm transition-colors hover:bg-red-100 text-center">
+                                                            <option value="Not Activated" {{ ($sim->sim_status == 'Not Activated' || is_null($sim->sim_status)) ? 'selected' : '' }} class="font-bold text-red-600">Not Activated</option>
+                                                            <option value="Activated" class="font-bold text-green-600">Activated</option>
+                                                        </select>
+                                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-red-700">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="p-6 text-center text-gray-400">No Pending SIMs Found.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
-                <div class="px-5 py-3 border-b border-gray-100 bg-green-50 font-bold text-green-800 text-sm">Activated SIMs List</div>
-                <div class="p-5">
-                    <div class="border border-gray-200 rounded-lg overflow-x-auto text-xs font-semibold text-gray-700">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th class="p-3">SIM Number</th>
-                                    <th class="p-3">SIM Type</th>
-                                    <th class="p-3">Provider</th>
-                                    <th class="p-3">IMEI Number</th>
-                                    <th class="p-3">SIM Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 bg-white">
-                                @forelse($activatedSims as $sim)
+ 
+                {{-- ===================== ACTIVATED SIMs ===================== --}}
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden w-full">
+                    <div class="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-white flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                            <h2 class="font-bold text-gray-800 text-sm tracking-wide">Activated SIMs List</h2>
+                        </div>
+                        <span class="text-[11px] font-bold text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
+                            {{ $activatedSims->count() ?? 0 }} active
+                        </span>
+                    </div>
+                    <div class="p-5">
+                        <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <td class="p-3">{{ $sim->sim_number }}</td>
-                                        <td class="p-3">{{ $sim->sim_type }}</td>
-                                        <td class="p-3">{{ $sim->provider }}</td>
-                                        <td class="p-3">{{ $sim->imei_number ?? '-' }}</td>
-                                        <td class="p-3">
-                                            <form action="{{ route('admin.stock.sim.update-status', $sim->id) }}" method="POST">
-                                                @csrf
-                                                @method('PATCH')
-                                                <select name="sim_status" 
-                                                        onfocus="this.oldValue = this.value;"
-                                                        onchange="if(confirm('do you want to change sim status active or not {{ $sim->sim_number }}?')) { this.form.submit(); } else { this.value = this.oldValue; }" 
-                                                        class="rounded-lg border-gray-300 text-xs p-1 bg-green-50 text-green-700 font-bold focus:ring-0 focus:border-gray-300 cursor-pointer">
-                                                    <option value="Not Activated">Not Activated</option>
-                                                    <option value="Activated" {{ $sim->sim_status == 'Activated' ? 'selected' : '' }}>Activated</option>
-                                                </select>
-                                            </form>
-                                        </td>
+                                        <th class="p-3">SIM Number</th>
+                                        <th class="p-3">SIM Type</th>
+                                        <th class="p-3">Provider</th>
+                                        <th class="p-3">IMEI Number</th>
+                                        <th class="p-3">SIM Status</th>
                                     </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="p-6 text-center text-gray-400">No Activated SIMs Yet.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 bg-white">
+                                    @forelse($activatedSims as $sim)
+                                        <tr class="hover:bg-gray-50 transition">
+                                            <td class="p-3">{{ $sim->sim_number }}</td>
+                                            <td class="p-3">{{ $sim->sim_type }}</td>
+                                            <td class="p-3">{{ $sim->provider }}</td>
+                                            <td class="p-3">{{ $sim->imei_number ?? '-' }}</td>
+                                            <td class="p-3">
+                                                <form action="{{ route('admin.stock.sim.update-status', $sim->id) }}" method="POST" class="m-0">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <div class="relative inline-block w-36">
+                                                        <select name="sim_status" 
+                                                                onfocus="this.oldValue = this.value;"
+                                                                onchange="if(confirm('Do you want to change SIM status to Not Activated for {{ $sim->sim_number }}?')) { this.form.submit(); } else { this.value = this.oldValue; }" 
+                                                                class="appearance-none w-full bg-green-50 border border-green-200 text-green-700 text-[11px] font-bold rounded-full px-3 py-1.5 pr-8 focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer shadow-sm transition-colors hover:bg-green-100 text-center">
+                                                            <option value="Not Activated" class="font-bold text-red-600">Not Activated</option>
+                                                            <option value="Activated" {{ $sim->sim_status == 'Activated' ? 'selected' : '' }} class="font-bold text-green-600">Activated</option>
+                                                        </select>
+                                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-green-700">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="p-6 text-center text-gray-400">No Activated SIMs Yet.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
 
             </div>
         </main>
