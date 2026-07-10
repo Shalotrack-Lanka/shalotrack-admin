@@ -16,31 +16,26 @@
         @include('partials.header')
 
         <main class="p-4 md:p-6 flex-1 space-y-6">
-            
+
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden w-full">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
                     <h3 class="font-bold text-gray-800 text-sm">Current Stock Filter Matrix</h3>
                 </div>
-                
+
                 <div class="p-5 text-xs font-semibold text-gray-700">
                     <form method="GET" action="{{ route('admin.current-stock') }}" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                            
-                            <div>
-                                <label class="block mb-1.5 text-gray-600">Product Type</label>
-                                <select name="product_type" class="w-full rounded-lg border-gray-300 h-9 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="">--Select Type--</option>
-                                    @foreach($productTypes as $type)
-                                        <option value="{{ $type }}" {{ request('product_type') == $type ? 'selected' : '' }}>{{ $type }}</option>
-                                    @endforeach
-                                    <option value="Device" {{ request('product_type') == 'Device' ? 'selected' : '' }}>Device</option>
-                                    <option value="SIM" {{ request('product_type') == 'SIM' ? 'selected' : '' }}>SIM</option>
-                                </select>
-                            </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
 
-                            <div>
-                                <label class="block mb-1.5 text-gray-600">Product Model / Name</label>
-                                <input type="text" name="product_model" value="{{ request('product_model') }}" placeholder="Search model name..." class="w-full rounded-lg border-gray-300 h-9 text-xs shadow-sm">
+                            <div class="md:col-span-2">
+                                <label class="block mb-1.5 text-gray-600">Device Category / Type</label>
+                                <select name="device_type_id" class="w-full rounded-lg border-gray-300 h-9 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <option value="">--All Device Types--</option>
+                                    @foreach($deviceTypes as $type)
+                                        <option value="{{ $type->id }}" {{ request('device_type_id') == $type->id ? 'selected' : '' }}>
+                                            {{ $type->device_category }} with {{ $type->model }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
 
                             <div class="flex gap-2">
@@ -63,8 +58,8 @@
                             <thead class="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-600 uppercase tracking-wider">
                                 <tr>
                                     <th class="p-3 w-12 text-center">#</th>
-                                    <th class="p-3">Product Model / Type</th>
-                                    <th class="p-3">Product Display Name</th>
+                                    <th class="p-3">Device Category</th>
+                                    <th class="p-3">Model</th>
                                     <th class="p-3 text-center w-36">Qty Available</th>
                                 </tr>
                             </thead>
@@ -72,8 +67,8 @@
                                 @forelse($stocks as $index => $stock)
                                     <tr class="hover:bg-gray-50/70 transition">
                                         <td class="p-3 text-center text-gray-400 font-bold">{{ $index + 1 }}.</td>
-                                        <td class="p-3 text-gray-500 font-mono">{{ $stock->product_model }}</td>
-                                        <td class="p-3 text-gray-900 font-bold">{{ $stock->product_name }}</td>
+                                        <td class="p-3 text-gray-500 font-mono">{{ $stock->deviceType->device_category ?? '—' }}</td>
+                                        <td class="p-3 text-gray-900 font-bold">{{ $stock->deviceType->model ?? '—' }}</td>
                                         <td class="p-3 text-center">
                                             <span class="px-2.5 py-1 rounded-md text-xs font-bold {{ $stock->company_available_stock > 10 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50' }}">
                                                 {{ $stock->company_available_stock }}

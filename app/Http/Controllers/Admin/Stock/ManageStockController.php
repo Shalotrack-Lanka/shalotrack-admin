@@ -1,74 +1,103 @@
 <?php
 
-namespace App\Http\Controllers\Admin\Stock; // නිවැරදි Namespace එක
+namespace App\Http\Controllers\Admin\Stock;
 
-use App\Http\Controllers\Controller; // Controller Base එක extend කිරීමට
+use App\Http\Controllers\Controller;
+use App\Models\DeviceType;
 use App\Models\Stock;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ManageStockController extends Controller
 {
-    // 1. Stock Summary පිටුව සහ Table එකට දත්ත පෙන්වීම
     public function index()
     {
-        $stocks = Stock::latest()->get();
-        // ඔයාගේ views වල structure එක අනුව admin/stock/manage-stock.blade.php ලෙස view එකක් තිබිය යුතුයි
-        return view('admin.stock.manage_stock', compact('stocks'));
+        $stocks = Stock::with(['deviceType', 'supplier'])
+            ->orderByDesc('sort_order')
+            ->get();
+
+        // The single newest row per device type is "current" — everything
+        // else sharing that device_type_id is history and gets flagged.
+        $latestIdPerType = Stock::selectRaw('MAX(id) as id')
+            ->groupBy('device_type_id')
+            ->pluck('id');
+
+        $stockRows = $stocks->map(fn ($stock) => [
+            'id'                      => $stock->id,
+            'device_type_id'          => $stock->device_type_id,
+            'supplier_id'             => $stock->supplier_id,
+            'stock_in'                => $stock->stock_in,
+            'company_available_stock' => $stock->company_available_stock,
+            'description'             => $stock->description,
+            'updated_at'              => optional($stock->updated_at)->format('Y-m-d H:i'),
+            'is_superseded'           => ! $latestIdPerType->contains($stock->id),
+        ])->values();
+
+        $deviceTypes = DeviceType::orderBy('device_category')->orderBy('model')->get();
+        $suppliers = Supplier::where('status', 'Active')->orderBy('name')->get();
+
+        return view('admin.stock.manage_stock', compact('stockRows', 'deviceTypes', 'suppliers'));
     }
 
-    // 2. අලුත් Stock එකක් Database එකට Save කිරීම
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'product_name' => 'required|string|max:255',
-            'product_model' => 'required|string|max:255',
-            'stock_in' => 'required|integer|min:0',
-            'company_available_stock' => 'required|integer|min:0',
-            'dealer_available_stock' => 'required|integer|min:0',
-            'sold_to_customer' => 'required|integer|min:0',
+            'device_type_id'          => 'required|exists:device_types,id',
+            'supplier_id'             => 'required|exists:suppliers,id',
+            'stock_in'                => 'required|integer',
+            'company_available_stock' => 'required|integer',
         ]);
+
+        $validated['total_available'] = $validated['stock_in'] + $validated['company_available_stock'];
+        $validated['sort_order'] = (int) (Stock::max('sort_order') ?? 0) + 1;
 
         Stock::create($validated);
 
-        return redirect()->back()->with('success', 'Stock Record Added Successfully!');
+        return redirect()->back()->with('success', 'Raw Device Stock Added Successfully!');
     }
 
-    // 3. දැනට තියෙන Stock එකක් Edit කර Update කිරීම
-    public function update(Request $request, Stock $stock)
+    public function bulkUpdate(Request $request)
     {
         $validated = $request->validate([
-            'product_name' => 'required|string|max:255',
-            'product_model' => 'required|string|max:255',
-            'stock_in' => 'required|integer|min:0',
-            'company_available_stock' => 'required|integer|min:0',
-            'dealer_available_stock' => 'required|integer|min:0',
-            'sold_to_customer' => 'required|integer|min:0',
+            'rows'                            => 'present|array',
+            'rows.*.id'                       => 'required|integer|exists:stocks,id',
+            'rows.*.device_type_id'           => 'required|exists:device_types,id',
+            'rows.*.supplier_id'              => 'required|exists:suppliers,id',
+            'rows.*.stock_in'                 => 'required|integer',
+            'rows.*.company_available_stock'  => 'required|integer',
+            'rows.*.description'              => 'nullable|string|max:1000',
+            'rows.*.sort_order'               => 'required|integer',
+            'deleted_ids'                     => 'array',
+            'deleted_ids.*'                   => 'integer|exists:stocks,id',
         ]);
 
-        $stock->update($validated);
+        $deletedIds = $validated['deleted_ids'] ?? [];
 
-        return redirect()->back()->with('success', 'Stock Record Updated Successfully!');
-    }
+        DB::transaction(function () use ($validated, $deletedIds) {
+            if (! empty($deletedIds)) {
+                Stock::whereIn('id', $deletedIds)->delete();
+            }
 
-    // 4. Excel/CSV විදිහට Data Download කිරීමේ Action එක
-    public function download(Stock $stock)
-    {
-        $fileName = "Stock_" . str_replace(' ', '_', $stock->product_name) . ".csv";
-        $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        ];
+            foreach ($validated['rows'] as $row) {
+                // Guard against a row that was deleted client-side but
+                // still made it into the rows[] payload somehow.
+                if (in_array($row['id'], $deletedIds, true)) {
+                    continue;
+                }
 
-        $callback = function() use($stock) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, ['Product Name', 'Product Model', 'Stock In', 'Company Available', 'Dealer Available', 'Sold To Customer']);
-            fputcsv($file, [$stock->product_name, $stock->product_model, $stock->stock_in, $stock->company_available_stock, $stock->dealer_available_stock, $stock->sold_to_customer]);
-            fclose($file);
-        };
+                Stock::where('id', $row['id'])->update([
+                    'device_type_id'          => $row['device_type_id'],
+                    'supplier_id'             => $row['supplier_id'],
+                    'stock_in'                => $row['stock_in'],
+                    'company_available_stock' => $row['company_available_stock'],
+                    'total_available'         => $row['stock_in'] + $row['company_available_stock'],
+                    'description'             => $row['description'] ?? null,
+                    'sort_order'              => $row['sort_order'],
+                ]);
+            }
+        });
 
-        return response()->stream($callback, 200, $headers);
+        return redirect()->back()->with('success', 'Stock records updated successfully!');
     }
 }
