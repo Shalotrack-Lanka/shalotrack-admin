@@ -29,6 +29,7 @@ class ManageStockController extends Controller
             'supplier_id'             => $stock->supplier_id,
             'stock_in'                => $stock->stock_in,
             'company_available_stock' => $stock->company_available_stock,
+            'dealer_transferred'      => $stock->dealer_transferred ?? 0, // <--- මේක අලුතින් එකතු කළා
             'description'             => $stock->description,
             'updated_at'              => optional($stock->updated_at)->format('Y-m-d H:i'),
             'is_superseded'           => ! $latestIdPerType->contains($stock->id),
@@ -51,6 +52,9 @@ class ManageStockController extends Controller
 
         $validated['total_available'] = $validated['stock_in'] + $validated['company_available_stock'];
         $validated['sort_order'] = (int) (Stock::max('sort_order') ?? 0) + 1;
+        
+        // අලුතින් බඩු දාද්දි dealer ට යවපු ගාණ 0 ක් විදියට සේව් වෙනවා
+        $validated['dealer_transferred'] = 0; 
 
         Stock::create($validated);
 
@@ -86,6 +90,7 @@ class ManageStockController extends Controller
                     continue;
                 }
 
+                // මෙතන dealer_transferred එක update කරන්නේ නෑ, මොකද ඒක Transfer පිටුවෙන් විතරයි වෙනස් වෙන්නේ.
                 Stock::where('id', $row['id'])->update([
                     'device_type_id'          => $row['device_type_id'],
                     'supplier_id'             => $row['supplier_id'],
