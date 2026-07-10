@@ -275,11 +275,9 @@ Route::prefix('admin/activations')->middleware('auth')->group(function () {
 
 Route::prefix('admin/stock')->middleware('auth')->group(function () {
 
-    // 1. Manage Stock Routes (මෙහි name එක හරියටම 'admin.stock.store' ලෙස දී ඇත)
     Route::get('/manage-stock', [ManageStockController::class, 'index'])->name('admin.stock.manage');
     Route::post('/manage-stock', [ManageStockController::class, 'store'])->name('admin.stock.store');
-    Route::put('/manage-stock/{stock}', [ManageStockController::class, 'update'])->name('admin.stock.update');
-    Route::get('/manage-stock/{stock}/download', [ManageStockController::class, 'download'])->name('admin.stock.download');
+    Route::put('/manage-stock/bulk-update', [ManageStockController::class, 'bulkUpdate'])->name('admin.stock.bulk-update');
 
     // 2. Current Stock Route
     Route::get('/current-stock', [CurrentStockController::class, 'index'])->name('admin.current-stock');
