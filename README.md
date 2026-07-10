@@ -1,5 +1,4 @@
-# SHALOTRACK ADMIN PORTAL (huu222222 huu)
-
+# SHALOTRACK ADMIN PORTAL
 ## Administrative Control Center for the ShaloTrack GPS Tracking Platform
 
 ---
