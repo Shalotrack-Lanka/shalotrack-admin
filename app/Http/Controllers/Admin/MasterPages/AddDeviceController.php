@@ -21,7 +21,11 @@ class AddDeviceController extends Controller
     {
         $validated = $request->validate([
             'device_category' => 'required|string|max:255',
-            'imei_number'     => 'required|string|max:255|unique:setup_shalotrack_devices,imei_number',
+            'imei_number'      => [
+            'required',
+            'digits:15',                                   // exactly 15 numeric digits, no letters/spaces
+            'unique:setup_shalotrack_devices,imei_number',
+        ],
             'sim_number'      => 'nullable|string|max:255',
         ]);
 
