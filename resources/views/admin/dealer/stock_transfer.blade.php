@@ -53,14 +53,14 @@
                         Select Supplier
                     </label>
 
-                <select id="supplier"
-                        name="supplier_id"
-                        required
-                        class="w-full rounded-lg border-gray-300 h-10 text-xs">
+                        <select id="supplier"
+                                name="supplier_id"
+                                required
+                                class="w-full rounded-lg border-gray-300 h-10 text-xs">
 
-                    <option value="">-- Select Supplier --</option>
+                            <option value="">-- Select Supplier --</option>
 
-                </select>
+                        </select>
                 </div>
 
                 <div class="md:col-span-1">
@@ -85,26 +85,12 @@
                 </div>
 
                 <div class="md:col-span-1">
-    <label class="block mb-1 font-semibold text-gray-700">
-        Available Stock
-    </label>
+                    <label class="block mb-1 font-semibold text-gray-700">Available Stock</label>
 
-    <input
-        type="text"
-        id="available_stock"
-        class="w-full rounded-lg border-gray-300 h-10 bg-gray-100"
-        value="0"
-        readonly>
-</div>
+                    <input type="text" id="available_stock" class="w-full rounded-lg border-gray-300 h-10 bg-gray-100" value="0" readonly>
+                </div>
 
-                <input
-    id="quantity"
-    type="number"
-    name="quantity"
-    min="1"
-    required
-    placeholder="Ex: 50"
-    class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 text-xs">
+                <input id="quantity" type="number" name="quantity" min="1" required placeholder="Ex: 50" class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 text-xs">
 
                 <div class="md:col-span-1 flex gap-2">
                     <button type="submit" class="w-full bg-[#17a2b8] hover:bg-[#138496] text-white px-4 h-10 rounded-lg font-bold shadow-sm transition">Transfer</button>
