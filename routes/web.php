@@ -197,7 +197,13 @@ Route::prefix('admin/dealer')->group(function () {
         ->name('admin.dealer-ledger');
 
     Route::post('/add-dealer', [AddDealerController::class, 'store'])
-    ->name('admin.dealer.store');
+        ->name('admin.dealer.store');
+
+    Route::get('/admin/dealer/stock-transfer', [StockTransferController::class, 'index'])
+       ->name('admin.dealer.stock_transfer');
+
+    Route::post('/admin/dealer/stock-transfer', [StockTransferController::class, 'store'])
+       ->name('admin.dealer.stock_transfer.store');
 
 });
 
