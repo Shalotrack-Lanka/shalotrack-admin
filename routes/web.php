@@ -107,6 +107,10 @@ Route::middleware(['auth'])->group(function () {
         [CancelSimController::class, 'update'])
         ->name('admin.cancel-sim.update');
 
+        Route::patch('/admin/stock/sim/{sim}/update-status',
+         [AddSimController::class, 'updateStatus'])
+         ->name('admin.stock.sim.update-status');
+
 
 
  
@@ -184,7 +188,7 @@ Route::prefix('admin/dealer')->group(function () {
         ->name('admin.add-dealer');
 
     Route::get('/stock-transfer', [StockTransferController::class, 'index'])
-    ->name('admin.stock-transfer');
+    ->name('admin.dealer.stock-transfer');
 
     Route::get('/manage-replacement',[ManageReplacementController::class,'index'])
         ->name('admin.manage-replacement');
@@ -193,7 +197,21 @@ Route::prefix('admin/dealer')->group(function () {
         ->name('admin.dealer-ledger');
 
     Route::post('/add-dealer', [AddDealerController::class, 'store'])
-    ->name('admin.dealer.store');
+        ->name('admin.dealer.store');
+
+    Route::get('/stock-transfer', [StockTransferController::class, 'index'])
+       ->name('admin.dealer.stock_transfer');
+
+    Route::post('/stock-transfer', [StockTransferController::class, 'store'])
+       ->name('admin.dealer.stock_transfer.store');
+    
+    // stock transfer automation
+    Route::get('/suppliers/{deviceType}', [StockTransferController::class, 'getSuppliers'])
+        ->name('admin.dealer.suppliers');
+
+    Route::get('/stock-info/{deviceType}/{supplier}',
+    [StockTransferController::class, 'getStockInfo'])
+    ->name('admin.dealer.stock.info');
 
 });
 

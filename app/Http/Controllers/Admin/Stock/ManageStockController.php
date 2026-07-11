@@ -29,6 +29,7 @@ class ManageStockController extends Controller
             'supplier_id'             => $stock->supplier_id,
             'stock_in'                => $stock->stock_in,
             'company_available_stock' => $stock->company_available_stock,
+            'dealer_transferred'      => $stock->dealer_transferred ?? 0, // <--- මේක අලුතින් එකතු කළා
             'description'             => $stock->description,
             'updated_at'              => optional($stock->updated_at)->format('Y-m-d H:i'),
             'is_superseded'           => ! $latestIdPerType->contains($stock->id),
@@ -41,21 +42,67 @@ class ManageStockController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'device_type_id'          => 'required|exists:device_types,id',
-            'supplier_id'             => 'required|exists:suppliers,id',
-            'stock_in'                => 'required|integer',
-            'company_available_stock' => 'required|integer',
-        ]);
+{
+    $validated = $request->validate([
+        'device_type_id'          => 'required|exists:device_types,id',
+        'supplier_id'             => 'required|exists:suppliers,id',
+        'stock_in'                => 'required|integer|min:1',
+        'company_available_stock' => 'required|integer|min:1',
+    ]);
 
-        $validated['total_available'] = $validated['stock_in'] + $validated['company_available_stock'];
-        $validated['sort_order'] = (int) (Stock::max('sort_order') ?? 0) + 1;
+    DB::transaction(function () use ($validated) {
 
-        Stock::create($validated);
+        // මේ Device + Supplier එක කලින් තියෙනවද?
+        $stock = Stock::where('device_type_id', $validated['device_type_id'])
+            ->where('supplier_id', $validated['supplier_id'])
+            ->first();
 
-        return redirect()->back()->with('success', 'Raw Device Stock Added Successfully!');
-    }
+        if ($stock) {
+
+            // Existing row update කරනවා
+            $stock->stock_in += $validated['stock_in'];
+
+            $stock->company_available_stock += $validated['company_available_stock'];
+
+            $stock->total_available =
+                $stock->stock_in +
+                $stock->company_available_stock;
+
+            $stock->save();
+
+        } else {
+
+            // අලුත් row එකක් create කරනවා
+            Stock::create([
+
+                'device_type_id' => $validated['device_type_id'],
+
+                'supplier_id' => $validated['supplier_id'],
+
+                'stock_in' => $validated['stock_in'],
+
+                'company_available_stock' => $validated['company_available_stock'],
+
+                'dealer_transferred' => 0,
+
+                'total_available' =>
+                    $validated['stock_in'] +
+                    $validated['company_available_stock'],
+
+                'sort_order' =>
+                    (Stock::max('sort_order') ?? 0) + 1,
+
+            ]);
+
+        }
+
+    });
+
+    return redirect()->back()->with(
+        'success',
+        'Stock saved successfully.'
+    );
+}
 
     public function bulkUpdate(Request $request)
     {
@@ -86,6 +133,7 @@ class ManageStockController extends Controller
                     continue;
                 }
 
+                // මෙතන dealer_transferred එක update කරන්නේ නෑ, මොකද ඒක Transfer පිටුවෙන් විතරයි වෙනස් වෙන්නේ.
                 Stock::where('id', $row['id'])->update([
                     'device_type_id'          => $row['device_type_id'],
                     'supplier_id'             => $row['supplier_id'],
