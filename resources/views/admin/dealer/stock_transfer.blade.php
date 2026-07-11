@@ -30,7 +30,7 @@
     Select Stock Type
 </label>
 
-<select name="device_type_id" required
+<select id="device_type" name="device_type_id" required
         class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
 
     <option value="" disabled selected>
@@ -53,7 +53,8 @@
         Select Supplier
     </label>
 
-    <select name="supplier_id" required
+    <select id="supplier"
+ name="supplier_id" required
             class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
 
         <option value="" disabled selected>
@@ -141,3 +142,38 @@
     </div>
 </div>
 @endsection
+
+<script>
+
+document.getElementById('device_type').addEventListener('change', function () {
+
+    let deviceTypeId = this.value;
+
+    let supplierSelect = document.getElementById('supplier');
+
+    supplierSelect.innerHTML =
+        '<option value="">Loading...</option>';
+
+    fetch('/admin/dealer/suppliers/' + deviceTypeId)
+
+        .then(response => response.json())
+
+        .then(data => {
+
+            supplierSelect.innerHTML =
+                '<option value="">-- Select Supplier --</option>';
+
+            data.forEach(function(supplier){
+
+                supplierSelect.innerHTML +=
+                    `<option value="${supplier.id}">
+                        ${supplier.name}
+                    </option>`;
+
+            });
+
+        });
+
+});
+
+</script>

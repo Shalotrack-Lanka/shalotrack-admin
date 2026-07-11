@@ -25,7 +25,12 @@ class StockTransferController extends Controller
         // 2. Database eken Active wela inna Dealers lawa gannawa
         $dealers = Dealer::where('status', 'active')->orderBy('full_name')->get();
 
-        $deviceTypes = DeviceType::orderBy('device_category')->get();
+        $deviceTypes = DeviceType::select('device_types.*')
+    ->join('stocks', 'stocks.device_type_id', '=', 'device_types.id')
+    ->where('stocks.company_available_stock', '>', 0)
+    ->distinct()
+    ->orderBy('device_types.device_category')
+    ->get();
 
         $suppliers = Supplier::orderBy('name')->get();
 
@@ -94,4 +99,18 @@ class StockTransferController extends Controller
 
     return back()->with('success', 'Stock transferred successfully.');
 }
+
+public function getSuppliers($deviceTypeId)
+{
+    $suppliers = Supplier::select('suppliers.id', 'suppliers.name')
+        ->join('stocks', 'stocks.supplier_id', '=', 'suppliers.id')
+        ->where('stocks.device_type_id', $deviceTypeId)
+        ->where('stocks.company_available_stock', '>', 0)
+        ->distinct()
+        ->orderBy('suppliers.name')
+        ->get();
+
+    return response()->json($suppliers);
+}
+
 }
