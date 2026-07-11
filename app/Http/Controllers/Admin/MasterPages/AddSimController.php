@@ -34,7 +34,11 @@ class AddSimController extends Controller
         $validated = $request->validate([
             'sim_type'    => 'required|string|max:255',
             'sim_number'  => 'required|string|unique:sims,sim_number|max:255',
-            'imei_number' => 'nullable|string|max:255',
+            'imei_number'      => [
+            'required',
+            'digits:15',                                   // exactly 15 numeric digits, no letters/spaces
+            'unique:setup_shalotrack_devices,imei_number',
+        ],
             'sim_status'  => 'required|string|in:Activated,Not Activated',
         ]);
 
