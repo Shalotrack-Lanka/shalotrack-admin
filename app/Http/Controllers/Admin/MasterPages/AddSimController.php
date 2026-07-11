@@ -33,12 +33,20 @@ class AddSimController extends Controller
     {
         $validated = $request->validate([
             'sim_type'    => 'required|string|max:255',
-            'sim_number'  => 'required|string|unique:sims,sim_number|max:255',
             'imei_number'      => [
             'required',
             'digits:15',                                   // exactly 15 numeric digits, no letters/spaces
             'unique:setup_shalotrack_devices,imei_number',
         ],
+        'sim_number'       => [
+            'nullable',
+            'digits:10',
+        ],
+    ],[
+        'imei_number.digits' => 'IMEI number must be exactly 15 digits.',
+        'imei_number.unique' => 'This IMEI number is already registered.',
+        'sim_number.digits'  => 'SIM number must be exactly 10 digits.',
+        'sim_number.regex'   => 'SIM number must start with 07 and be followed by 8 digits.',
             'sim_status'  => 'required|string|in:Activated,Not Activated',
         ]);
 

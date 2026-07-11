@@ -25,10 +25,16 @@ class AddDeviceController extends Controller
             'required',
             'digits:15',                                   // exactly 15 numeric digits, no letters/spaces
             'unique:setup_shalotrack_devices,imei_number',
-        ]], [
-        'imei_number.digits' => 'IMEI number must be exactly 15 digits.',
-        'imei_number.unique' => 'This IMEI number is already registered.',
-    ]);
+            ],
+            'sim_number'       => [
+                'nullable',
+                'digits:10',
+            ],
+        ], [
+            'imei_number.digits' => 'IMEI number must be exactly 15 digits.',
+            'imei_number.unique' => 'This IMEI number is already registered.',
+            'sim_number.digits'  => 'SIM number must be exactly 10 digits.',
+            ]);
 
         SetupShalotrackDevice::create($validated);
 

@@ -62,12 +62,12 @@
 
                             <div>
                                 <label class="block mb-1">SIM Number</label>
-                                <input type="text" name="sim_number" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                                <input type="text" name="sim_number" maxlength="10" inputmode="numeric" pattern="\d{10}" placeholder="0771234567" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
                             </div>
 
                             <div>
                                 <label class="block mb-1">IMEI Number</label>
-                                    <input type="text" name="imei_number" required maxlength="15" pattern="\d{15}" inputmode="numeric" title="IMEI must be exactly 15 digits" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                                <input type="text" name="imei_number" maxlength="15" pattern="\d{15}" inputmode="numeric" title="IMEI must be exactly 15 digits" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
                             </div>
 
                             <div>
