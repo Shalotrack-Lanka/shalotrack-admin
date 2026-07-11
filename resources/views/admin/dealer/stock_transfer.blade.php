@@ -53,25 +53,14 @@
         Select Supplier
     </label>
 
-    <select id="supplier"
- name="supplier_id" required
-            class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
+ <select id="supplier"
+        name="supplier_id"
+        required
+        class="w-full rounded-lg border-gray-300 h-10 text-xs">
 
-        <option value="" disabled selected>
-            -- Select Supplier --
-        </option>
+    <option value="">-- Select Supplier --</option>
 
-        @forelse($suppliers as $supplier)
-            <option value="{{ $supplier->id }}">
-                {{ $supplier->name }}
-            </option>
-        @empty
-            <option value="" disabled>
-                No active suppliers found
-            </option>
-        @endforelse
-
-    </select>
+</select>
 </div>
 
 <div class="md:col-span-1">
@@ -145,34 +134,41 @@
 
 <script>
 
-document.getElementById('device_type').addEventListener('change', function () {
+document.addEventListener("DOMContentLoaded", function(){
 
-    let deviceTypeId = this.value;
+    const device =
+        document.getElementById("device_type");
 
-    let supplierSelect = document.getElementById('supplier');
+    const supplier =
+        document.getElementById("supplier");
 
-    supplierSelect.innerHTML =
-        '<option value="">Loading...</option>';
+    device.addEventListener("change", function(){
 
-    fetch('/admin/dealer/suppliers/' + deviceTypeId)
+        supplier.innerHTML =
+            '<option>Loading...</option>';
+
+        fetch('/admin/dealer/suppliers/' + this.value)
 
         .then(response => response.json())
 
-        .then(data => {
+        .then(function(data){
 
-            supplierSelect.innerHTML =
-                '<option value="">-- Select Supplier --</option>';
+            supplier.innerHTML =
+                '<option value="">Select Supplier</option>';
 
-            data.forEach(function(supplier){
+            data.forEach(function(item){
 
-                supplierSelect.innerHTML +=
-                    `<option value="${supplier.id}">
-                        ${supplier.name}
-                    </option>`;
+                supplier.innerHTML +=
+
+                `<option value="${item.id}">
+                    ${item.name}
+                </option>`;
 
             });
 
         });
+
+    });
 
 });
 

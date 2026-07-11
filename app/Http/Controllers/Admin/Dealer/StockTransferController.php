@@ -112,5 +112,4 @@ public function getSuppliers($deviceTypeId)
 
     return response()->json($suppliers);
 }
-
 }

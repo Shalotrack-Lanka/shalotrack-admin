@@ -206,8 +206,9 @@ Route::prefix('admin/dealer')->group(function () {
        ->name('admin.dealer.stock_transfer.store');
     
     // stock transfer automation
-    Route::get('/admin/dealer/suppliers/{deviceType}', [StockTransferController::class, 'getSuppliers'])
+    Route::get('/suppliers/{deviceType}', [StockTransferController::class, 'getSuppliers'])
         ->name('admin.dealer.suppliers');
+
 
 });
 
