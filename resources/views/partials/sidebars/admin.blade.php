@@ -294,7 +294,6 @@
             <div x-show="open" class="ml-5 text-sm">
 
                 <a href="{{ route('admin.stock.manage') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Manage Raw Stock</a>
-                <a href="{{ route('admin.current-stock') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Current Stock</a>
                <!-- <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Sold Device Report</a>  -->
                <!-- <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Faulty Device</a> -->
 
