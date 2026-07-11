@@ -298,7 +298,7 @@ Route::prefix('admin/stock')->middleware('auth')->group(function () {
     Route::put('/manage-stock/bulk-update', [ManageStockController::class, 'bulkUpdate'])->name('admin.stock.bulk-update');
 
     // 2. Current Stock Route
-    Route::get('/current-stock', [CurrentStockController::class, 'index'])->name('admin.current-stock');
+    //Route::get('/current-stock', [CurrentStockController::class, 'index'])->name('admin.current-stock');
 
     // 3. Sold Device Report Route
    // Route::get('/sold-device-report', [SoldDeviceReportController::class, 'index'])->name('admin.sold-device-report');
