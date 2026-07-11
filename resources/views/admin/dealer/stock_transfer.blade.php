@@ -26,63 +26,62 @@
                 @csrf
                 
                 <div class="md:col-span-1">
- <label class="block mb-1 font-semibold text-gray-700">
-    Select Stock Type
-</label>
+                <label class="block mb-1 font-semibold text-gray-700">Select Stock Type</label>
+                   <select id="device_type" name="device_type_id" required
+                        class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
 
-<select id="device_type" name="device_type_id" required
-        class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="" disabled selected>
+                        -- Select Device Category / Type --
+                    </option>
 
-    <option value="" disabled selected>
-        -- Select Device Category / Type --
-    </option>
+                    @forelse($deviceTypes as $type)
+                        <option value="{{ $type->id }}">
+                            {{ $type->device_category }} with {{ $type->model }}
+                        </option>
+                    @empty
+                        <option value="" disabled>
+                            No device types available
+                        </option>
+                    @endforelse
 
-    @forelse($deviceTypes as $type)
-        <option value="{{ $type->id }}">
-            {{ $type->device_category }} with {{ $type->model }}
-        </option>
-    @empty
-        <option value="" disabled>
-            No device types available
-        </option>
-    @endforelse
+                </select>
+                
 
-</select>
-<div class="md:col-span-1">
-    <label class="block mb-1 font-semibold text-gray-700">
-        Select Supplier
-    </label>
+                <div class="md:col-span-1">
+                    <label class="block mb-1 font-semibold text-gray-700">
+                        Select Supplier
+                    </label>
 
- <select id="supplier"
-        name="supplier_id"
-        required
-        class="w-full rounded-lg border-gray-300 h-10 text-xs">
+                <select id="supplier"
+                        name="supplier_id"
+                        required
+                        class="w-full rounded-lg border-gray-300 h-10 text-xs">
 
-    <option value="">-- Select Supplier --</option>
+                    <option value="">-- Select Supplier --</option>
 
-</select>
-</div>
+                </select>
+                </div>
 
-<div class="md:col-span-1">
-    <label class="block mb-1 font-semibold text-gray-700">
-        Select Dealer
-    </label>
+                <div class="md:col-span-1">
+                    <label class="block mb-1 font-semibold text-gray-700">
+                        Select Dealer
+                    </label>
 
-    <select name="dealer_id" required
-        class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 focus:border-blue-500 text-xs">
+                    <select name="dealer_id" required
+                        class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 focus:border-blue-500 text-xs">
 
-        <option value="" selected disabled>
-            -- Select Dealer --
-        </option>
+                        <option value="" selected disabled>
+                            -- Select Dealer --
+                        </option>
 
-        @foreach($dealers as $dealer)
-            <option value="{{ $dealer->id }}">
-                {{ $dealer->full_name }}
-            </option>
-        @endforeach
+                        @foreach($dealers as $dealer)
+                            <option value="{{ $dealer->id }}">
+                                {{ $dealer->full_name }}
+                            </option>
+                        @endforeach
 
-    </select>
-</div>
+                    </select>
+                </div>
 
                 <div class="md:col-span-1">
                     <label class="block mb-1 font-semibold text-gray-700">Quantity</label>
