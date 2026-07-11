@@ -97,7 +97,21 @@ class StockTransferController extends Controller
 
     });
 
-    return back()->with('success', 'Stock transferred successfully.');
+    $dealer = Dealer::find($validated['dealer_id']);
+
+$device = DeviceType::find(
+    $validated['device_type_id']
+);
+
+return back()->with(
+    'success',
+
+    $validated['quantity']
+    .' '
+    .$device->model
+    .' successfully transferred to '
+    .$dealer->full_name
+);
 }
 
 public function getSuppliers($deviceTypeId)
@@ -112,4 +126,22 @@ public function getSuppliers($deviceTypeId)
 
     return response()->json($suppliers);
 }
+
+public function getStockInfo($deviceTypeId, $supplierId)
+{
+    $stock = Stock::where('device_type_id', $deviceTypeId)
+        ->where('supplier_id', $supplierId)
+        ->first();
+
+    if (!$stock) {
+        return response()->json([
+            'available' => 0
+        ]);
+    }
+
+    return response()->json([
+        'available' => $stock->company_available_stock
+    ]);
+}
+
 }

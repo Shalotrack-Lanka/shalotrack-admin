@@ -45,6 +45,7 @@
                     @endforelse
 
                 </select>
+                </div>
                 
 
                 <div class="md:col-span-1">
@@ -84,9 +85,26 @@
                 </div>
 
                 <div class="md:col-span-1">
-                    <label class="block mb-1 font-semibold text-gray-700">Quantity</label>
-                    <input type="number" name="quantity" min="1" required placeholder="Ex: 50" class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 text-xs">
-                </div>
+    <label class="block mb-1 font-semibold text-gray-700">
+        Available Stock
+    </label>
+
+    <input
+        type="text"
+        id="available_stock"
+        class="w-full rounded-lg border-gray-300 h-10 bg-gray-100"
+        value="0"
+        readonly>
+</div>
+
+                <input
+    id="quantity"
+    type="number"
+    name="quantity"
+    min="1"
+    required
+    placeholder="Ex: 50"
+    class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 text-xs">
 
                 <div class="md:col-span-1 flex gap-2">
                     <button type="submit" class="w-full bg-[#17a2b8] hover:bg-[#138496] text-white px-4 h-10 rounded-lg font-bold shadow-sm transition">Transfer</button>
@@ -132,43 +150,146 @@
 @endsection
 
 <script>
+document.addEventListener("DOMContentLoaded", function () {
 
-document.addEventListener("DOMContentLoaded", function(){
+    const device = document.getElementById("device_type");
+    const supplier = document.getElementById("supplier");
+    const availableStock = document.getElementById("available_stock");
+    const quantity = document.getElementById("quantity");
+    const transferBtn = document.querySelector("button[type='submit']");
 
-    const device =
-        document.getElementById("device_type");
-
-    const supplier =
-        document.getElementById("supplier");
-
-    device.addEventListener("change", function(){
+    // -------------------------------
+    // Load Suppliers
+    // -------------------------------
+    device.addEventListener("change", function () {
 
         supplier.innerHTML =
-            '<option>Loading...</option>';
+            '<option value="">Loading...</option>';
+
+        availableStock.value = 0;
+        quantity.value = "";
+        transferBtn.disabled = true;
+
+        console.log("Device:", this.value);
 
         fetch('/admin/dealer/suppliers/' + this.value)
 
-        .then(response => response.json())
+            .then(response => {
 
-        .then(function(data){
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
 
-            supplier.innerHTML =
-                '<option value="">Select Supplier</option>';
+                return response.json();
 
-            data.forEach(function(item){
+            })
 
-                supplier.innerHTML +=
+            .then(data => {
 
-                `<option value="${item.id}">
-                    ${item.name}
-                </option>`;
+                console.log(data);
+
+                supplier.innerHTML =
+                    '<option value="">-- Select Supplier --</option>';
+
+                if (data.length === 0) {
+
+                    supplier.innerHTML =
+                        '<option value="">No Suppliers Found</option>';
+
+                    return;
+                }
+
+                data.forEach(function (item) {
+
+                    supplier.innerHTML += `
+                        <option value="${item.id}">
+                            ${item.name}
+                        </option>
+                    `;
+
+                });
+
+            })
+
+            .catch(error => {
+
+                console.error(error);
+
+                supplier.innerHTML =
+                    '<option value="">Failed to load suppliers</option>';
 
             });
 
-        });
+    });
+
+    // -------------------------------
+    // Load Available Stock
+    // -------------------------------
+    supplier.addEventListener("change", function () {
+
+        availableStock.value = 0;
+        quantity.value = "";
+        transferBtn.disabled = true;
+
+        fetch('/admin/dealer/stock-info/' + device.value + '/' + supplier.value)
+
+            .then(response => {
+
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+
+                return response.json();
+
+            })
+
+            .then(data => {
+
+                console.log(data);
+
+                availableStock.value = data.available;
+
+                if (parseInt(data.available) > 0) {
+                    transferBtn.disabled = false;
+                }
+
+            })
+
+            .catch(error => {
+
+                console.error(error);
+
+            });
 
     });
 
-});
+    // -------------------------------
+    // Quantity Validation
+    // -------------------------------
+    quantity.addEventListener("input", function () {
 
+        let available = parseInt(availableStock.value) || 0;
+        let entered = parseInt(this.value) || 0;
+
+        if (entered > available) {
+
+            alert("Maximum available stock is " + available);
+
+            this.value = available;
+
+        }
+
+        if (entered <= 0) {
+            transferBtn.disabled = true;
+        } else {
+            transferBtn.disabled = false;
+        }
+
+    });
+
+
+});
 </script>
+
+
+

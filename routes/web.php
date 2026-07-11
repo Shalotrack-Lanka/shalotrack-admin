@@ -188,7 +188,7 @@ Route::prefix('admin/dealer')->group(function () {
         ->name('admin.add-dealer');
 
     Route::get('/stock-transfer', [StockTransferController::class, 'index'])
-    ->name('admin.stock-transfer');
+    ->name('admin.dealer.stock-transfer');
 
     Route::get('/manage-replacement',[ManageReplacementController::class,'index'])
         ->name('admin.manage-replacement');
@@ -199,16 +199,19 @@ Route::prefix('admin/dealer')->group(function () {
     Route::post('/add-dealer', [AddDealerController::class, 'store'])
         ->name('admin.dealer.store');
 
-    Route::get('/admin/dealer/stock-transfer', [StockTransferController::class, 'index'])
+    Route::get('/stock-transfer', [StockTransferController::class, 'index'])
        ->name('admin.dealer.stock_transfer');
 
-    Route::post('/admin/dealer/stock-transfer', [StockTransferController::class, 'store'])
+    Route::post('/stock-transfer', [StockTransferController::class, 'store'])
        ->name('admin.dealer.stock_transfer.store');
     
     // stock transfer automation
     Route::get('/suppliers/{deviceType}', [StockTransferController::class, 'getSuppliers'])
         ->name('admin.dealer.suppliers');
 
+    Route::get('/stock-info/{deviceType}/{supplier}',
+    [StockTransferController::class, 'getStockInfo'])
+    ->name('admin.dealer.stock.info');
 
 });
 
