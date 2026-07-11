@@ -155,11 +155,11 @@
                                     <tr>
                                         <th class="p-3 text-center w-12">#</th>
                                         <th class="p-3 min-w-[200px]">Device Category / Type</th>
-                                        <th class="p-3 min-w-[150px]">Supplier</th>
+                                        <th class="p-3 w-64">Supplier fdfdfdfd</th>
                                         <th class="p-3 text-right">Stock In</th>
                                         <th class="p-3 text-right">Company Avail.</th>
                                         <th class="p-3 text-center">Dealer Transfer</th>
-                                        <th class="p-3 text-right">Total Available</th>
+                                        <th class="p-3 text-right"> Availables</th>
                                         <th class="p-3 min-w-[150px]">Description</th>
                                         <th class="p-3">Last Edited</th>
                                         <th class="p-3 text-center">Del</th>
@@ -189,8 +189,9 @@
                                             </td>
 
                                             <td class="p-2">
+                                                <!-- මෙතන class එකට min-w-[150px] අලුතින් දැම්මා -->
                                                 <select :name="'rows[' + index + '][supplier_id]'" x-model.number="row.supplier_id"
-                                                        class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm px-2">
+                                                        class="w-full min-w-[150px] rounded-lg border-gray-300 h-10 text-xs shadow-sm px-2">
                                                     @foreach($suppliers as $supplier)
                                                         <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
                                                     @endforeach
