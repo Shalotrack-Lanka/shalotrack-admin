@@ -46,30 +46,52 @@ class StockTransferController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'stock_id'  => 'required|exists:stocks,id',
-            'dealer_id' => 'required|exists:dealers,id',
-            'quantity'  => 'required|integer|min:1',
-            'remarks'   => 'nullable|string|max:255'
+{
+    $validated = $request->validate([
+        'device_type_id' => 'required|exists:device_types,id',
+        'supplier_id'    => 'required|exists:suppliers,id',
+        'dealer_id'      => 'required|exists:dealers,id',
+        'quantity'       => 'required|integer|min:1',
+        'remarks'        => 'nullable|string|max:255',
+    ]);
+
+    // Find the correct stock row
+    $stock = Stock::where('device_type_id', $validated['device_type_id'])
+              ->where('supplier_id', $validated['supplier_id'])
+              ->where('company_available_stock', '>=', $validated['quantity'])
+              ->orderByDesc('company_available_stock')
+              ->first();
+
+    if (!$stock) {
+        return back()->withErrors([
+            'stock' => 'Selected stock record not found.'
+        ]);
+    }
+
+    // Check available quantity
+    if ($stock->company_available_stock < $validated['quantity']) {
+        return back()->withErrors([
+            'quantity' => 'Not enough company stock available.'
+        ]);
+    }
+
+    DB::transaction(function () use ($stock, $validated) {
+
+        $stock->company_available_stock -= $validated['quantity'];
+        $stock->dealer_transferred += $validated['quantity'];
+        $stock->total_available -= $validated['quantity'];
+
+        $stock->save();
+
+        StockTransfer::create([
+            'stock_id'  => $stock->id,
+            'dealer_id' => $validated['dealer_id'],
+            'quantity'  => $validated['quantity'],
+            'remarks'   => $validated['remarks'] ?? null,
         ]);
 
-        $stock = Stock::findOrFail($validated['stock_id']);
+    });
 
-        if ($stock->company_available_stock < $validated['quantity']) {
-            return redirect()->back()->withErrors(['quantity' => 'Not enough stock available in the company to transfer.']);
-        }
-
-        DB::transaction(function () use ($validated, $stock) {
-            // 1. Manage Raw Stock එකෙන් ගාණ අඩු කරලා Dealer Transferred එකට එකතු කරනවා
-            $stock->decrement('company_available_stock', $validated['quantity']);
-            $stock->increment('dealer_transferred', $validated['quantity']);
-            $stock->decrement('total_available', $validated['quantity']);
-
-            // 2. Transfer History එක සේව් කරනවා
-            StockTransfer::create($validated);
-        });
-
-        return redirect()->back()->with('success', 'Stock transferred to dealer successfully!');
-    }
+    return back()->with('success', 'Stock transferred successfully.');
+}
 }

@@ -73,6 +73,27 @@
     </select>
 </div>
 
+<div class="md:col-span-1">
+    <label class="block mb-1 font-semibold text-gray-700">
+        Select Dealer
+    </label>
+
+    <select name="dealer_id" required
+        class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 focus:border-blue-500 text-xs">
+
+        <option value="" selected disabled>
+            -- Select Dealer --
+        </option>
+
+        @foreach($dealers as $dealer)
+            <option value="{{ $dealer->id }}">
+                {{ $dealer->full_name }}
+            </option>
+        @endforeach
+
+    </select>
+</div>
+
                 <div class="md:col-span-1">
                     <label class="block mb-1 font-semibold text-gray-700">Quantity</label>
                     <input type="number" name="quantity" min="1" required placeholder="Ex: 50" class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 text-xs">
