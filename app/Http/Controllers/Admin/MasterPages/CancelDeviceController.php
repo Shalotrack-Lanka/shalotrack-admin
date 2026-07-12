@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SetupShalotrackDevice;
 use App\Models\Dealer;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CancelDeviceController extends Controller
 {
@@ -70,4 +71,31 @@ class CancelDeviceController extends Controller
     return redirect()->route('admin.cancel-device')
         ->with('success', "Device #{$device->shdevice_id} updated to \"{$device->status}\".");
 }
+
+        public function exportNotActivated()
+        {
+            $devices = SetupShalotrackDevice::where('status', 'Not Activated')
+                ->latest('shdevice_id')
+                ->get();
+
+            $pdf = Pdf::loadView('admin.master_pages.reports.not_activated_devices_pdf', compact('devices'));
+
+            $filename = 'not_activated_devices_' . now()->format('Y-m-d_His') . '.pdf';
+
+            return $pdf->download($filename);
+        }
+
+        public function exportActivated()
+        {
+            $devices = SetupShalotrackDevice::with('dealer')
+                ->whereIn('status', ['Activated', 'Temporarily Stopped'])
+                ->latest('shdevice_id')
+                ->get();
+
+            $pdf = Pdf::loadView('admin.master_pages.reports.activated_devices_pdf', compact('devices'));
+
+            $filename = 'activated_devices_' . now()->format('Y-m-d_His') . '.pdf';
+
+            return $pdf->download($filename);
+        }
 }

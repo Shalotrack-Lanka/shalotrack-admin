@@ -111,7 +111,14 @@ Route::middleware(['auth'])->group(function () {
          [AddSimController::class, 'updateStatus'])
          ->name('admin.stock.sim.update-status');
 
-
+         //report generation
+        Route::get('/cancel-device/not-activated/export',
+        [CancelDeviceController::class, 'exportNotActivated'])
+        ->name('admin.cancel-device.export-not-activated');
+  
+        Route::get('/cancel-device/activated/export', 
+        [CancelDeviceController::class, 'exportActivated'])
+        ->name('admin.cancel-device.export-activated');
 
  
 
