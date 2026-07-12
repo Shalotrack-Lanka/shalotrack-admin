@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Dealer extends Model
 {
     protected $fillable = [
+        'full_name','qualification',
         'dealer_status','region','country','pin_code',
         'contact_email','tax_pan','cst_no','vat_tin','gst_pan',
         'security_deposit','deposit_date','network','login_id','password',

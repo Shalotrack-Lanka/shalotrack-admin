@@ -15,8 +15,10 @@ class SyncCustomersFromApi extends Command
     public function handle(): int
     {
         $response = Http::timeout(15)
-        ->retry(3, 2000)
-        ->get(config('services.shalotrack_api.base_url') . '/api/Customers');
+            ->retry(3, 2000)
+            ->withToken(config('services.shalotrack_api.token'))
+            ->acceptJson()
+            ->get(config('services.shalotrack_api.base_url') . '/api/Customers');
 
         if (! $response->successful()) {
             Log::error('Customer sync failed', ['status' => $response->status(), 'body' => $response->body()]);
