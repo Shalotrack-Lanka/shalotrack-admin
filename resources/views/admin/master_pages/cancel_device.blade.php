@@ -42,8 +42,6 @@
                 </div>
             @endif
 
-            
-
             {{-- ===================== NOT ACTIVATED DEVICES ===================== --}}
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden w-full">
                 <div class="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-amber-50 to-white flex items-center justify-between">
@@ -56,6 +54,13 @@
                         <span class="text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
                             {{ $notActivatedDevices->count() }} pending
                         </span>
+                        <a href="{{ route('admin.cancel-device.export-not-activated') }}"
+                           class="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-100 flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Generate Report
+                        </a>
                         <button type="button" onclick="refreshCancelDevicePage(this)"
                                 class="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-100 flex items-center gap-1.5">
                             <svg class="w-3.5 h-3.5 refresh-icon transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,11 +124,17 @@
                         <h2 class="font-bold text-gray-800 text-sm tracking-wide">Activated Devices</h2>
                         <span class="font-normal text-gray-400 text-xs">— stop a device if the customer isn't paying, or reactivate one that's stopped</span>
                     </div>
-               
                     <div class="flex items-center gap-2">
                         <span class="text-[11px] font-bold text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
-                           {{ $activatedDevices->count() }} devices
+                            {{ $activatedDevices->count() }} devices
                         </span>
+                        <a href="{{ route('admin.cancel-device.export-activated') }}"
+   class="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-100 flex items-center gap-1.5">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    Generate Report
+</a>
                         <button type="button" onclick="refreshCancelDevicePage(this)"
                                 class="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-100 flex items-center gap-1.5">
                             <svg class="w-3.5 h-3.5 refresh-icon transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
