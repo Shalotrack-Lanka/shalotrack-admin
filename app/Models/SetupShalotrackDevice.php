@@ -13,5 +13,18 @@ class SetupShalotrackDevice extends Model
         'device_category',
         'imei_number',
         'sim_number',
+        'status',
+        'cancel_reason',
+        'canceled_date',
+        'dealer_id',
     ];
+
+    protected $casts = [
+        'canceled_date' => 'datetime',
+    ];
+
+    public function dealer()
+    {
+        return $this->belongsTo(Dealer::class);
+    }
 }
