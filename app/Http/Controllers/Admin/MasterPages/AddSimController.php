@@ -33,6 +33,7 @@ class AddSimController extends Controller
     {
         $validated = $request->validate([
             'sim_type'    => 'required|string|max:255',
+
             'imei_number'      => [
             'required',
             'digits:15',                                   // exactly 15 numeric digits, no letters/spaces
@@ -42,12 +43,15 @@ class AddSimController extends Controller
             'nullable',
             'digits:10',
         ],
+
+           'sim_status'  => 'required|string|in:Activated,Not Activated',
+
     ],[
         'imei_number.digits' => 'IMEI number must be exactly 15 digits.',
         'imei_number.unique' => 'This IMEI number is already registered.',
         'sim_number.digits'  => 'SIM number must be exactly 10 digits.',
         'sim_number.regex'   => 'SIM number must start with 07 and be followed by 8 digits.',
-            'sim_status'  => 'required|string|in:Activated,Not Activated',
+        
         ]);
 
         $deviceType = DeviceType::firstOrCreate(

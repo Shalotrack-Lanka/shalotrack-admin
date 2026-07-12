@@ -3,39 +3,42 @@
 namespace App\Http\Controllers\Admin\MasterPages;
 
 use App\Http\Controllers\Controller;
-use App\Models\Device;
+use App\Models\SetupShalotrackDevice;
 use Illuminate\Http\Request;
 
 class CancelDeviceController extends Controller
 {
     public function index()
     {
-        $devices = Device::latest()->get();
+        $manageableDevices = SetupShalotrackDevice::whereIn('status', ['Activated', 'Canceled'])
+            ->latest('shdevice_id')
+            ->get();
 
-        return view('admin.master_pages.cancel_device', compact('devices'));
+        $notActivatedDevices = SetupShalotrackDevice::where('status', 'Not Activated')
+            ->latest('shdevice_id')
+            ->get();
+
+        return view('admin.master_pages.cancel_device', compact('manageableDevices', 'notActivatedDevices'));
     }
 
-    public function update(Request $request, Device $device)
+    public function update(Request $request, SetupShalotrackDevice $device)
     {
         $validated = $request->validate([
-            'status'      => 'required|in:Available,Temporarily Stopped,Canceled',
-            'description' => 'nullable|string|max:1000',
+            'status'        => 'required|in:Activated,Canceled',
+            'cancel_reason' => 'nullable|required_if:status,Canceled|string|max:500',
+        ], [
+            'cancel_reason.required_if' => 'Please provide a reason for cancelling this device.',
         ]);
 
-        // Set canceled_date only when moving INTO Canceled.
-        // Clear it if the status moves back out of Canceled — a device
-        // that's Available again was never "canceled" as far as the record shows.
-        $device->canceled_date = $validated['status'] === 'Canceled'
-            ? now()
-            : null;
-
-        $device->status      = $validated['status'];
-        $device->description = $validated['description'];
+        $device->status        = $validated['status'];
+        $device->cancel_reason = $validated['status'] === 'Canceled' ? $validated['cancel_reason'] : null;
+        $device->canceled_date = $validated['status'] === 'Canceled' ? now() : null;
         $device->save();
 
         return response()->json([
             'success'       => true,
             'status'        => $device->status,
+            'cancel_reason' => $device->cancel_reason,
             'canceled_date' => optional($device->canceled_date)->format('Y-m-d H:i'),
         ]);
     }

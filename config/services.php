@@ -21,9 +21,12 @@ return [
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],
+
+    
     
     'shalotrack_api' => [
-    'base_url' => env('SHALOTRACK_API_BASE_URL', 'https://api.shalotrack.com'),
+        'base_url' => env('SHALOTRACK_API_URL', 'https://api.shalotrack.com'),
+        'token' => env('SHALOTRACK_API_TOKEN'),
     ],
 
     'ses' => [
