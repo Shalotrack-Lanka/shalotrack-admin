@@ -3,174 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShaloTrack Admin</title>
+    <title>ShaloTrack Admin - Add Supplier</title>
+
     @vite(['resources/css/app.css','resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="{ sidebarOpen: false }">
 
-<div class="flex h-screen overflow-hidden bg-gray-50">
+<div class="flex h-screen overflow-hidden">
 
     @include('partials.sidebars.admin')
-    @include('partials.header')
 
-    @if(session('success'))
-        <div x-data="{ show: true }"
-             x-show="show"
-             x-init="setTimeout(() => show = false, 4000)"
-             x-transition
-             class="fixed top-6 right-6 z-50 bg-green-600 text-white px-5 py-3 rounded-lg shadow-lg font-semibold text-sm">
-            {{ session('success') }}
-        </div>
-    @endif
+    <div class="flex-1 flex flex-col overflow-y-auto">
+        @include('partials.header')
 
-    @if($errors->any())
-        <div x-data="{ show: true }"
-             x-show="show"
-             x-init="setTimeout(() => show = false, 5000)"
-             x-transition
-             class="fixed top-6 right-6 z-50 bg-red-600 text-white px-5 py-3 rounded-lg shadow-lg font-semibold text-sm max-w-sm">
-            <div class="font-bold mb-1">Please check the form:</div>
-            <ul class="list-disc list-inside">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
+        <main class="p-4 md:p-6 flex-1 space-y-6">
 
-    <main class="flex-1 overflow-y-auto p-6">
-        @yield('content')                   
+            @if(session('success'))
+                <div class="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs font-bold">
+                    {{ session('success') }}
+                </div>
+            @endif
 
-                    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
-                        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
-                            <h3 class="text-lg font-bold text-gray-800">Supplier Master</h3>
-                        </div>
+            @if ($errors->any())
+                <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg shadow-xs">
+                    <ul class="list-disc pl-5 space-y-1 text-[11px] font-semibold">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
-                        <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
-                            
-                            <form method="POST" action="{{ route('admin.suppliers.store') }}" class="lg:col-span-5 space-y-3 max-w-xl w-full text-xs font-semibold text-gray-700">
-                                @csrf
-                                <div>
-                                    <label class="block mb-1">Supplier Name</label>
-                                    <input type="text" name="supplier_name" class="w-full rounded-lg border-gray-300 h-9">
-                                </div>
-                                <div>
-                                    <label class="block mb-1">Address</label>
-                                    <textarea name="address" rows="3" class="w-full rounded-lg border-gray-300"></textarea>
-                                </div>
-                                <div>
-                                    <label class="block mb-1">Country</label>
-                                    <select name="country" class="w-full rounded-lg border-gray-300 h-9">
-                                        <option value="" selected disable>--Select--</option>
-                                        <option value="srilanka">Sri Lanka</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block mb-1">State</label>
-                                    <select name="state" class="w-full rounded-lg border-gray-300 h-9">
-                                        <option value="">--Select--</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block mb-1">Phone Number</label>
-                                    <input type="text" name="phone_number" class="w-full rounded-lg border-gray-300 h-9">
-                                </div>
-                                <div>
-                                    <label class="block mb-1">Email ID</label>
-                                    <input type="email" name="email_id" class="w-full rounded-lg border-gray-300 h-9">
-                                </div>
-                                <div>
-                                    <label class="block mb-1">Website (if any)</label>
-                                    <input type="text" name="website" class="w-full rounded-lg border-gray-300 h-9">
-                                </div>
-                                <div>
-                                    <label class="block mb-1">GSTIN Number</label>
-                                    <input type="text" name="gstin" class="w-full rounded-lg border-gray-300 h-9">
-                                </div>
+            {{-- ===================== 1. ADD SUPPLIER FORM ===================== --}}
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
+                    Add Supplier Form
+                </div>
+                <form method="POST" action="{{ route('admin.suppliers.store') }}"
+                      class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-gray-700">
+                    @csrf
+                    <div>
+                        <label class="block mb-1">Supplier Name</label>
+                        <input type="text" name="supplier_name" required class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block mb-1">Phone Number</label>
+                        <input type="text" name="phone_number" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block mb-1">Email ID</label>
+                        <input type="email" name="email_id" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block mb-1">Country</label>
+                        <select name="country" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                            <option value="" selected disabled>--Select--</option>
+                            <option value="srilanka">Sri Lanka</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block mb-1">State</label>
+                        <select name="state" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                            <option value="">--Select--</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block mb-1">Website (if any)</label>
+                        <input type="text" name="website" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block mb-1">GSTIN Number</label>
+                        <input type="text" name="gstin" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block mb-1">Address</label>
+                        <textarea name="address" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm"></textarea>
+                    </div>
+                    <div class="md:col-span-2 flex gap-2 pt-1">
+                        <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-bold shadow-sm">Reset</button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-sm">Save Supplier</button>
+                    </div>
+                </form>
+            </div>
 
-                                <div class="flex gap-2 pt-2">
-                                    <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded font-bold shadow-sm">Reset</button>
-                                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded font-bold shadow-sm">Save</button>
-                                </div>
-                            </form>
-
-                            <div class="lg:col-span-7 space-y-6 w-full">
-                                <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm w-full text-xs font-semibold text-gray-700">
-                                    <div class="flex bg-gray-100 border-b border-gray-200">
-                                        <button @click="supplierTab = 'active'" :class="supplierTab =A== 'active' ? 'bg-white text-gray-800 font-bold border-t-2 border-t-blue-500' : 'text-gray-500 hover:bg-gray-50'" class="px-5 py-2.5 border-r border-gray-200">Active</button>
-                                        <button @click="supplierTab = 'archived'" :class="supplierTab === 'archived' ? 'bg-white text-gray-800 font-bold border-t-2 border-t-blue-500' : 'text-gray-500 hover:bg-gray-50'" class="px-5 py-2.5">Archived</button>
-                                    </div>
-
-                                    <div x-show="supplierTab === 'active'" class="overflow-y-auto max-h-64 bg-white">
-                                        <table class="w-full border-collapse text-left">
-                                            <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 font-bold">
-                                                <tr>
-                                                    <th class="p-2.5 text-center w-10">#</th>
-                                                    <th class="p-2.5">User Name</th>
-                                                    <th class="p-2.5">MobileNo</th>
-                                                    <th class="p-2.5">Date</th>
-                                                    <th class="p-2.5 text-center w-24">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-gray-200 text-gray-600 font-medium">
-                                                <tr><td class="p-2.5 text-center">1.</td><td class="p-2.5 font-bold text-gray-900">amila test</td><td class="p-2.5">079123456</td><td class="p-2.5 text-gray-400">26 Nov 2019</td><td class="p-2.5 text-center flex justify-center gap-1.5"><button class="border border-gray-200 rounded px-2 py-0.5 hover:bg-gray-50 text-[10px]">Edit</button><button class="text-gray-400 hover:text-red-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td></tr>
-                                                <tr><td class="p-2.5 text-center">2.</td><td class="p-2.5 font-bold text-gray-900">Dialog Axiata</td><td class="p-2.5">777123456</td><td class="p-2.5 text-gray-400">01 Oct 2019</td><td class="p-2.5 text-center flex justify-center gap-1.5"><button class="border border-gray-200 rounded px-2 py-0.5 hover:bg-gray-50 text-[10px]">Edit</button><button class="text-gray-400 hover:text-red-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td></tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <div x-show="supplierTab === 'archived'" class="p-8 text-center text-gray-400 bg-white" style="display: none;">
-                                        No archived suppliers found.
-                                    </div>
-                                </div>
-
-                                <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm w-full text-xs">
-                                    <div class="bg-gray-100 p-2.5 font-bold text-gray-700 border-b border-gray-200">Supplier Products</div>
-                                    <div class="p-4 text-center text-gray-500 font-medium bg-white">No Records Found.</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-6 border-t border-gray-100 w-full text-xs font-semibold text-gray-700">
-                            <div class="mb-3 font-bold text-sm text-gray-800">All Available Products</div>
-                            <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm overflow-x-auto">
-                                <table class="w-full border-collapse text-left">
-                                    <thead class="bg-gray-50 border-b border-gray-200 font-bold">
-                                        <tr>
-                                            <th class="p-2.5 text-center w-12">S.No.</th>
-                                            <th class="p-2.5">Product Name</th>
-                                            <th class="p-2.5 w-32">Price</th>
-                                            <th class="p-2.5 w-32">Discount</th>
-                                            <th class="p-2.5 text-center w-24">Add</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-200 bg-white font-medium">
-                                        <tr>
-                                            <td class="p-2.5 text-center">1</td>
-                                            <td class="p-2.5 font-bold text-gray-900">10 Ke Tgoti</td>
-                                            <td class="p-2.5"><input type="text" placeholder="Price" class="rounded border-gray-300 px-2 py-1 text-xs h-7 w-24"></td>
-                                            <td class="p-2.5"><input type="text" placeholder="Disc" class="rounded border-gray-300 px-2 py-1 text-xs h-7 w-24"></td>
-                                            <td class="p-2.5 text-center"><button class="bg-[#17a2b8] hover:bg-[#138496] text-white font-bold text-[10px] px-4 py-1 rounded shadow-sm">Add</button></td>
-                                        </tr>
-                                        <tr>
-                                            <td class="p-2.5 text-center">2</td>
-                                            <td class="p-2.5 font-bold text-gray-900">10-11 No. chabi Taparia</td>
-                                            <td class="p-2.5"><input type="text" placeholder="Price" class="rounded border-gray-300 px-2 py-1 text-xs h-7 w-24"></td>
-                                            <td class="p-2.5"><input type="text" placeholder="Disc" class="rounded border-gray-300 px-2 py-1 text-xs h-7 w-24"></td>
-                                            <td class="p-2.5 text-center"><button class="bg-[#17a2b8] hover:bg-[#138496] text-white font-bold text-[10px] px-4 py-1 rounded shadow-sm">Add</button></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
+            {{-- ===================== 2. ACTIVE SUPPLIERS ===================== --}}
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
+                    Active Suppliers
+                </div>
+                <div class="p-5">
+                    <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-3">Supplier</th>
+                                    <th class="p-3">Products</th>
+                                    <th class="p-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                @forelse($suppliers as $supplier)
+                                    <tr class="hover:bg-gray-50 transition {{ $selectedSupplier?->id === $supplier->id ? 'bg-blue-50' : '' }}">
+                                        <td class="p-3">{{ $supplier->name }}</td>
+                                        <td class="p-3">{{ $supplier->products_count }} Products</td>
+                                        <td class="p-3">
+                                            <a href="{{ route('admin.suppliers', ['supplier_id' => $supplier->id]) }}"
+                                               class="px-3 py-1 rounded-lg bg-gray-800 text-white text-[11px] font-bold hover:bg-gray-900">
+                                                Edit
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="3" class="p-6 text-center text-gray-400">No active suppliers yet.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+            </div>
 
-    </main>
+            {{-- ===================== 3. SELECTED SUPPLIER PRODUCTS ===================== --}}
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm flex items-center justify-between">
+                    <span>
+                        Selected Supplier Products
+                        @if($selectedSupplier)
+                            <span class="font-normal text-gray-400">— {{ $selectedSupplier->name }}</span>
+                        @endif
+                    </span>
+                </div>
+                <div class="p-5">
+                    @if(!$selectedSupplier)
+                        <p class="text-xs text-gray-400 text-center py-6">
+                            Select a supplier above (click "Edit") to manage their products.
+                        </p>
+                    @else
+                        <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th class="p-3">Product</th>
+                                        <th class="p-3">Price</th>
+                                        <th class="p-3">Discount</th>
+                                        <th class="p-3"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 bg-white">
+                                    @forelse($selectedProducts as $product)
+                                        <tr class="hover:bg-gray-50 transition">
+                                            <td class="p-3">{{ $product->product_name }}</td>
+                                            <td class="p-3">{{ number_format($product->pivot->price, 2) }}</td>
+                                            <td class="p-3">{{ number_format($product->pivot->discount, 2) }}</td>
+                                            <td class="p-3">
+                                                <form action="{{ route('admin.suppliers.detach-product', [$selectedSupplier->id, $product->id]) }}"
+                                                      method="POST"
+                                                      onsubmit="return confirm('Remove {{ $product->product_name }} from {{ $selectedSupplier->name }}?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                            class="px-3 py-1 rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-[11px] font-bold">
+                                                        Remove
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="4" class="p-6 text-center text-gray-400">No products added for this supplier yet.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- ===================== 4. ALL PRODUCTS ===================== --}}
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
+                    All Products
+                </div>
+                <div class="p-5">
+                    @if(!$selectedSupplier)
+                        <p class="text-xs text-gray-400 text-center py-6">
+                            Select a supplier above to add products to them.
+                        </p>
+                    @else
+                        <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th class="p-3">Product</th>
+                                        <th class="p-3">Price</th>
+                                        <th class="p-3">Discount</th>
+                                        <th class="p-3"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 bg-white">
+                                    @forelse($availableProducts as $product)
+                                        @php($formId = 'attach-form-'.$product->id)
+                                        <tr class="hover:bg-gray-50 transition">
+                                            <td class="p-3">{{ $product->product_name }}</td>
+                                            <td class="p-3">
+                                                <form id="{{ $formId }}"
+                                                      action="{{ route('admin.suppliers.attach-product', $selectedSupplier->id) }}"
+                                                      method="POST">
+                                                    @csrf
+                                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                                    <input type="number" step="0.01" min="0" name="price" required
+                                                           placeholder="Price"
+                                                           class="w-24 rounded-lg border-gray-300 text-[11px] shadow-sm">
+                                                </form>
+                                            </td>
+                                            <td class="p-3">
+                                                <input type="number" step="0.01" min="0" name="discount" form="{{ $formId }}"
+                                                       placeholder="Discount"
+                                                       class="w-24 rounded-lg border-gray-300 text-[11px] shadow-sm">
+                                            </td>
+                                            <td class="p-3">
+                                                <button type="submit" form="{{ $formId }}"
+                                                        class="px-3 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-700">
+                                                    Add
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="4" class="p-6 text-center text-gray-400">All products are already added for this supplier.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+        </main>
+    </div>
 </div>
 
-<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>

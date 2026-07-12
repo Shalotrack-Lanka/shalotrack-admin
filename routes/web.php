@@ -186,6 +186,10 @@ Route::prefix('admin/supplier')->group(function () {
         [AddSupplierController::class, 'attachProduct'])
         ->name('admin.suppliers.attach-product');
 
+        Route::delete('/{id}/detach-product/{productId}',
+         [AddSupplierController::class, 'detachProduct'])
+        ->name('admin.suppliers.detach-product');
+
 });
 
 
