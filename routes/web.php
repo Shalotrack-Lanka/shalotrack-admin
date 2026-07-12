@@ -120,7 +120,13 @@ Route::middleware(['auth'])->group(function () {
         [CancelDeviceController::class, 'exportActivated'])
         ->name('admin.cancel-device.export-activated');
 
- 
+        Route::get('/add-sim/not-activated/export', 
+        [AddSimController::class, 'exportNotActivated'])
+        ->name('admin.sim.export-not-activated');
+
+        Route::get('/add-sim/activated/export', 
+        [AddSimController::class, 'exportActivated'])
+        ->name('admin.sim.export-activated');
 
     });
 
@@ -179,6 +185,10 @@ Route::prefix('admin/supplier')->group(function () {
         Route::post('/{id}/attach-product',
         [AddSupplierController::class, 'attachProduct'])
         ->name('admin.suppliers.attach-product');
+
+        Route::delete('/{id}/detach-product/{productId}',
+         [AddSupplierController::class, 'detachProduct'])
+        ->name('admin.suppliers.detach-product');
 
 });
 
