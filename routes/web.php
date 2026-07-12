@@ -124,9 +124,9 @@ Route::middleware(['auth'])->group(function () {
         [AddSimController::class, 'exportNotActivated'])
         ->name('admin.sim.export-not-activated');
 
-       // Route::get('/add-sim/activated/export', 
-       // [AddSimController::class, 'exportActivated'])
-       // ->name('admin.sim.export-activated');
+        Route::get('/add-sim/activated/export', 
+        [AddSimController::class, 'exportActivated'])
+        ->name('admin.sim.export-activated');
 
     });
 

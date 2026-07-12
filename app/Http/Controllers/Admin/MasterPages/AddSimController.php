@@ -99,16 +99,29 @@ class AddSimController extends Controller
         return redirect()->back()->with('success', 'SIM Status Updated Successfully!');
     }
 
-    public function exportNotActivated()
-{
-    $sims = Sim::with('stock')
-        ->where('sim_status', 'Not Activated')
-        ->orWhereNull('sim_status')
-        ->latest()
-        ->get();
+        public function exportNotActivated()
+    {
+        $sims = Sim::with('stock')
+            ->where('sim_status', 'Not Activated')
+            ->orWhereNull('sim_status')
+            ->latest()
+            ->get();
 
-    $pdf = Pdf::loadView('admin.master_pages.reports.not_activated_sims_pdf', compact('sims'));
+        $pdf = Pdf::loadView('admin.master_pages.reports.not_activated_sims_pdf', compact('sims'));
 
-    return $pdf->download('not_activated_sims_' . now()->format('Y-m-d_His') . '.pdf');
-}
+        return $pdf->download('not_activated_sims_' . now()->format('Y-m-d_His') . '.pdf');
+    }
+
+    public function exportActivated()
+    {
+        $sims = Sim::with('stock')
+            ->where('sim_status', 'Activated')
+            ->latest()
+            ->get();
+
+        $pdf = Pdf::loadView('admin.master_pages.reports.activated_sims_pdf', compact('sims'));
+
+        return $pdf->download('activated_sims_' . now()->format('Y-m-d_His') . '.pdf');
+    }
+
 }
