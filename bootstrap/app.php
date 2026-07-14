@@ -11,8 +11,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        
         $middleware->trustProxies(at: '*');
+        $middleware->append(\App\Http\Middleware\TraceRequestMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         
