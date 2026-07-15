@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\AdminProfileController;
+use App\Http\Controllers\Admin\DashboardController;
 
 use App\Http\Controllers\Admin\MasterPages\AddDeviceController;
 use App\Http\Controllers\Admin\MasterPages\AddSimController;
@@ -64,7 +65,9 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::view('/admin/dashboard', 'admin.dashboard')->name('admin.dashboard');
+    Route::get('/admin/dashboard',
+    [DashboardController::class,'index'])
+    ->name('admin.dashboard');
     Route::view('/dealer/dashboard', 'dealer.dashboard')->name('dealer.dashboard');
     Route::view('/finance/dashboard', 'finance.dashboard')->name('finance.dashboard');
     Route::view('/technician/dashboard', 'technician.dashboard')->name('technician.dashboard');

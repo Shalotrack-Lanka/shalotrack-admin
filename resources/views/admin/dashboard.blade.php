@@ -21,24 +21,20 @@
             
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8 w-full">
                 <div class="bg-gradient-to-r from-blue-900 to-blue-700 text-white rounded-xl shadow-md p-5 hover:-translate-y-1 transition duration-300">
-                    <p class="text-blue-100 text-sm font-medium">Total Customers</p>
-                    <h2 class="text-3xl md:text-4xl font-bold mt-2">1,245</h2>
-                    <p class="text-xs md:text-sm mt-2 text-blue-200">+12% this month</p>
+                    <p class="text-blue-100 text-sm font-medium">Total Devices</p>
+                    <h2 class="text-3xl md:text-4xl font-bold mt-2">{{ $totalDevices }}</h2>
                 </div>
                 <div class="bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl shadow-md p-5 hover:-translate-y-1 transition duration-300">
                     <p class="text-green-100 text-sm font-medium">Active Devices</p>
-                    <h2 class="text-3xl md:text-4xl font-bold mt-2">987</h2>
-                    <p class="text-xs md:text-sm mt-2 text-green-100">Online Now</p>
+                    <h2 class="text-3xl md:text-4xl font-bold mt-2">{{ $activatedDevices }}</h2>
                 </div>
                 <div class="bg-gradient-to-r from-orange-500 to-orange-400 text-white rounded-xl shadow-md p-5 hover:-translate-y-1 transition duration-300">
-                    <p class="text-orange-100 text-sm font-medium">Monthly Revenue</p>
-                    <h2 class="text-3xl md:text-4xl font-bold mt-2">LKR 450K</h2>
-                    <p class="text-xs md:text-sm mt-2 text-orange-100">+8% Growth</p>
+                    <p class="text-orange-100 text-sm font-medium">Total Suppliers</p>
+                    <h2 class="text-3xl md:text-4xl font-bold mt-2">{{ $totalSuppliers }}</h2>
                 </div>
                 <div class="bg-gradient-to-r from-red-600 to-red-500 text-white rounded-xl shadow-md p-5 hover:-translate-y-1 transition duration-300">
-                    <p class="text-red-100 text-sm font-medium">Support Tickets</p>
-                    <h2 class="text-3xl md:text-4xl font-bold mt-2">24</h2>
-                    <p class="text-xs md:text-sm mt-2 text-red-100">Needs Attention</p>
+                    <p class="text-red-100 text-sm font-medium">Total Dealers</p>
+                    <h2 class="text-3xl md:text-4xl font-bold mt-2">{{ $totalDealers }}</h2>
                 </div>
             </div>
 
@@ -169,35 +165,67 @@
         });
 
         // 2. Doughnut Chart Construction
-        deviceChartInstance = new Chart(document.getElementById('deviceChart'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Active','Inactive','Testing'],
-                datasets: [{
-                    data: [70, 20, 10],
-                    backgroundColor: ['#16a34a','#f59e0b','#dc2626'],
-                    borderColor:     isDark() ? '#1e293b' : '#ffffff',
-                    borderWidth: 3,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: {
-                            color: c.text,
-                            font: { size: 12 },
-                            padding: 15,
-                            usePointStyle: true,
-                        }
-                    }
+        const ctx = document.getElementById('deviceChart');
+
+            new Chart(ctx, {
+
+                type: 'doughnut',
+
+                data: {
+
+                    labels: [
+                        'Activated',
+                        'Not Activated',
+                        'Temporarily Stopped'
+                    ],
+
+                    datasets: [{
+
+                        data: [
+                            {{ $activatedDevices }},
+                            {{ $pendingDevices }},
+                            {{ $stoppedDevices }}
+                        ],
+
+                        backgroundColor: [
+                            '#22c55e',   // green
+                            '#f59e0b',   // yellow
+                            '#ef4444'    // red
+                        ],
+
+                        borderWidth: 2,
+                        borderColor:'#ffffff'
+
+                    }]
                 },
-                cutout: '70%'
-            }
-        });
-    }
+
+                options:{
+
+                    responsive:true,
+
+                    maintainAspectRatio:false,
+
+                    plugins:{
+
+                        legend:{
+                            position:'bottom'
+                        },
+
+                        tooltip:{
+                            callbacks:{
+                                label:function(context){
+                                    return context.label + " : " + context.raw;
+                                }
+                            }
+                        }
+
+                    },
+
+                    cutout:'65%'
+                }
+
+            });
+                }
 
     // Initialize charts on window load execution
     window.addEventListener('DOMContentLoaded', () => {
