@@ -10,45 +10,44 @@ use OpenTelemetry\API\Trace\StatusCode;
 
 class TraceRequestMiddleware
 {
-    protected ?\OpenTelemetry\API\Trace\SpanInterface $span = null;
-
     public function handle(Request $request, Closure $next)
     {
-        // Skip health checks — same reasoning as the API's ALB filter:
-        // don't drown real traffic in monitoring noise
         if ($request->path() === 'up') {
             return $next($request);
         }
 
         $tracer = app(TracerProvider::class)->getTracer('shalotrack-admin');
 
-        $this->span = $tracer->spanBuilder($request->method() . ' ' . $request->path())
+        $span = $tracer->spanBuilder($request->method() . ' ' . $request->path())
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->startSpan();
 
-        $this->span->setAttribute('http.method', $request->method());
-        $this->span->setAttribute('http.route', $request->path());
+        $span->setAttribute('http.method', $request->method());
+        $span->setAttribute('http.route', $request->path());
+
+        // Store on the request itself — this object is genuinely shared
+        // between handle() and terminate(), unlike $this on the middleware instance
+        $request->attributes->set('otel_span', $span);
 
         return $next($request);
     }
 
     public function terminate(Request $request, $response): void
     {
-        if ($this->span === null) {
+        $span = $request->attributes->get('otel_span');
+
+        if ($span === null) {
             return;
         }
 
-        $this->span->setAttribute('http.status_code', $response->getStatusCode());
+        $span->setAttribute('http.status_code', $response->getStatusCode());
 
         if ($response->getStatusCode() >= 500) {
-            $this->span->setStatus(StatusCode::STATUS_ERROR);
+            $span->setStatus(StatusCode::STATUS_ERROR);
         }
 
-        $this->span->end();
+        $span->end();
 
-        // Force the export to actually happen before this PHP process dies —
-        // this is the step that would silently vanish without it, same class
-        // of bug as tonight if skipped.
         app(TracerProvider::class)->shutdown();
     }
 }
