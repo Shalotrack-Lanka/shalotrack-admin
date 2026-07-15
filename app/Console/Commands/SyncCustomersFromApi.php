@@ -13,12 +13,14 @@ class SyncCustomersFromApi extends Command
     protected $description = 'Pull customers from the ShaloTrack API and upsert into Customer-ad (sync fields only, never touches admin fields)';
 
     public function handle(): int
-    {
-        $response = Http::timeout(15)
-            ->retry(3, 2000)
-            ->withToken(config('services.shalotrack_api.token'))
-            ->acceptJson()
-            ->get(config('services.shalotrack_api.base_url') . '/api/Customers');
+{
+    $response = Http::timeout(15)
+        ->retry(3, 2000)
+        ->withHeaders([
+            'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')
+        ])
+        ->acceptJson()
+        ->get(config('services.shalotrack_api.base_url') . '/api/Customers');
 
         if (! $response->successful()) {
             Log::error('Customer sync failed', ['status' => $response->status(), 'body' => $response->body()]);

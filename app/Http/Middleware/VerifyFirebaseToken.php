@@ -4,14 +4,18 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Exception;
-use App\Models\CustomerAd; // Updated to match your model
+use App\Models\CustomerAd;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class VerifyFirebaseToken
 {
+    /**
+     * Handle an incoming request from the Android tracking client.
+     */
     public function handle(Request $request, Closure $next): Response
     {
+        // 1. Grab the token from the "Authorization: Bearer <token>" header
         $token = $request->bearerToken();
 
         if (!$token) {
@@ -22,28 +26,28 @@ class VerifyFirebaseToken
         }
 
         try {
+            // 2. Access the Firebase Auth component from the container
             $auth = app('firebase.auth');
             
-            // Verify the token with Google/Firebase
+            // 3. Verify the token token (checks signature, expiration, and project match)
             $verifiedIdToken = $auth->verifyIdToken($token);
             
-            // Extract the unique Firebase User ID (UID)
+            // 4. Extract the unique Firebase User ID (UID)
             $firebaseUid = $verifiedIdToken->claims()->get('sub');
             
-            // Find the customer or create a new record.
-            // Assuming customer_id stores the Firebase UID based on your string keyType.
-            $customer = CustomerAd::firstOrCreate(
-                ['customer_id' => $firebaseUid],
+            // 5. Look up the customer in your Supabase DB. If they don't exist yet, 
+            // create their profile shell using the Firebase profile data.
+            $customer = Customer::firstOrCreate(
+                ['firebase_uid' => $firebaseUid],
                 [
-                    // Using your exact fillable snake_case column names
                     'email' => $verifiedIdToken->claims()->get('email'),
-                    'full_name' => $verifiedIdToken->claims()->get('name') ?? 'New Driver',
-                    'nic_number' => '', 
-                    'phone_number' => $verifiedIdToken->claims()->get('phone_number') ?? '',
+                    'fullName' => $verifiedIdToken->claims()->get('name') ?? 'New Driver',
+                    'nicNumber' => '', 
+                    'phoneNumber' => $verifiedIdToken->claims()->get('phone_number') ?? '',
                 ]
             );
 
-            // Bind the validated customer to the current request
+            // 6. Bind the validated customer object to the current request lifecycle
             $request->setUserResolver(function () use ($customer) {
                 return $customer;
             });
@@ -54,7 +58,7 @@ class VerifyFirebaseToken
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthorized. Token is invalid or expired.',
-                'debug' => $e->getMessage() 
+                'debug' => $e->getMessage() // You can remove this in production
             ], 401);
         }
     }
