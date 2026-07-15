@@ -27,6 +27,7 @@ return [
     'shalotrack_api' => [
         'base_url' => env('SHALOTRACK_API_URL', 'https://api.shalotrack.com'),
         'token' => env('SHALOTRACK_API_TOKEN'),
+        'sync_key' => env('SHALOTRACK_SYNC_KEY'),
     ],
 
     'ses' => [

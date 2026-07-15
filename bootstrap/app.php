@@ -12,13 +12,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-    
-    // Register the custom Firebase middleware alias
-    $middleware->alias([
-        'auth.firebase' => \App\Http\Middleware\VerifyFirebaseToken::class,
-    ]);
-    
-})
-    ->withExceptions(function (Exceptions $exceptions): void {
+        
+        // Dashboard statistics update middleware
+        $middleware->trustProxies(at: '*');
+        $middleware->append(\App\Http\Middleware\TraceRequestMiddleware::class);
+
+        // Register the custom Firebase middleware alias
+        $middleware->alias([
+            'auth.firebase' => \App\Http\Middleware\VerifyFirebaseToken::class,
+        ]);
+        
+    })
+    ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
