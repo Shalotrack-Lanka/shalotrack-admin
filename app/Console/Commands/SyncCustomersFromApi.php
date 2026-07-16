@@ -13,14 +13,20 @@ class SyncCustomersFromApi extends Command
     protected $description = 'Pull customers from the ShaloTrack API and upsert into Customer-ad (sync fields only, never touches admin fields)';
 
     public function handle(): int
-{
-    $response = Http::timeout(15)
-        ->retry(3, 2000)
-        ->withHeaders([
-            'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')
-        ])
-        ->acceptJson()
-        ->get(config('services.shalotrack_api.base_url') . '/api/Customers');
+    {
+        $response = Http::timeout(15)
+            // throw: false — without this, retry() throws a RequestException
+            // once retries are exhausted, and the code never reaches the
+            // successful() check below. That's what caused the 500 error
+            // instead of the graceful "API call failed: 401" message.
+            ->retry(3, 2000, throw: false)
+            ->withHeaders([
+                'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')
+            ])
+            ->acceptJson()
+            // FIX: was hitting /api/Customers, the public Firebase-protected
+            // endpoint. The sync key is only checked on this internal route.
+            ->get(config('services.shalotrack_api.base_url') . '/api/internal/customers-sync');
 
         if (! $response->successful()) {
             Log::error('Customer sync failed', ['status' => $response->status(), 'body' => $response->body()]);

@@ -1,61 +1,62 @@
 <?php
 
-namespace App\Http\Middleware;
+namespace App\Models;
 
-use Closure;
-use Exception;
-use App\Models\CustomerAd; // Updated to match your model
-use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Database\Eloquent\Model;
 
-class VerifyFirebaseToken
+class CustomerAd extends Model
 {
-    public function handle(Request $request, Closure $next): Response
+    // The migration created this table with a hyphenated, mixed-case name —
+    // unlike every other table in this project. Eloquent's default guess
+    // (customer_ads) would be wrong, so this must be explicit.
+    protected $table = 'Customer-ad';
+
+    // Primary key is a UUID (customer_id), not an auto-incrementing id.
+    protected $primaryKey = 'customer_id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'customer_id',
+        'full_name',
+        'email',
+        'phone_number',
+        'nic_number',
+        'address',
+        'profile_image',
+        'vehicle_count',
+        'source_account_status',
+        'imei_number',
+        'sim_number',
+        'payment_status',
+        'device_type',
+        'subscription_period',
+        'subscription_start_date',
+        'subscription_end_date',
+        'bank_invoice_path',
+        'last_synced_at',
+    ];
+
+    protected $casts = [
+        'vehicle_count'            => 'integer',
+        'source_account_status'    => 'integer',
+        'subscription_start_date'  => 'date',
+        'subscription_end_date'    => 'date',
+        'last_synced_at'           => 'datetime',
+    ];
+
+    /**
+     * Flip any customer whose subscription has lapsed from 'paid' back to
+     * 'not_paid', so they fall into the inactive list on the next query.
+     * Assumption: "overdue" means subscription_end_date is in the past
+     * AND they're currently marked paid — a customer who was never paid
+     * in the first place isn't "overdue," they're just inactive already.
+     */
+    public static function expireOverdueSubscriptions(): int
     {
-        $token = $request->bearerToken();
-
-        if (!$token) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Access Denied. Authorization Bearer token is missing.'
-            ], 401);
-        }
-
-        try {
-            $auth = app('firebase.auth');
-            
-            // Verify the token with Google/Firebase
-            $verifiedIdToken = $auth->verifyIdToken($token);
-            
-            // Extract the unique Firebase User ID (UID)
-            $firebaseUid = $verifiedIdToken->claims()->get('sub');
-            
-            // Find the customer or create a new record.
-            // Assuming customer_id stores the Firebase UID based on your string keyType.
-            $customer = CustomerAd::firstOrCreate(
-                ['customer_id' => $firebaseUid],
-                [
-                    // Using your exact fillable snake_case column names
-                    'email' => $verifiedIdToken->claims()->get('email'),
-                    'full_name' => $verifiedIdToken->claims()->get('name') ?? 'New Driver',
-                    'nic_number' => '', 
-                    'phone_number' => $verifiedIdToken->claims()->get('phone_number') ?? '',
-                ]
-            );
-
-            // Bind the validated customer to the current request
-            $request->setUserResolver(function () use ($customer) {
-                return $customer;
-            });
-
-            return $next($request);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized. Token is invalid or expired.',
-                'debug' => $e->getMessage() 
-            ], 401);
-        }
+        return static::where('payment_status', 'paid')
+            ->whereNotNull('subscription_end_date')
+            ->where('subscription_end_date', '<', now())
+            ->update(['payment_status' => 'not_paid']);
     }
 }
