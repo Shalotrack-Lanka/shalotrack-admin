@@ -22,10 +22,13 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
-    
-    
+
+
     'shalotrack_api' => [
-        'base_url' => env('SHALOTRACK_API_URL', 'https://api.shalotrack.com'),
+        // FIX: was reading SHALOTRACK_API_URL, but the actual env var set in
+        // .env / admin-user-data.sh is SHALOTRACK_API_BASE_URL. This only
+        // "worked" before because the fallback default happened to match.
+        'base_url' => env('SHALOTRACK_API_BASE_URL', 'https://api.shalotrack.com'),
         'token' => env('SHALOTRACK_API_TOKEN'),
         'sync_key' => env('SHALOTRACK_SYNC_KEY'),
     ],
