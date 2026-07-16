@@ -70,7 +70,7 @@ class TelemetryServiceProvider extends ServiceProvider
         $this->app->singleton(LoggerProvider::class, function () use ($resource) {
             $transport = (new OtlpHttpTransportFactory())->create(
                 'http://otel.shalotrack.internal:4318/v1/logs',
-                'application/x-protobuf'
+                'application/x-protobuf',
                 [],
                 null,
                 2
