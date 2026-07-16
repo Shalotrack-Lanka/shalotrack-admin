@@ -55,7 +55,7 @@ use App\Http\Controllers\Admin\AdminPanel\AddDeviceTypeController;
 
 Route::get('/', function () {
     return redirect()->route('login');
-});
+})->name('home');
 
 Route::middleware(['auth'])->group(function () {
 
@@ -74,7 +74,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/dashboard', function () {
         return redirect()->route('admin.dashboard');
-    });
+    })->name('dashboard.redirect');
 
     /*
     |--------------------------------------------------------------------------
