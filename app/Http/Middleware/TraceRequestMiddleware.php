@@ -17,6 +17,9 @@ class TraceRequestMiddleware
             return $next($request);
         }
 
+        // NEW: mark request start for duration histogram in terminate()
+        $request->attributes->set('otel_start', microtime(true));
+
         $tracer = app(TracerProvider::class)->getTracer('shalotrack-admin');
 
         $span = $tracer->spanBuilder($request->method() . ' ' . $request->path())
@@ -49,6 +52,33 @@ class TraceRequestMiddleware
 
         $span->end();
 
+        // NEW: record request duration as a histogram metric
+        $startedAt = $request->attributes->get('otel_start');
+        if ($startedAt !== null) {
+            $durationMs = (microtime(true) - $startedAt) * 1000;
+            $routeName = optional($request->route())->getName() ?? 'unmatched';
+
+            try {
+                $meter = app(MeterProvider::class)->getMeter('shalotrack-admin');
+                $histogram = $meter->createHistogram(
+                    'http.server.duration',
+                    unit: 'ms',
+                    description: 'Admin portal request duration'
+                );
+                $histogram->record($durationMs, [
+                    'http.method' => $request->method(),
+                    'http.route' => $routeName, // route NAME, not raw path — avoids cardinality blowup
+                    'http.status_code' => (string) $response->getStatusCode(),
+                ]);
+            } catch (\Throwable $e) {
+                // telemetry must never break the response that's already been sent
+            }
+        }
+
         app(TracerProvider::class)->shutdown();
+
+        // NEW: MeterProvider must also be flushed — PHP-FPM kills this process
+        // right after the response, no background thread exists to export later
+        app(MeterProvider::class)->shutdown();
     }
 }
