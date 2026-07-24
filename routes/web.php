@@ -44,6 +44,9 @@ use App\Http\Controllers\Admin\Stock\AddFaultyDeviceController;
 
 use App\Http\Controllers\Admin\AdminPanel\AddDeviceTypeController;
 
+use App\Http\Controllers\Admin\Vehicles\VehicleDetailsController;
+use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
+
 
 
 
@@ -257,6 +260,22 @@ Route::prefix('admin/customer')->middleware('auth')->group(function () {
 
 });
 
+/*
+    |--------------------------------------------------------------------------
+    | Vehicles
+    |--------------------------------------------------------------------------
+    */
+
+Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
+
+    Route::get('/details',
+     [VehicleDetailsController::class, 'index'])
+     ->name('details');
+     
+    Route::get('/gps-tracking',
+     [GpsTrackingController::class, 'index'])
+     ->name('gps');
+});
 
 /*
 |--------------------------------------------------------------------------
