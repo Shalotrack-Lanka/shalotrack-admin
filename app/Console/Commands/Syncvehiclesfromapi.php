@@ -1,5 +1,7 @@
 <?php
 
+
+//using namespaces
 namespace App\Console\Commands;
 
 use App\Models\VehicleAd;
