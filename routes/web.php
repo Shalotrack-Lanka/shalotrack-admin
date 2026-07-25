@@ -271,10 +271,8 @@ Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
     Route::get('/details',
      [VehicleDetailsController::class, 'index'])
      ->name('details');
-     
-    Route::get('/gps-tracking',
-     [GpsTrackingController::class, 'index'])
-     ->name('gps');
+
+     Route::get('/gps-tracking', [GpsTrackingController::class, 'index'])->name('gps');
 });
 
 /*
