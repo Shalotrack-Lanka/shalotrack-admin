@@ -272,7 +272,13 @@ Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
      [VehicleDetailsController::class, 'index'])
      ->name('details');
 
-     Route::get('/gps-tracking', [GpsTrackingController::class, 'index'])->name('gps');
+     Route::get('/gps-tracking',
+     [GpsTrackingController::class, 'index'])
+     ->name('gps');
+
+     Route::get('/gps-tracking/export', 
+     [GpsTrackingController::class, 'exportPdf'])
+    ->name('gps.export');
 });
 
 /*

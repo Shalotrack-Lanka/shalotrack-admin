@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class GpsTrackingController extends Controller
 {
@@ -58,5 +59,43 @@ class GpsTrackingController extends Controller
         return view('admin.vehicles.gps_tracking', compact(
             'search', 'fromDate', 'toDate', 'vehicle', 'currentLocation', 'historyData', 'errorMessage'
         ));
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $search    = trim((string) $request->input('search'));
+        $fromDate  = $request->input('from_date');
+        $toDate    = $request->input('to_date');
+
+        $vehicle = null;
+        $historyData = collect();
+
+        if ($search !== '') {
+            $isUuid = (bool) preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $search);
+
+            $query = array_filter([
+                'vehicleId' => $isUuid ? $search : null,
+                'imei'      => $isUuid ? null : $search,
+                'from'      => $fromDate,
+                'to'        => $toDate,
+            ]);
+
+            $response = Http::timeout(15)
+                ->retry(2, 1000, throw: false)
+                ->withHeaders([
+                    'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
+                ])
+                ->acceptJson()
+                ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
+
+            if ($response->successful()) {
+                $vehicle     = $response->json('vehicle');
+                $historyData = collect($response->json('trackingHistory') ?? []);
+            }
+        }
+
+        $pdf = Pdf::loadView('admin.vehicles.reports.gps_tracking_pdf', compact('vehicle', 'historyData', 'fromDate', 'toDate'));
+
+        return $pdf->download('gps_tracking_' . now()->format('Y-m-d_His') . '.pdf');
     }
 }
