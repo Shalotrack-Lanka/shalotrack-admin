@@ -11,45 +11,52 @@ class GpsTrackingController extends Controller
 {
     public function index(Request $request)
     {
-        $vehicleId = $request->input('vehicle_id');
-        $imei      = $request->input('imei');
+        $search    = trim((string) $request->input('search'));
         $fromDate  = $request->input('from_date');
         $toDate    = $request->input('to_date');
 
+        $vehicle = null;
+        $currentLocation = null;
         $historyData = collect();
         $errorMessage = null;
 
-        // Search by either Vehicle ID or IMEI — at least one is required.
-        // IMEI is resolved to a DeviceId server-side on the API, not here.
-        // No local table, no sync command: GPS history is high-volume
-        // telemetry, unlike Customers/Vehicles — this is a live proxy only.
-        if ($vehicleId || $imei) {
+        if ($search !== '') {
+            // Auto-detect: a UUID has this exact dashed pattern, an IMEI is
+            // 15 plain digits. No need to make the user pick which field to use.
+            $isUuid = (bool) preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $search);
+
+            $query = array_filter([
+                'vehicleId' => $isUuid ? $search : null,
+                'imei'      => $isUuid ? null : $search,
+                'from'      => $fromDate,
+                'to'        => $toDate,
+            ]);
+
             $response = Http::timeout(15)
                 ->retry(2, 1000, throw: false)
                 ->withHeaders([
                     'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
                 ])
                 ->acceptJson()
-                ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', array_filter([
-                    'vehicleId' => $vehicleId,
-                    'imei'      => $imei,
-                    'from'      => $fromDate,
-                    'to'        => $toDate,
-                ]));
+                ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
 
             if ($response->successful()) {
-                $historyData = collect($response->json('data') ?? []);
+                $vehicle         = $response->json('vehicle');
+                $currentLocation = $response->json('currentLocation');
+                $historyData     = collect($response->json('trackingHistory') ?? []);
             } else {
                 Log::error('GPS tracking fetch failed', [
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
-                $errorMessage = 'Could not load tracking data (status ' . $response->status() . '). Please try again.';
+                $errorMessage = $response->status() === 404
+                    ? ($response->json('message') ?? 'Vehicle or device not found.')
+                    : 'Could not load tracking data (status ' . $response->status() . '). Please try again.';
             }
         }
 
         return view('admin.vehicles.gps_tracking', compact(
-            'historyData', 'vehicleId', 'imei', 'fromDate', 'toDate', 'errorMessage'
+            'search', 'fromDate', 'toDate', 'vehicle', 'currentLocation', 'historyData', 'errorMessage'
         ));
     }
 }

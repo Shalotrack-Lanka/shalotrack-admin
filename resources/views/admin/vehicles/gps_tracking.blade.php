@@ -18,19 +18,11 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle ID</label>
-                    <input type="text" name="vehicle_id" value="{{ $vehicleId }}"
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle ID or IMEI</label>
+                    <input type="text" name="search" value="{{ $search }}"
                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
-                           placeholder="Vehicle UUID">
-                    <p class="text-xs text-gray-400 mt-1">Find this on the Vehicle Details page.</p>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">IMEI Number</label>
-                    <input type="text" name="imei" value="{{ $imei }}"
-                           class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
-                           placeholder="15-digit IMEI">
-                    <p class="text-xs text-gray-400 mt-1">Alternative to Vehicle ID — either works.</p>
+                           placeholder="Paste a Vehicle UUID or 15-digit IMEI">
+                    <p class="text-xs text-gray-400 mt-1">Either works — detected automatically.</p>
                 </div>
 
                 <div>
@@ -53,7 +45,42 @@
         </form>
     </div>
 
-    <!-- 2. Map Section -->
+    <!-- 2. Vehicle / Device / Current Location Summary -->
+    @if($vehicle)
+        <div class="bg-white rounded-lg shadow mb-6 p-6">
+            <h3 class="font-semibold text-gray-700 mb-4">Vehicle & Device Summary</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                    <div class="text-gray-400 text-xs uppercase font-bold mb-1">Vehicle</div>
+                    <div class="font-medium">{{ $vehicle['vehicleNumber'] ?? '-' }}</div>
+                    <div class="text-gray-500">{{ $vehicle['make'] ?? '' }} {{ $vehicle['model'] ?? '' }}</div>
+                </div>
+                <div>
+                    <div class="text-gray-400 text-xs uppercase font-bold mb-1">Customer</div>
+                    <div class="font-medium">{{ $vehicle['customerName'] ?? '-' }}</div>
+                </div>
+                <div>
+                    <div class="text-gray-400 text-xs uppercase font-bold mb-1">GPS Device</div>
+                    @if($vehicle['hasGpsDevice'] ?? false)
+                        <span class="px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs font-bold">{{ $vehicle['imei'] ?? 'Linked' }}</span>
+                    @else
+                        <span class="px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 text-xs font-bold">None</span>
+                    @endif
+                </div>
+                <div>
+                    <div class="text-gray-400 text-xs uppercase font-bold mb-1">Current Location</div>
+                    @if($currentLocation)
+                        <div class="font-medium">{{ $currentLocation['latitude'] }}, {{ $currentLocation['longitude'] }}</div>
+                        <div class="text-gray-500">{{ \Carbon\Carbon::parse($currentLocation['eventTime'])->diffForHumans() }}</div>
+                    @else
+                        <div class="text-gray-400">No recent data</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- 3. Map Section -->
     <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
         <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
             <h3 class="font-semibold text-gray-700">Route Map View</h3>
@@ -68,12 +95,12 @@
             <div id="tracking-map" class="w-full h-96"></div>
         @else
             <div id="tracking-map" class="w-full h-96 bg-gray-200 flex items-center justify-center">
-                <span class="text-gray-500 font-medium">Please search a vehicle or IMEI to view the route on map.</span>
+                <span class="text-gray-500 font-medium">Search a Vehicle ID or IMEI to view the route on map.</span>
             </div>
         @endif
     </div>
 
-    <!-- 3. Data List Section -->
+    <!-- 4. Data List Section -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="p-4 border-b flex justify-between items-center">
             <h3 class="font-semibold text-gray-700">Tracking Data History</h3>
@@ -104,7 +131,7 @@
                     @empty
                     <tr>
                         <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                            Search for a vehicle or IMEI to view its tracking history.
+                            Search a Vehicle ID or IMEI to view its tracking history.
                         </td>
                     </tr>
                     @endforelse
@@ -118,7 +145,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-    // API returns points newest-first — reverse to draw the route oldest-to-newest.
     window.gpsHistoryData = @json($historyData->reverse()->values());
 
     document.addEventListener('DOMContentLoaded', function () {
