@@ -38,6 +38,15 @@
 
             <div class="mt-4 flex justify-end gap-2">
                 <a href="{{ route('admin.vehicles.gps') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Clear</a>
+                @if($historyData->isNotEmpty())
+                    <a href="{{ route('admin.vehicles.gps.export', request()->query()) }}"
+                       class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold shadow flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Generate Report
+                    </a>
+                @endif
                 <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold shadow">
                     Search Route
                 </button>
@@ -93,6 +102,26 @@
         </div>
         @if($historyData->isNotEmpty())
             <div id="tracking-map" class="w-full h-96"></div>
+            <div class="p-4 border-t bg-gray-50">
+                <div class="flex items-center gap-3">
+                    <button type="button" id="playback-toggle"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold shadow text-sm w-20">
+                        Play
+                    </button>
+                    <input type="range" id="playback-slider" min="0" max="0" value="0"
+                           class="flex-1 h-2 rounded-lg appearance-none bg-gray-200 cursor-pointer">
+                    <select id="playback-speed" class="border-gray-300 rounded-md shadow-sm text-sm p-1.5">
+                        <option value="1">1x</option>
+                        <option value="4" selected>4x</option>
+                        <option value="10">10x</option>
+                        <option value="30">30x</option>
+                    </select>
+                </div>
+                <div class="mt-2 text-sm text-gray-600 flex justify-between">
+                    <span id="playback-time">-</span>
+                    <span id="playback-speed-value">-</span>
+                </div>
+            </div>
         @else
             <div id="tracking-map" class="w-full h-96 bg-gray-200 flex items-center justify-center">
                 <span class="text-gray-500 font-medium">Search a Vehicle ID or IMEI to view the route on map.</span>
@@ -153,13 +182,34 @@
 
         const latLngs = points.map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
 
+        // Smooths the raw GPS points into a curved line for display only —
+        // playback still moves through the real recorded points/timestamps
+        // below, this is purely visual so the route doesn't look jagged.
+        function smoothPath(pts, segmentsPerPoint = 6) {
+            if (pts.length < 3) return pts;
+            const at = (i) => pts[Math.max(0, Math.min(pts.length - 1, i))];
+            const out = [];
+            for (let i = 0; i < pts.length - 1; i++) {
+                const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+                for (let t = 0; t < segmentsPerPoint; t++) {
+                    const s = t / segmentsPerPoint, s2 = s * s, s3 = s2 * s;
+                    out.push([
+                        0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * s + (2*p0[0] - 5*p1[0] + 4*p2[0] - p3[0]) * s2 + (-p0[0] + 3*p1[0] - 3*p2[0] + p3[0]) * s3),
+                        0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * s + (2*p0[1] - 5*p1[1] + 4*p2[1] - p3[1]) * s2 + (-p0[1] + 3*p1[1] - 3*p2[1] + p3[1]) * s3),
+                    ]);
+                }
+            }
+            out.push(pts[pts.length - 1]);
+            return out;
+        }
+
         const map = L.map('tracking-map');
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19,
         }).addTo(map);
 
-        L.polyline(latLngs, { color: '#2563eb', weight: 4, opacity: 0.8 }).addTo(map);
+        L.polyline(smoothPath(latLngs), { color: '#2563eb', weight: 4, opacity: 0.8, smoothFactor: 1 }).addTo(map);
 
         const startIcon = L.divIcon({
             className: '', html: '<div style="width:14px;height:14px;background:#22c55e;border:2px solid white;border-radius:50%;box-shadow:0 0 0 1px #22c55e"></div>',
@@ -179,6 +229,102 @@
             .addTo(map);
 
         map.fitBounds(latLngs, { padding: [30, 30] });
+
+        // --- Playback ---
+        // Top-down "3D" car: gradient body + windshield panes + soft drop
+        // shadow for depth, rotated to match each point's heading. The
+        // rotation transform lives on an INNER div, not the marker's own
+        // element — Leaflet uses the outer element's transform for
+        // positioning, overwriting it directly would break map placement.
+        const playbackIcon = L.divIcon({
+            className: '',
+            html: `
+                <div class="car-rotate" style="width:28px;height:28px;transform:rotate(0deg);transition:transform 0.12s linear;">
+                    <svg width="28" height="28" viewBox="0 0 28 28">
+                        <defs>
+                            <linearGradient id="carBody" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#fbbf24"/>
+                                <stop offset="100%" stop-color="#b45309"/>
+                            </linearGradient>
+                        </defs>
+                        <ellipse cx="14" cy="22" rx="7" ry="2" fill="black" opacity="0.25"/>
+                        <rect x="9" y="4" width="10" height="18" rx="4" fill="url(#carBody)" stroke="#78350f" stroke-width="1"/>
+                        <rect x="10.5" y="7" width="7" height="5" rx="1.5" fill="#bfdbfe" opacity="0.9"/>
+                        <rect x="10.5" y="14" width="7" height="4" rx="1.5" fill="#bfdbfe" opacity="0.6"/>
+                    </svg>
+                </div>`,
+            iconSize: [28, 28], iconAnchor: [14, 14],
+        });
+        const playbackMarker = L.marker(latLngs[0], { icon: playbackIcon }).addTo(map);
+
+        const toggleBtn = document.getElementById('playback-toggle');
+        const slider = document.getElementById('playback-slider');
+        const speedSelect = document.getElementById('playback-speed');
+        const timeLabel = document.getElementById('playback-time');
+        const speedLabel = document.getElementById('playback-speed-value');
+
+        slider.max = points.length - 1;
+
+        let playIndex = 0;
+        let playTimer = null;
+        let isPlaying = false;
+
+        function renderFrame(i) {
+            playIndex = i;
+            slider.value = i;
+            playbackMarker.setLatLng(latLngs[i]);
+            const el = playbackMarker.getElement();
+            if (el) {
+                const rotEl = el.querySelector('.car-rotate');
+                if (rotEl) rotEl.style.transform = `rotate(${points[i].heading || 0}deg)`;
+            }
+            timeLabel.textContent = new Date(points[i].eventTime).toLocaleString();
+            speedLabel.textContent = (points[i].speed ?? 0) + ' km/h';
+        }
+
+        function scheduleNext() {
+            if (!isPlaying) return;
+            if (playIndex >= points.length - 1) {
+                isPlaying = false;
+                toggleBtn.textContent = 'Play';
+                return;
+            }
+
+            // Reduced clamp — snappier playback. Still paced by the real time
+            // gap between points (scaled by speed), just with a tighter floor
+            // and ceiling so it never feels sluggish even on a long trip.
+            const speedMultiplier = parseFloat(speedSelect.value);
+            const t0 = new Date(points[playIndex].eventTime).getTime();
+            const t1 = new Date(points[playIndex + 1].eventTime).getTime();
+            const deltaMs = Math.min(Math.max((t1 - t0) / speedMultiplier, 10), 400);
+
+            playTimer = setTimeout(() => {
+                renderFrame(playIndex + 1);
+                scheduleNext();
+            }, deltaMs);
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                isPlaying = false;
+                toggleBtn.textContent = 'Play';
+                clearTimeout(playTimer);
+            } else {
+                if (playIndex >= points.length - 1) playIndex = 0;
+                isPlaying = true;
+                toggleBtn.textContent = 'Pause';
+                scheduleNext();
+            }
+        });
+
+        slider.addEventListener('input', () => {
+            isPlaying = false;
+            toggleBtn.textContent = 'Play';
+            clearTimeout(playTimer);
+            renderFrame(parseInt(slider.value, 10));
+        });
+
+        renderFrame(0);
     });
 </script>
 @endsection
