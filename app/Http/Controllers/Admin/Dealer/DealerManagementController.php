@@ -8,14 +8,14 @@ use App\Models\Dealer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-class AddDealerController extends Controller
+class DealerManagementController extends Controller
 {
     public function index()
     {
         $dealers = Dealer::where('status', 'active')->latest()->get();
         $archivedDealers = Dealer::where('status', 'archived')->latest()->get();
 
-        return view('admin.dealer.add_dealer', compact('dealers', 'archivedDealers'));
+        return view('admin.dealer.dealer_management', compact('dealers', 'archivedDealers'));
     }
 
     public function store(Request $request)
@@ -65,6 +65,6 @@ class AddDealerController extends Controller
 
         Dealer::create($validated);
 
-        return redirect()->route('admin.add-dealer')->with('success', 'Dealer saved successfully.');
+        return redirect()->route('admin.dealer_management')->with('success', 'Dealer saved successfully.');
     }
 }

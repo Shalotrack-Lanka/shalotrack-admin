@@ -19,7 +19,7 @@ use App\Http\Controllers\Admin\Supplier\AddSupplierController;
 use App\Http\Controllers\Admin\Supplier\SupplierInvoiceController;
 
 
-use App\Http\Controllers\Admin\Dealer\AddDealerController;
+use App\Http\Controllers\Admin\Dealer\DealerManagementController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\StockTransferController;
@@ -211,8 +211,8 @@ Route::get('/test-error', function () {
 
 Route::prefix('admin/dealer')->group(function () {
 
-    Route::get('/add-dealer', [AddDealerController::class, 'index'])
-   ->name('admin.add-dealer');
+    Route::get('/dealer-management', [DealerManagementController::class, 'index'])
+   ->name('admin.dealer-management');
 
     Route::get('/stock-transfer', [StockTransferController::class, 'index'])
     ->name('admin.dealer.stock-transfer');
@@ -223,7 +223,7 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/dealer-ledger',[DealerLedgerController::class,'index'])
         ->name('admin.dealer-ledger');
 
-    Route::post('/add-dealer', [AddDealerController::class, 'store'])
+    Route::post('/dealer-management', [DealerManagementController::class, 'store'])
         ->name('admin.dealer.store');
 
     Route::get('/stock-transfer', [StockTransferController::class, 'index'])
