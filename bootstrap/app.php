@@ -65,6 +65,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null; // let API/JSON requests get Laravel's normal JSON error shape
             }
 
+            // Validation failures (wrong login, failed form validation
+            // anywhere in the app) must redirect back to the form with
+            // inline errors, exactly like Laravel does by default — not
+            // get hijacked into this custom error page.
+            if ($e instanceof \Illuminate\Validation\ValidationException) {
+                return null;
+            }
+
             $status = 500;
 
             if ($e instanceof HttpExceptionInterface) {
