@@ -49,10 +49,26 @@
             </div>
 
             @if(session('success'))
-                <div class="mb-5 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 text-sm px-4 py-3 rounded shadow-sm flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    {{ session('success') }}
-                </div>
+                @if(is_array(session('success')))
+                    <div class="mb-5 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 text-sm px-4 py-3 rounded shadow-sm">
+                        <div class="flex items-center mb-2">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            {{ session('success')['message'] }}
+                        </div>
+                        <div class="bg-white border border-emerald-200 rounded-lg p-3 mt-2">
+                            <p class="text-xs font-bold text-emerald-800 mb-2">System login created — copy this now, the password cannot be shown again:</p>
+                            <div class="flex gap-4 text-xs font-mono">
+                                <span>Username: <strong>{{ session('success')['username'] }}</strong></span>
+                                <span>Password: <strong>{{ session('success')['password'] }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <div class="mb-5 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 text-sm px-4 py-3 rounded shadow-sm flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        {{ session('success') }}
+                    </div>
+                @endif
             @endif
 
             @if($errors->any())

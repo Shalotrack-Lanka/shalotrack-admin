@@ -21,7 +21,8 @@ class Admin extends Authenticatable
         'email',
         'phone_number',
         'role',
-        'status'
+        'status',
+        'dealer_id',
     ];
 
     protected $hidden = [
