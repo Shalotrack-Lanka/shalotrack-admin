@@ -6,6 +6,7 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -30,7 +31,7 @@ class LoginRequest extends FormRequest
         return [
             'username' => ['required', 'string'],
             'password' => ['required', 'string'],
-      ];
+        ];
     }
 
     /**
@@ -38,29 +39,33 @@ class LoginRequest extends FormRequest
      *
      * @throws ValidationException
      */
-   public function authenticate(): void
-{
-    $this->ensureIsNotRateLimited();
+    public function authenticate(): void
+    {
+        $this->ensureIsNotRateLimited();
 
-    $user = \App\Models\Admin::where('username', $this->username)
-        ->where('status', 'ACTIVE')
-        ->first();
+        $user = \App\Models\Admin::where('username', $this->username)
+            ->where('status', 'ACTIVE')
+            ->first();
 
-    if (
-        ! $user ||
-        $user->password !== $this->password
-    ) {
-        RateLimiter::hit($this->throttleKey());
+        // FIX: was comparing with !== (plain string equality), which only
+        // ever "worked" for accounts with an insecure plain-text password,
+        // and always FAILED for every properly-hashed password — meaning
+        // the correct, secure accounts could never actually log in.
+        if (
+            ! $user ||
+            ! Hash::check($this->password, $user->password)
+        ) {
+            RateLimiter::hit($this->throttleKey());
 
-        throw ValidationException::withMessages([
-            'username' => trans('auth.failed'),
-        ]);
+            throw ValidationException::withMessages([
+                'username' => trans('auth.failed'),
+            ]);
+        }
+
+        Auth::login($user, $this->boolean('remember'));
+
+        RateLimiter::clear($this->throttleKey());
     }
-
-    Auth::login($user, $this->boolean('remember'));
-
-    RateLimiter::clear($this->throttleKey());
-}
 
     /**
      * Ensure the login request is not rate limited.
@@ -78,7 +83,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            'username' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -90,6 +95,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('username')).'|'.$this->ip());
     }
 }

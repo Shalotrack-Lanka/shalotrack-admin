@@ -140,7 +140,6 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-
 /*
 |--------------------------------------------------------------------------
 | Admin Panel (System Config)
