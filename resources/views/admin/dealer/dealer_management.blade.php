@@ -268,7 +268,7 @@
                                 <span class="ml-1 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-[10px]">{{ count($archivedDealers) }}</span>
                             </button>
                         </div>
-                        
+
                         <!-- Search Bar -->
                         <div class="relative w-full sm:w-72">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -305,7 +305,7 @@
                                             x-show="searchQuery === '' || $el.innerText.toLowerCase().includes(searchQuery.toLowerCase())">
                                             <td class="px-4 py-3 text-xs text-gray-400">{{ $i + 1 }}.</td>
                                             <td class="px-4 py-3">
-                                                <div class="font-bold text-gray-900">{{ $dealer->full_name }}</div>
+                                                <a href="{{ route('admin.dealer.profile', $dealer->id) }}" class="font-bold text-gray-900 hover:text-cyan-600 hover:underline">{{ $dealer->full_name }}</a>
                                                 <div class="text-xs text-gray-500 mt-0.5">{{ $dealer->contact_email }}</div>
                                             </td>
                                             <td class="px-4 py-3">
@@ -346,7 +346,7 @@
                                             x-show="searchQuery === '' || $el.innerText.toLowerCase().includes(searchQuery.toLowerCase())">
                                             <td class="px-4 py-3 text-xs text-gray-400">{{ $i + 1 }}.</td>
                                             <td class="px-4 py-3">
-                                                <div class="font-bold text-gray-700">{{ $dealer->full_name }}</div>
+                                                <a href="{{ route('admin.dealer.profile', $dealer->id) }}" class="font-bold text-gray-700 hover:text-cyan-600 hover:underline">{{ $dealer->full_name }}</a>
                                                 <div class="text-xs mt-0.5">{{ $dealer->contact_email }}</div>
                                             </td>
                                             <td class="px-4 py-3">

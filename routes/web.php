@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\Supplier\SupplierInvoiceController;
 
 
 use App\Http\Controllers\Admin\Dealer\DealerManagementController;
+use App\Http\Controllers\Admin\Dealer\DealerProfileController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\StockTransferController;
@@ -239,6 +240,13 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/stock-info/{deviceType}/{supplier}',
     [StockTransferController::class, 'getStockInfo'])
     ->name('admin.dealer.stock.info');
+
+    //dealer profile and status toggle
+    Route::get('/{id}/profile', [DealerProfileController::class, 'show'])
+    ->name('admin.dealer.profile');
+
+    Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])
+    ->name('admin.dealer.toggle-status');
 
 });
 
