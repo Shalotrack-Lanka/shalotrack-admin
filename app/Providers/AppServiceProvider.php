@@ -3,25 +3,28 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Auth\Events\Failed;
-use App\Listeners\LogFailedLogin;
-use Illuminate\Support\Facades\Event;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        // Reuses the OTel trace ID that TraceRequestMiddleware already creates
+        // for every request, so the reference ID shown to a user maps directly
+        // to a searchable trace in Grafana Tempo — no separate ID system needed.
+        // Falls back to a short random ID outside HTTP context (e.g. artisan commands).
+        $this->app->singleton('error.reference_id', function () {
+            $span = request()?->attributes->get('otel_span');
+
+            if ($span) {
+                return strtoupper($span->getContext()->getTraceId());
+            }
+
+            return strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+        });
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        Event::listen(Failed::class, LogFailedLogin::class);
+        //
     }
 }

@@ -198,6 +198,10 @@ Route::prefix('admin/supplier')->group(function () {
 
 });
 
+Route::get('/test-error', function () {
+    throw new \Exception('test error for logging check');
+});
+
 
 /*
 |--------------------------------------------------------------------------
@@ -208,7 +212,7 @@ Route::prefix('admin/supplier')->group(function () {
 Route::prefix('admin/dealer')->group(function () {
 
     Route::get('/add-dealer', [AddDealerController::class, 'index'])
-        ->name('admin.add-dealer');
+   ->name('admin.add-dealer');
 
     Route::get('/stock-transfer', [StockTransferController::class, 'index'])
     ->name('admin.dealer.stock-transfer');
