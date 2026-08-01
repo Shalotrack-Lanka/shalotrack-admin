@@ -28,4 +28,9 @@ class Admin extends Authenticatable
     protected $hidden = [
         'password',
     ];
+
+    public function dealer()
+    {
+        return $this->belongsTo(Dealer::class);
+    }
 }
