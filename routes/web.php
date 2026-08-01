@@ -25,6 +25,11 @@ use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\StockTransferController;
 
+// FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
+// that doesn't exist — the real one lives in a separate top-level Dealer
+// namespace (the Dealer Portal, not Admin's dealer-management area).
+use App\Http\Controllers\Admin\Dealer\DealerDashboardController;
+
 use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 
 use App\Http\Controllers\Admin\Complains_Enquiries\TroubleshootController;
@@ -72,7 +77,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/dashboard',
     [DashboardController::class,'index'])
     ->name('admin.dashboard');
-    Route::view('/dealer/dashboard', 'dealer.dashboard')->name('dealer.dashboard');
+
+    // FIX: was Route::view() with zero data behind it — replaced with the
+    // real controller so the dashboard actually receives $dealer and everything
+    // else it needs. This is now the ONLY place dealer.dashboard is registered.
+    Route::get('/dealer/dashboard', [DealerDashboardController::class, 'index'])->name('dealer.dashboard');
+
     Route::view('/finance/dashboard', 'finance.dashboard')->name('finance.dashboard');
     Route::view('/technician/dashboard', 'technician.dashboard')->name('technician.dashboard');
 
@@ -197,11 +207,6 @@ Route::prefix('admin/supplier')->group(function () {
         ->name('admin.suppliers.detach-product');
 
 });
-
-Route::get('/test-error', function () {
-    throw new \Exception('test error for logging check');
-});
-
 
 /*
 |--------------------------------------------------------------------------
