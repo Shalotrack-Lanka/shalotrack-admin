@@ -71,25 +71,25 @@
                             </tr>
                         </thead>
                         <tbody class="table-body font-medium">
-                            <tr>
-                                <td class="p-3 md:p-4 font-semibold">Kasun Perera</td>
-                                <td class="p-3 md:p-4 font-mono">ST1001</td>
-                                <td class="p-3 md:p-4">Premium</td>
-                                <td class="p-3 md:p-4 text-center"><span class="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-3 py-1 rounded-full text-xs font-bold">Active</span></td>
-                            </tr>
-                            <tr>
-                                <td class="p-3 md:p-4 font-semibold">Nuwan Silva</td>
-                                <td class="p-3 md:p-4 font-mono">ST1002</td>
-                                <td class="p-3 md:p-4">Basic</td>
-                                <td class="p-3 md:p-4 text-center"><span class="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-3 py-1 rounded-full text-xs font-bold">Pending</span></td>
-                            </tr>
-                            <tr>
-                                <td class="p-3 md:p-4 font-semibold">Amal Fernando</td>
-                                <td class="p-3 md:p-4 font-mono">ST1003</td>
-                                <td class="p-3 md:p-4">Premium</td>
-                                <td class="p-3 md:p-4 text-center"><span class="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-3 py-1 rounded-full text-xs font-bold">Active</span></td>
-                            </tr>
-                        </tbody>
+    @forelse($recentCustomers as $c)
+        <tr>
+            <td class="p-3 md:p-4 font-semibold">{{ $c->full_name }}</td>
+            <td class="p-3 md:p-4 font-mono">{{ $c->imei_number ?? '-' }}</td>
+            <td class="p-3 md:p-4">{{ $c->subscription_period ?? '-' }}</td>
+            <td class="p-3 md:p-4 text-center">
+                @if($c->payment_status === 'paid')
+                    <span class="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-3 py-1 rounded-full text-xs font-bold">Active</span>
+                @else
+                    <span class="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-3 py-1 rounded-full text-xs font-bold">Pending</span>
+                @endif
+            </td>
+        </tr>
+    @empty
+        <tr>
+            <td colspan="4" class="p-6 text-center text-gray-400">No customers synced yet.</td>
+        </tr>
+    @endforelse
+</tbody>
                     </table>
                 </div>
             </div>
@@ -130,12 +130,12 @@
 
         // 1. Line Chart Construction
         customerChartInstance = new Chart(document.getElementById('customerChart'), {
-            type: 'line',
-            data: {
-                labels: ['Jan','Feb','Mar','Apr','May','Jun'],
-                datasets: [{
-                    label: 'Customers',
-                    data: [100,150,220,350,500,700],
+    type: 'line',
+    data: {
+        labels: @json($customerGrowthLabels),
+        datasets: [{
+            label: 'Customers',
+            data: @json($customerGrowthData),
                     borderColor:          c.line,
                     backgroundColor:      c.lineFill,
                     fill: true,

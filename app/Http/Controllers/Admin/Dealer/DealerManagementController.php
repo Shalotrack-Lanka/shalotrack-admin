@@ -59,9 +59,6 @@ class DealerManagementController extends Controller
             }
         }
 
-        // Capture the plain password BEFORE it gets hashed below — needed
-        // again further down to create the system login with this same
-        // password, not a separately generated random one.
         $dealerFormPassword = $validated['password'] ?? null;
 
         // This is the dealer's OWN login_id/password field on the Dealer form
@@ -79,15 +76,9 @@ class DealerManagementController extends Controller
         DB::transaction(function () use ($validated, $dealerFormPassword, &$generatedUsername, &$generatedPassword) {
             $dealer = Dealer::create($validated);
             $dealer->refresh(); // re-fetch from DB — needed if the dealer's
-            // primary key is a DB-generated UUID (like Admins.admin_id is),
-            // since Eloquent's normal lastInsertId() trick only works for
-            // simple auto-incrementing integer keys, not UUID defaults.
 
             // --- Auto-create the real system login (Admins table) ---
             $generatedUsername = $this->generateUniqueUsername($dealer->full_name);
-            // Use the exact password the admin typed on the form, if they
-            // typed one — only generate a random one if that field was
-            // left blank, so there's still always a working login either way.
             $generatedPassword = $dealerFormPassword ?: Str::password(10, symbols: false);
 
             Admin::create([
@@ -101,7 +92,7 @@ class DealerManagementController extends Controller
             ]);
         });
 
-        return redirect()->route('admin.dealer_management')->with('success', [
+        return redirect()->route('admin.dealer-management')->with('success', [
             'message'  => "Dealer '{$validated['full_name']}' saved successfully.",
             'username' => $generatedUsername,
             'password' => $generatedPassword,
