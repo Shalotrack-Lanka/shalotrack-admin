@@ -269,7 +269,7 @@
 
         </div>
 
-        <!-- COMPLAINTS & ENQUIRIES MANAGEMENT -->
+        {{-- COMPLAINTS & ENQUIRIES MANAGEMENT — hidden from sidebar for now, routes/controllers still exist and work if linked to directly
         <div x-data="{open:false}">
 
             <button
@@ -303,6 +303,7 @@
             </div>
 
         </div>
+        --}}
 
          <!-- STOCK MANAGEMENT -->
         <div x-data="{open:false}">
@@ -338,7 +339,7 @@
 
         </div>
 
-        <!-- ACTIVATION MANAGEMENT -->
+        {{-- ACTIVATION MANAGEMENT — hidden from sidebar for now, routes/controllers still exist and work if linked to directly
         <div x-data="{open:false}">
 
             <button
@@ -370,8 +371,9 @@
             </div>
 
         </div>
+        --}}
 
-       <!-- REPORT MANAGEMENT -->
+        {{-- REPORT MANAGEMENT — hidden from sidebar for now, routes/controllers still exist and work if linked to directly
         <div x-data="{open:false}">
 
             <button
@@ -403,6 +405,7 @@
             </div>
 
         </div>
+        --}}
         
     </nav>
 
