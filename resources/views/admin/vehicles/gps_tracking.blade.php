@@ -129,44 +129,87 @@
         @endif
     </div>
 
-    <!-- 4. Data List Section -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <!-- 4. Trip History Section -->
+    <div class="bg-white rounded-lg shadow overflow-hidden" x-data="{ expanded: null }">
         <div class="p-4 border-b flex justify-between items-center">
-            <h3 class="font-semibold text-gray-700">Tracking Data History</h3>
-            <span class="text-xs text-gray-400 font-medium">{{ $historyData->count() }} points (max 100 per page)</span>
+            <h3 class="font-semibold text-gray-700">Trip History</h3>
+            <span class="text-xs text-gray-400 font-medium">{{ count($trips) }} trips detected</span>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full whitespace-nowrap">
-                <thead class="bg-gray-100 text-gray-600 text-left text-sm">
-                    <tr>
-                        <th class="px-6 py-3">Date & Time</th>
-                        <th class="px-6 py-3">Latitude</th>
-                        <th class="px-6 py-3">Longitude</th>
-                        <th class="px-6 py-3">Speed (km/h)</th>
-                        <th class="px-6 py-3">Heading</th>
-                        <th class="px-6 py-3">Satellites</th>
-                    </tr>
-                </thead>
-                <tbody class="text-sm text-gray-700">
-                    @forelse($historyData as $point)
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="px-6 py-3">{{ \Carbon\Carbon::parse($point['eventTime'])->format('Y-m-d H:i:s') }}</td>
-                        <td class="px-6 py-3">{{ $point['latitude'] }}</td>
-                        <td class="px-6 py-3">{{ $point['longitude'] }}</td>
-                        <td class="px-6 py-3">{{ $point['speed'] }}</td>
-                        <td class="px-6 py-3">{{ $point['heading'] }}&deg;</td>
-                        <td class="px-6 py-3">{{ $point['satellites'] }}</td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                            Search a Vehicle ID or IMEI to view its tracking history.
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+
+        @forelse($trips as $i => $trip)
+            <div class="border-b last:border-b-0">
+                <button type="button" @click="expanded = expanded === {{ $i }} ? null : {{ $i }}"
+                        class="w-full text-left p-4 hover:bg-gray-50 flex items-center justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold text-gray-800">
+                            {{ $trip['start_time']->format('h:i A') }} – {{ $trip['end_time']->format('h:i A') }}
+                        </div>
+                        <div class="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                            <span class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
+                            <span class="truncate">{{ number_format($trip['start_lat'], 5) }}, {{ number_format($trip['start_lng'], 5) }}</span>
+                        </div>
+                        <div class="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                            <span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                            <span class="truncate">{{ number_format($trip['end_lat'], 5) }}, {{ number_format($trip['end_lng'], 5) }}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6 flex-shrink-0 text-sm">
+                        <div class="text-right">
+                            <div class="text-gray-400 text-xs">Duration</div>
+                            <div class="font-semibold text-gray-700">
+                                @if($trip['duration_min'] >= 60)
+                                    {{ intdiv($trip['duration_min'], 60) }}h {{ $trip['duration_min'] % 60 }}m
+                                @else
+                                    {{ $trip['duration_min'] }}m
+                                @endif
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-gray-400 text-xs">Distance</div>
+                            <div class="font-semibold text-gray-700">{{ $trip['distance_km'] }} km</div>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform" :class="expanded === {{ $i }} ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </button>
+
+                <div x-show="expanded === {{ $i }}" x-cloak class="overflow-x-auto bg-gray-50 border-t">
+                    <table class="w-full whitespace-nowrap text-sm">
+                        <thead class="text-gray-500 text-left">
+                            <tr>
+                                <th class="px-6 py-2">Date & Time</th>
+                                <th class="px-6 py-2">Latitude</th>
+                                <th class="px-6 py-2">Longitude</th>
+                                <th class="px-6 py-2">Speed (km/h)</th>
+                                <th class="px-6 py-2">Heading</th>
+                                <th class="px-6 py-2">Satellites</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-700">
+                            @foreach($trip['points'] as $point)
+                            <tr class="border-t border-gray-200">
+                                <td class="px-6 py-2">{{ \Carbon\Carbon::parse($point['eventTime'])->format('Y-m-d H:i:s') }}</td>
+                                <td class="px-6 py-2">{{ $point['latitude'] }}</td>
+                                <td class="px-6 py-2">{{ $point['longitude'] }}</td>
+                                <td class="px-6 py-2">{{ $point['speed'] }}</td>
+                                <td class="px-6 py-2">{{ $point['heading'] }}&deg;</td>
+                                <td class="px-6 py-2">{{ $point['satellites'] }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @empty
+            <div class="p-6 text-center text-gray-500">
+                @if($historyData->isEmpty())
+                    Search a Vehicle ID or IMEI to view its trip history.
+                @else
+                    No distinct trips detected in this range — the vehicle may have been moving continuously without a stop of 5+ minutes.
+                @endif
+            </div>
+        @endforelse
     </div>
 </div>
 
