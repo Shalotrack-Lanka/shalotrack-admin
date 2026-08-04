@@ -16,15 +16,15 @@ class DealerProfileController extends Controller
      */
     public function edit()
     {
-        // දැනට ලොගින් වී සිටින admin/dealer ගේ විස්තර ලබා ගැනීම
-        $admin = Auth::user(); // හෝ Auth::guard('admin')->user() ඔබගේ guard එක අනුව
+        // Currently logged in admin/dealer's details
+        $admin = Auth::user(); 
 
-        // Role එක DEALER ද සහ dealer_id එකක් තිබේදැයි පරීක්ෂා කිරීම
+        // Check if the role is DEALER and if dealer_id is present
         if ($admin->role !== 'DEALER' || empty($admin->dealer_id)) {
             abort(403, 'Unauthorized action. Dealer account not found.');
         }
 
-        // Dealers table එකෙන් අදාළ dealer ගේ විස්තර ලබා ගැනීම
+        // Get the relevant dealer's details from the Dealers table
         $dealer = Dealer::findOrFail($admin->dealer_id);
 
         return view('admin.dealer.profile', compact('admin', 'dealer'));
@@ -41,7 +41,7 @@ class DealerProfileController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // Data Validation (අවශ්‍ය දත්ත නිවැරදිව ලැබී ඇත්දැයි පරීක්ෂා කිරීම)
+        // Data Validation 
         $request->validate([
             'full_name'     => 'required|string|max:255',
             'contact_email' => 'required|email|max:255',
@@ -50,10 +50,10 @@ class DealerProfileController extends Controller
             'region'        => 'nullable|string|max:255',
             'country'       => 'nullable|string|max:255',
             'qualification' => 'nullable|string|max:255',
-            'new_password'  => 'nullable|string|min:8|confirmed', // 'new_password_confirmation' field එකත් form එකේ තිබිය යුතුයි
+            'new_password'  => 'nullable|string|min:8|confirmed', // 'new_password_confirmation' 
         ]);
 
-        // 1. Dealers Table එක Update කිරීම
+        // 1. update the Dealers table with the provided information
         $dealer = Dealer::findOrFail($admin->dealer_id);
         $dealer->full_name     = $request->full_name;
         $dealer->contact_email = $request->contact_email;
@@ -63,13 +63,12 @@ class DealerProfileController extends Controller
         $dealer->qualification = $request->qualification;
         $dealer->save();
 
-        // 2. Admins Table එක Update කිරීම (සහ Password Hashing)
-        /* Admin table එකෙත් full_name, email තියෙන නිසා ඒවා sync කර තබා ගැනීම වඩාත් සුදුසුයි */
+        // 2. update the Admins table (and Password Hashing)
         $admin->full_name    = $request->full_name;
         $admin->email        = $request->contact_email;
         $admin->phone_number = $request->phone_number;
 
-        // අලුත් Password එකක් දීලා තියෙනවා නම් විතරක් එය Hash කර Admins table එකට save කිරීම
+        // If a new password is provided, hash it and save it to the Admins table
         if ($request->filled('new_password')) {
             $admin->password = Hash::make($request->new_password);
         }
