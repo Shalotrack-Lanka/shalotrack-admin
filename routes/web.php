@@ -256,12 +256,9 @@ Route::prefix('admin/dealer')->group(function () {
     [StockTransferController::class, 'getStockInfo'])
     ->name('admin.dealer.stock.info');
 
-    //dealer profile and status toggle
-    Route::get('/{id}/profile', [DealerProfileController::class, 'show'])
-    ->name('admin.dealer.profile');
 
-    Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])
-    ->name('admin.dealer.toggle-status');
+    Route::get('/profile', [DealerProfileController::class, 'edit'])->name('dealer.profile.edit');
+    Route::put('/profile', [DealerProfileController::class, 'update'])->name('dealer.profile.update');
 
 });
 
@@ -402,12 +399,12 @@ Route::prefix('admin/report')->middleware(['auth'])->group(function () {
     */
 
     Route::get('/admin/profile',
-        [AdminProfileController::class, 'show'])
+       [AdminProfileController::class, 'show'])
         ->name('admin.profile');
 
-    Route::get('/dealer/profile',
-        [AdminProfileController::class, 'show'])
-        ->name('dealer.profile');
+   // Route::get('/dealer/profile',
+     //   [AdminProfileController::class, 'show'])
+      //  ->name('dealer.profile');
 
     Route::get('/finance/profile',
         [AdminProfileController::class, 'show'])

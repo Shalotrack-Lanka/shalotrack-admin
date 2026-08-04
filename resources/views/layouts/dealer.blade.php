@@ -128,7 +128,7 @@
                         <p class="text-sm text-gray-500">{{ Auth::user()->role }}</p>
                     </div>
 
-                    <a href="{{ route('dealer.profile') }}"
+                    <a href="{{ route('dealer.profile.edit') }}"
                        class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
                         Profile
                     </a>
