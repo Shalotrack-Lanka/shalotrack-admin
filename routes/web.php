@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\Supplier\SupplierInvoiceController;
 
 use App\Http\Controllers\Admin\Dealer\DealerManagementController;
 use App\Http\Controllers\Admin\Dealer\DealerProfileController;
+use App\Http\Controllers\Admin\Dealer\DealerAccountController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\StockTransferController;
@@ -217,6 +218,9 @@ Route::prefix('admin/supplier')->group(function () {
         Route::put('/profile', [SupplierProfileController::class, 'update'])
         ->name('supplier.profile.update');
 
+        Route::patch('/{id}/toggle-status', [AddSupplierController::class, 'toggleStatus'])
+       ->name('admin.suppliers.toggle-status');
+
 });
 
 /*
@@ -257,8 +261,10 @@ Route::prefix('admin/dealer')->group(function () {
     ->name('admin.dealer.stock.info');
 
 
-    Route::get('/profile', [DealerProfileController::class, 'edit'])->name('dealer.profile.edit');
-    Route::put('/profile', [DealerProfileController::class, 'update'])->name('dealer.profile.update');
+    Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
+    Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
+    Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
+    Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
 
 });
 
