@@ -76,6 +76,6 @@ class DealerProfileController extends Controller
         
         $admin->save();
 
-        return redirect()->back()->with('success', 'ඔබගේ Profile එක සාර්ථකව Update කරන ලදී!');
+        return redirect()->back()->with('success', 'Your profile has been updated successfully.');
     }
 }
