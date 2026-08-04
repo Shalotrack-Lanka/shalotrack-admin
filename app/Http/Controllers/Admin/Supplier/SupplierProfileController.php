@@ -37,6 +37,7 @@ class SupplierProfileController extends Controller
             'country'      => 'nullable|string|max:100',
             'state'        => 'nullable|string|max:100',
             'gstin_number' => 'nullable|string|max:50',
+            'status'       => 'required|in:Active,Inactive',
         ]);
 
         $supplier->update([
@@ -48,6 +49,7 @@ class SupplierProfileController extends Controller
             'country'      => $validated['country'] ?? null,
             'state'        => $validated['state'] ?? null,
             'gstin_number' => $validated['gstin_number'] ?? null,
+            'status'       => $validated['status'],
         ]);
 
         $admin->update([

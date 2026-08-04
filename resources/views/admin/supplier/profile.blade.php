@@ -82,6 +82,13 @@
                 <input type="text" name="gstin_number" value="{{ old('gstin_number', $supplier->gstin_number) }}"
                        class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-950/10 focus:border-blue-950 outline-none">
             </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Status</label>
+                <select name="status" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-950/10 focus:border-blue-950 outline-none bg-white">
+                    <option value="Active" {{ old('status', $supplier->status) === 'Active' ? 'selected' : '' }}>Active</option>
+                    <option value="Inactive" {{ old('status', $supplier->status) === 'Inactive' ? 'selected' : '' }}>Inactive</option>
+                </select>
+            </div>
         </div>
     </div>
 
