@@ -24,13 +24,23 @@ class Supplier extends Model
         'status',
     ];
 
-    // This defines the relationship: "a Supplier can have many Products,
-    // through the supplier_products pivot table, and that pivot table
-    // also carries price and discount for each attachment."
+    // A Supplier can have many Products, through the supplier_products pivot
+    // table, which also carries price and discount for each attachment.
     public function products()
     {
         return $this->belongsToMany(Product::class, 'supplier_products')
                      ->withPivot('price', 'discount')
                      ->withTimestamps();
+    }
+
+    // Inverse of Stock::supplier(). This IS the "Supply / Stock History"
+    // requirement — every stock-in row received from this supplier already
+    // carries device_type_id, stock_in (quantity), and created_at (date)
+    // with zero new columns. There is no unit_price / total_amount on
+    // `stocks` yet (see ManageStockController) — don't fake those here,
+    // the UI layer just labels them "not tracked yet."
+    public function stocks()
+    {
+        return $this->hasMany(Stock::class);
     }
 }

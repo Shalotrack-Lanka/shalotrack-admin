@@ -10,6 +10,11 @@ use Illuminate\Http\Request;
 
 class DealerProfileController extends Controller
 {
+    /**
+     * Admin-facing: view a SPECIFIC dealer's business profile by ID.
+     * Not to be confused with DealerAccountController, which is the
+     * self-service page a logged-in Dealer uses to edit their OWN profile.
+     */
     public function show($id)
     {
         $dealer = Dealer::findOrFail($id);
@@ -25,16 +30,14 @@ class DealerProfileController extends Controller
 
         $totalDevicesTransferred = $transfers->sum('quantity');
 
-        // Recent activity feed — built from real transfer + device data,
-        // not a separate activity-log table (none exists yet).
         $recentActivity = $transfers->take(5)->map(function ($t) {
             return [
-                'date'  => $t->created_at,
-                'text'  => "Received {$t->quantity} × " . ($t->stock->deviceType->model ?? 'device') . ($t->remarks ? " — {$t->remarks}" : ''),
+                'date' => $t->created_at,
+                'text' => "Received {$t->quantity} × " . ($t->stock->deviceType->model ?? 'device') . ($t->remarks ? " — {$t->remarks}" : ''),
             ];
         })->values();
 
-        return view('admin.dealer.profile', compact(
+        return view('admin.dealer.profile_view', compact(
             'dealer', 'assignedDevices', 'transfers', 'totalDevicesTransferred', 'recentActivity'
         ));
     }

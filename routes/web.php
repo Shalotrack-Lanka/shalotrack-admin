@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\Supplier\SupplierInvoiceController;
 
 use App\Http\Controllers\Admin\Dealer\DealerManagementController;
 use App\Http\Controllers\Admin\Dealer\DealerProfileController;
+use App\Http\Controllers\Admin\Dealer\DealerAccountController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\StockTransferController;
@@ -217,6 +218,9 @@ Route::prefix('admin/supplier')->group(function () {
         Route::put('/profile', [SupplierProfileController::class, 'update'])
         ->name('supplier.profile.update');
 
+        Route::patch('/{id}/toggle-status', [AddSupplierController::class, 'toggleStatus'])
+       ->name('admin.suppliers.toggle-status');
+
 });
 
 /*
@@ -256,12 +260,11 @@ Route::prefix('admin/dealer')->group(function () {
     [StockTransferController::class, 'getStockInfo'])
     ->name('admin.dealer.stock.info');
 
-    //dealer profile and status toggle
-    Route::get('/{id}/profile', [DealerProfileController::class, 'show'])
-    ->name('admin.dealer.profile');
 
-    Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])
-    ->name('admin.dealer.toggle-status');
+    Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
+    Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
+    Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
+    Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
 
 });
 
@@ -402,12 +405,12 @@ Route::prefix('admin/report')->middleware(['auth'])->group(function () {
     */
 
     Route::get('/admin/profile',
-        [AdminProfileController::class, 'show'])
+       [AdminProfileController::class, 'show'])
         ->name('admin.profile');
 
-    Route::get('/dealer/profile',
-        [AdminProfileController::class, 'show'])
-        ->name('dealer.profile');
+   // Route::get('/dealer/profile',
+     //   [AdminProfileController::class, 'show'])
+      //  ->name('dealer.profile');
 
     Route::get('/finance/profile',
         [AdminProfileController::class, 'show'])
