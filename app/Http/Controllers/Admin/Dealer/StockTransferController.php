@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\StockTransfer;
 use App\Models\Stock;
 use App\Models\Dealer;
+use App\Models\SetupShalotrackDevice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\DeviceType;
@@ -20,7 +21,7 @@ class StockTransferController extends Controller
         $availableStocks = Stock::with('deviceType')
                                 ->where('company_available_stock', '>', 0)
                                 ->get();
-        
+
 
         // 2. Database eken Active wela inna Dealers lawa gannawa
         $dealers = Dealer::where('status', 'active')->orderBy('full_name')->get();
@@ -51,97 +52,132 @@ class StockTransferController extends Controller
     }
 
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'device_type_id' => 'required|exists:device_types,id',
-        'supplier_id'    => 'required|exists:suppliers,id',
-        'dealer_id'      => 'required|exists:dealers,id',
-        'quantity'       => 'required|integer|min:1',
-        'remarks'        => 'nullable|string|max:255',
-    ]);
-
-    // Find the correct stock row
-    $stock = Stock::where('device_type_id', $validated['device_type_id'])
-              ->where('supplier_id', $validated['supplier_id'])
-              ->where('company_available_stock', '>=', $validated['quantity'])
-              ->orderByDesc('company_available_stock')
-              ->first();
-
-    if (!$stock) {
-        return back()->withErrors([
-            'stock' => 'Selected stock record not found.'
+    {
+        $validated = $request->validate([
+            'device_type_id' => 'required|exists:device_types,id',
+            'supplier_id'    => 'required|exists:suppliers,id',
+            'dealer_id'      => 'required|exists:dealers,id',
+            'quantity'       => 'required|integer|min:1',
+            'remarks'        => 'nullable|string|max:255',
         ]);
+
+        // Find the correct stock row
+        $stock = Stock::where('device_type_id', $validated['device_type_id'])
+                  ->where('supplier_id', $validated['supplier_id'])
+                  ->where('company_available_stock', '>=', $validated['quantity'])
+                  ->orderByDesc('company_available_stock')
+                  ->first();
+
+        if (!$stock) {
+            return back()->withErrors([
+                'stock' => 'Selected stock record not found.'
+            ]);
+        }
+
+        // Check available quantity
+        if ($stock->company_available_stock < $validated['quantity']) {
+            return back()->withErrors([
+                'quantity' => 'Not enough company stock available.'
+            ]);
+        }
+
+        $assignedCount = 0;
+        $matchedCategory = null;
+
+        DB::transaction(function () use ($stock, $validated, &$assignedCount, &$matchedCategory) {
+
+            $stock->company_available_stock -= $validated['quantity'];
+            $stock->dealer_transferred += $validated['quantity'];
+            $stock->total_available -= $validated['quantity'];
+
+            $stock->save();
+
+            StockTransfer::create([
+                'stock_id'  => $stock->id,
+                'dealer_id' => $validated['dealer_id'],
+                'quantity'  => $validated['quantity'],
+                'remarks'   => $validated['remarks'] ?? null,
+            ]);
+
+            // --- Link real individual devices to this dealer ---
+            // Stock/StockTransfer only ever tracked bulk QUANTITIES, never
+            // individual IMEIs — there is no real foreign key between
+            // SetupShalotrackDevice and DeviceType in the current schema.
+            // CONFIRMED from real data: DeviceType stores short codes ("v5"),
+            // SetupShalotrackDevice stores full descriptions ("v5 with
+            // GT06N") — exact-match can never work, so this checks whether
+            // the device's description CONTAINS the short code instead.
+            // This is inherently fuzzier than a real foreign key and can
+            // false-positive on ambiguous codes (e.g. a future "v50" model
+            // would also match "v5"). The real fix is adding a proper
+            // device_type_id column to setup_shalotrack_devices and having
+            // Add Device use a DeviceType dropdown instead of free text —
+            // worth doing when there's time, this is the interim bridge.
+            $deviceType = $stock->deviceType;
+            $matchedCategory = $deviceType->device_category;
+
+            $matchingDevices = SetupShalotrackDevice::whereNull('dealer_id')
+                ->where('status', 'Not Activated')
+                ->whereRaw('LOWER(device_category) LIKE ?', ['%' . strtolower($deviceType->device_category) . '%'])
+                ->orderBy('shdevice_id')
+                ->limit($validated['quantity'])
+                ->get();
+
+            foreach ($matchingDevices as $device) {
+                $device->dealer_id = $validated['dealer_id'];
+                $device->save();
+            }
+
+            $assignedCount = $matchingDevices->count();
+        });
+
+        $dealer = Dealer::find($validated['dealer_id']);
+
+        $device = DeviceType::find(
+            $validated['device_type_id']
+        );
+
+        $message = $validated['quantity']
+            .' '
+            .$device->model
+            .' successfully transferred to '
+            .$dealer->full_name;
+
+        if ($assignedCount < $validated['quantity']) {
+            $message .= ". Note: only {$assignedCount} of {$validated['quantity']} could be linked to individually registered devices (matching category \"{$matchedCategory}\") — the rest is tracked as bulk stock only until more matching devices are registered via Add Device.";
+        }
+
+        return back()->with('success', $message);
     }
 
-    // Check available quantity
-    if ($stock->company_available_stock < $validated['quantity']) {
-        return back()->withErrors([
-            'quantity' => 'Not enough company stock available.'
-        ]);
+    public function getSuppliers($deviceTypeId)
+    {
+        $suppliers = Supplier::select('suppliers.id', 'suppliers.name')
+            ->join('stocks', 'stocks.supplier_id', '=', 'suppliers.id')
+            ->where('stocks.device_type_id', $deviceTypeId)
+            ->where('stocks.company_available_stock', '>', 0)
+            ->distinct()
+            ->orderBy('suppliers.name')
+            ->get();
+
+        return response()->json($suppliers);
     }
 
-    DB::transaction(function () use ($stock, $validated) {
+    public function getStockInfo($deviceTypeId, $supplierId)
+    {
+        $stock = Stock::where('device_type_id', $deviceTypeId)
+            ->where('supplier_id', $supplierId)
+            ->first();
 
-        $stock->company_available_stock -= $validated['quantity'];
-        $stock->dealer_transferred += $validated['quantity'];
-        $stock->total_available -= $validated['quantity'];
+        if (!$stock) {
+            return response()->json([
+                'available' => 0
+            ]);
+        }
 
-        $stock->save();
-
-        StockTransfer::create([
-            'stock_id'  => $stock->id,
-            'dealer_id' => $validated['dealer_id'],
-            'quantity'  => $validated['quantity'],
-            'remarks'   => $validated['remarks'] ?? null,
-        ]);
-
-    });
-
-    $dealer = Dealer::find($validated['dealer_id']);
-
-$device = DeviceType::find(
-    $validated['device_type_id']
-);
-
-return back()->with(
-    'success',
-
-    $validated['quantity']
-    .' '
-    .$device->model
-    .' successfully transferred to '
-    .$dealer->full_name
-);
-}
-
-public function getSuppliers($deviceTypeId)
-{
-    $suppliers = Supplier::select('suppliers.id', 'suppliers.name')
-        ->join('stocks', 'stocks.supplier_id', '=', 'suppliers.id')
-        ->where('stocks.device_type_id', $deviceTypeId)
-        ->where('stocks.company_available_stock', '>', 0)
-        ->distinct()
-        ->orderBy('suppliers.name')
-        ->get();
-
-    return response()->json($suppliers);
-}
-
-public function getStockInfo($deviceTypeId, $supplierId)
-{
-    $stock = Stock::where('device_type_id', $deviceTypeId)
-        ->where('supplier_id', $supplierId)
-        ->first();
-
-    if (!$stock) {
         return response()->json([
-            'available' => 0
+            'available' => $stock->company_available_stock
         ]);
     }
-
-    return response()->json([
-        'available' => $stock->company_available_stock
-    ]);
-}
 
 }

@@ -23,6 +23,7 @@ class Admin extends Authenticatable
         'role',
         'status',
         'dealer_id',
+        'supplier_id',
     ];
 
     protected $hidden = [
@@ -32,5 +33,10 @@ class Admin extends Authenticatable
     public function dealer()
     {
         return $this->belongsTo(Dealer::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 }
