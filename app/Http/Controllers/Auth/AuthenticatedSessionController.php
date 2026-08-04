@@ -46,16 +46,21 @@ public function store(LoginRequest $request): RedirectResponse
     if ($user->role === 'TECHNICIAN') {
         return redirect()->route('technician.dashboard');
     }
+ 
+     if ($user->role === 'SUPPLIER') {
+            return redirect()->route('supplier.dashboard');
+    }
 
     Auth::logout();
 
     return redirect()->route('login');
 }
-    /**
-     * Destroy an authenticated session.
-     */
-    public function destroy(Request $request): RedirectResponse
-    {
+
+/**
+ * Destroy an authenticated session.
+ */
+public function destroy(Request $request): RedirectResponse
+{
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

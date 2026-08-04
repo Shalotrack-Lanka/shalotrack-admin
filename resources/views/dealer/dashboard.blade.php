@@ -8,7 +8,7 @@
 <div class="bg-gradient-to-r from-blue-950 to-blue-900 border-b-4 border-orange-500 rounded-3xl p-8 md:p-10 mb-8 shadow-md text-white flex items-center justify-between overflow-hidden relative">
     <div class="relative z-10">
         <h1 class="text-3xl md:text-4xl font-extrabold mb-2 tracking-tight">
-            Welcome back, {{ auth()->user()->full_name ?? 'Dealer' }} 👋
+            Welcome back, {{ auth()->user()->full_name ?? 'Dealer' }}
         </h1>
         <p class="text-blue-200 text-sm md:text-base opacity-90">Here is what's happening with your stock and devices today.</p>
     </div>

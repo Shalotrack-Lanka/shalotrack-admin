@@ -14,7 +14,8 @@ use App\Http\Controllers\Admin\MasterPages\PriceGroupController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupDetailsController;
 use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
 
-
+use App\Http\Controllers\Admin\Supplier\SupplierProfileController;
+use App\Http\Controllers\Admin\Supplier\SupplierDashboardController;
 use App\Http\Controllers\Admin\Supplier\AddSupplierController;
 use App\Http\Controllers\Admin\Supplier\SupplierInvoiceController;
 
@@ -205,6 +206,16 @@ Route::prefix('admin/supplier')->group(function () {
         Route::delete('/{id}/detach-product/{productId}',
          [AddSupplierController::class, 'detachProduct'])
         ->name('admin.suppliers.detach-product');
+
+        Route::get('/dashboard', [SupplierDashboardController::class, 'index'])
+        ->name('supplier.dashboard');
+
+        //profile routes for supplier
+        Route::get('/profile', [SupplierProfileController::class, 'edit'])
+        ->name('supplier.profile');
+
+        Route::put('/profile', [SupplierProfileController::class, 'update'])
+        ->name('supplier.profile.update');
 
 });
 
