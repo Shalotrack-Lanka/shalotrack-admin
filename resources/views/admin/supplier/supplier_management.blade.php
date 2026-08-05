@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShaloTrack Admin - Add Supplier</title>
+    <title>ShaloTrack Admin - Supplier Management</title>
 
     @vite(['resources/css/app.css','resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -62,6 +62,186 @@
                     @endif
                 </form>
             </div>
+
+            {{-- ===================== SEARCH RESULTS ===================== --}}
+@if(($search ?? '') !== '' || ($status ?? '') !== '')
+
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+
+        <div class="px-5 py-3 border-b border-gray-100 bg-blue-50 font-bold text-gray-800 text-sm">
+            Search Results
+
+            <span class="text-gray-500 font-normal ml-2">
+                ({{ $allSuppliers->count() }} result{{ $allSuppliers->count() == 1 ? '' : 's' }})
+            </span>
+        </div>
+
+        <div class="p-5">
+
+            <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
+
+                <table class="w-full text-left border-collapse">
+
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="p-3">Supplier Name</th>
+                            <th class="p-3">Country</th>
+                            <th class="p-3">Phone Number</th>
+                            <th class="p-3">Email</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3">Products</th>
+                            <th class="p-3">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody class="divide-y divide-gray-200 bg-white">
+
+                        @forelse($searchResults  as $supplier)
+
+                            <tr class="hover:bg-gray-50 transition">
+
+                                <td class="p-3">
+                                    {{ $supplier->name }}
+                                </td>
+
+                                <td class="p-3">
+                                    {{ ucfirst($supplier->country ?? '-') }}
+                                </td>
+
+                                <td class="p-3">
+                                    {{ $supplier->phone_number ?? '-' }}
+                                </td>
+
+                                <td class="p-3">
+                                    {{ $supplier->email ?? '-' }}
+                                </td>
+
+                                <td class="p-3">
+
+                                    @if($supplier->status === 'Active')
+
+                                        <span class="px-2 py-1 rounded-full
+                                                     bg-green-50 text-green-700
+                                                     border border-green-200
+                                                     text-[10px] font-bold">
+                                            Active
+                                        </span>
+
+                                    @else
+
+                                        <span class="px-2 py-1 rounded-full
+                                                     bg-gray-100 text-gray-500
+                                                     border border-gray-200
+                                                     text-[10px] font-bold">
+                                            Inactive
+                                        </span>
+
+                                    @endif
+
+                                </td>
+
+                                <td class="p-3">
+                                    {{ $supplier->products_count }}
+                                </td>
+
+                                <td class="p-3">
+
+                                    <div class="flex flex-wrap gap-1.5">
+
+                                        {{-- Edit / View --}}
+                                        <a href="{{ route('admin.suppliers', ['supplier_id' => $supplier->id]) }}"
+                                           class="px-3 py-1 rounded-lg bg-gray-800 text-white
+                                                  text-[11px] font-bold hover:bg-gray-900">
+
+                                            Edit / View
+
+                                        </a>
+
+
+                                        {{-- Activate / Deactivate --}}
+                                        <form
+                                            action="{{ route('admin.suppliers.toggle-status', $supplier->id) }}"
+                                            method="POST"
+                                            onsubmit="return confirm('{{ $supplier->status === 'Active' ? 'Deactivate' : 'Activate' }} {{ $supplier->name }}?');">
+
+                                            @csrf
+                                            @method('PATCH')
+
+                                            @if($supplier->status === 'Active')
+
+                                                <button
+                                                    type="submit"
+                                                    class="px-3 py-1 rounded-lg
+                                                           bg-red-50 text-red-700
+                                                           border border-red-200
+                                                           hover:bg-red-100
+                                                           text-[11px] font-bold">
+
+                                                    Deactivate
+
+                                                </button>
+
+                                            @else
+
+                                                <button
+                                                    type="submit"
+                                                    class="px-3 py-1 rounded-lg
+                                                           bg-green-50 text-green-700
+                                                           border border-green-200
+                                                           hover:bg-green-100
+                                                           text-[11px] font-bold">
+
+                                                    Activate
+
+                                                </button>
+
+                                            @endif
+
+                                        </form>
+
+
+                                        {{-- Invoice --}}
+                                        <a href="{{ route('admin.supplier-invoice', ['supplier_id' => $supplier->id]) }}"
+                                           class="px-3 py-1 rounded-lg
+                                                  bg-blue-50 text-blue-700
+                                                  border border-blue-200
+                                                  hover:bg-blue-100
+                                                  text-[11px] font-bold">
+
+                                            Invoices
+
+                                        </a>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                        @empty
+
+                            <tr>
+                                <td colspan="7"
+                                    class="p-6 text-center text-gray-400">
+
+                                    No suppliers match your search.
+
+                                </td>
+                            </tr>
+
+                        @endforelse
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+@endif
 
             {{-- ===================== 1. ADD SUPPLIER FORM ===================== --}}
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
@@ -135,7 +315,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 bg-white">
-                                @forelse($suppliers as $supplier)
+                                @forelse($allSuppliers  as $supplier)
                                     <tr class="hover:bg-gray-50 transition {{ $selectedSupplier?->id === $supplier->id ? 'bg-blue-50' : '' }}">
                                         <td class="p-3">{{ $supplier->name }}</td>
                                         <td class="p-3">{{ ucfirst($supplier->country ?? '-') }}</td>
@@ -190,7 +370,7 @@
                     </div>
                 </div>
             </div>
-
+        
             @if($selectedSupplier)
 
                 {{-- ===================== 3. SUPPLIER OVERVIEW & EDIT ===================== --}}
