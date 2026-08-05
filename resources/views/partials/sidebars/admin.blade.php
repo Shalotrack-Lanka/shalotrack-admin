@@ -152,7 +152,7 @@
             <div x-show="open" class="ml-5 text-sm">
 
                 <a href="{{ route('admin.suppliers') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Add Supplier
+                     Supplier Management
                 </a>
 
                 <a href="{{ route('admin.supplier-invoice') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
