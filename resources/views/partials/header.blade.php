@@ -97,7 +97,7 @@
                             Profile
                         </a>
                     @elseif(Auth::user()->role=='DEALER')
-                        <a href="{{ route('dealer.profile') }}"
+                        <a href="{{ route('dealer.profile.edit') }}"
                            class="block px-4 py-2 hover:bg-gray-100">
                             Profile
                         </a>

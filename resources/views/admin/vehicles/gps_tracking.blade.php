@@ -18,10 +18,11 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle ID or IMEI</label>
+                    <!-- Updated Label and Placeholder for Vehicle Number -->
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle Number or IMEI</label>
                     <input type="text" name="search" value="{{ $search }}"
                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
-                           placeholder="Paste a Vehicle UUID or 15-digit IMEI">
+                           placeholder="e.g. WP CAD 9934 or 15-digit IMEI">
                     <p class="text-xs text-gray-400 mt-1">Either works — detected automatically.</p>
                 </div>
 
@@ -123,8 +124,9 @@
                 </div>
             </div>
         @else
+            <!-- Updated empty state text -->
             <div id="tracking-map" class="w-full h-96 bg-gray-200 flex items-center justify-center">
-                <span class="text-gray-500 font-medium">Search a Vehicle ID or IMEI to view the route on map.</span>
+                <span class="text-gray-500 font-medium">Search a Vehicle Number or IMEI to view the route on map.</span>
             </div>
         @endif
     </div>
@@ -204,7 +206,8 @@
         @empty
             <div class="p-6 text-center text-gray-500">
                 @if($historyData->isEmpty())
-                    Search a Vehicle ID or IMEI to view its trip history.
+                    <!-- Updated empty state text -->
+                    Search a Vehicle Number or IMEI to view its trip history.
                 @else
                     No distinct trips detected in this range — the vehicle may have been moving continuously without a stop of 5+ minutes.
                 @endif
@@ -225,9 +228,6 @@
 
         const latLngs = points.map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
 
-        // Smooths the raw GPS points into a curved line for display only —
-        // playback still moves through the real recorded points/timestamps
-        // below, this is purely visual so the route doesn't look jagged.
         function smoothPath(pts, segmentsPerPoint = 6) {
             if (pts.length < 3) return pts;
             const at = (i) => pts[Math.max(0, Math.min(pts.length - 1, i))];
@@ -273,12 +273,6 @@
 
         map.fitBounds(latLngs, { padding: [30, 30] });
 
-        // --- Playback ---
-        // Top-down "3D" car: gradient body + windshield panes + soft drop
-        // shadow for depth, rotated to match each point's heading. The
-        // rotation transform lives on an INNER div, not the marker's own
-        // element — Leaflet uses the outer element's transform for
-        // positioning, overwriting it directly would break map placement.
         const playbackIcon = L.divIcon({
             className: '',
             html: `
@@ -333,9 +327,6 @@
                 return;
             }
 
-            // Reduced clamp — snappier playback. Still paced by the real time
-            // gap between points (scaled by speed), just with a tighter floor
-            // and ceiling so it never feels sluggish even on a long trip.
             const speedMultiplier = parseFloat(speedSelect.value);
             const t0 = new Date(points[playIndex].eventTime).getTime();
             const t1 = new Date(points[playIndex + 1].eventTime).getTime();

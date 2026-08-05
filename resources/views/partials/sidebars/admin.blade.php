@@ -261,9 +261,9 @@
                 <a href="{{ route('admin.vehicles.details') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                     Vehicle Details
                 </a>
-                <a href="{{ route('admin.vehicles.gps') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+              <!--  <a href="{{ route('admin.vehicles.gps') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                     Gps Tracking
-                </a>
+                </a>-->
 
             </div>
 

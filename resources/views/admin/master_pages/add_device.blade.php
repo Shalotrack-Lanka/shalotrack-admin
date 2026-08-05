@@ -50,16 +50,18 @@
 
                         <div>
                             <label class="block mb-1">Device Category / Type</label>
-                            <select name="device_category" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm h-10">
-                                <option value="" selected disabled>--Select Device Type--</option>
-                                @forelse($deviceTypes as $type)
-                                    <option value="{{ $type->device_category }} with {{ $type->model }}">
-                                        {{ $type->device_category }} with {{ $type->model }}
-                                    </option>
-                                @empty
-                                    <option value="" disabled>No device types configured yet</option>
-                                @endforelse
-                            </select>
+                            <select name="device_type_id" required>
+                            <option value="">-- Select Device Type --</option>
+
+                            @foreach($deviceTypes as $type)
+                                <option
+                                    value="{{ $type->id }}"
+                                    {{ old('device_type_id') == $type->id ? 'selected' : '' }}
+                                >
+                                    {{ $type->device_category }} with {{ $type->model }}
+                                </option>
+                            @endforeach
+                        </select>
                         </div>
 
                         <div>
