@@ -21,6 +21,26 @@ class GpsTrackingController extends Controller
         $historyData = collect();
         $errorMessage = null;
 
+        // Vehicle numbers for the search box's autocomplete dropdown —
+        // reuses the existing vehicles-sync endpoint, no new API call type.
+        $vehicleNumbers = collect();
+        try {
+            $vehiclesResponse = Http::timeout(10)
+                ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+                ->acceptJson()
+                ->get(config('services.shalotrack_api.base_url') . '/api/internal/vehicles-sync');
+
+            if ($vehiclesResponse->successful()) {
+                $vehicleNumbers = collect($vehiclesResponse->json('data') ?? [])
+                    ->pluck('vehicleNumber')
+                    ->filter()
+                    ->values();
+            }
+        } catch (\Throwable $e) {
+            Log::error('Vehicle list fetch for autocomplete failed', ['error' => $e->getMessage()]);
+            // Non-fatal — search still works without the dropdown suggestions.
+        }
+
         if ($search !== '') {
             // Auto-detect: a 15-digit number is an IMEI, anything else is
             // treated as a Vehicle Number. No more raw UUID search — both
@@ -61,7 +81,7 @@ class GpsTrackingController extends Controller
         $trips = $this->segmentTrips($historyData);
 
         return view('admin.vehicles.gps_tracking', compact(
-            'search', 'fromDate', 'toDate', 'vehicle', 'currentLocation', 'historyData', 'trips', 'errorMessage'
+            'search', 'fromDate', 'toDate', 'vehicle', 'currentLocation', 'historyData', 'trips', 'errorMessage', 'vehicleNumbers'
         ));
     }
 
