@@ -22,15 +22,17 @@ class GpsTrackingController extends Controller
         $errorMessage = null;
 
         if ($search !== '') {
-            // Auto-detect: a UUID has this exact dashed pattern, an IMEI is
-            // 15 plain digits. No need to make the user pick which field to use.
-            $isUuid = (bool) preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $search);
+            // Auto-detect: a 15-digit number is an IMEI, anything else is
+            // treated as a Vehicle Number. No more raw UUID search — both
+            // IMEI and Vehicle Number are resolved SERVER-SIDE on the API,
+            // since that's the only place the real Vehicles table lives.
+            $isImei = (bool) preg_match('/^\d{15}$/', $search);
 
             $query = array_filter([
-                'vehicleId' => $isUuid ? $search : null,
-                'imei'      => $isUuid ? null : $search,
-                'from'      => $fromDate,
-                'to'        => $toDate,
+                'vehicleNumber' => $isImei ? null : $search,
+                'imei'          => $isImei ? $search : null,
+                'from'          => $fromDate,
+                'to'            => $toDate,
             ]);
 
             $response = Http::timeout(15)
@@ -63,18 +65,9 @@ class GpsTrackingController extends Controller
         ));
     }
 
-    /**
-     * Groups raw GPS points into discrete trips. A trip ends when speed
-     * stays at or under $stopSpeedThreshold for at least $stopMinutes
-     * straight — this is a movement-based heuristic, not ignition-based,
-     * since ignition sense isn't reliably available on the current hardware
-     * (per the team's own notes on the test vehicle's wiring).
-     *
-     * $points must be ordered NEWEST-FIRST (matches what the API returns).
-     */
     private function segmentTrips($points, float $stopSpeedThreshold = 2.0, int $stopMinutes = 5): array
     {
-        $ordered = $points->reverse()->values(); // oldest-first for segmentation logic
+        $ordered = $points->reverse()->values();
         $trips = [];
         $current = [];
 
@@ -112,7 +105,7 @@ class GpsTrackingController extends Controller
             $trips[] = $this->buildTripSummary($current);
         }
 
-        return array_reverse($trips); // newest trip first, matches the rest of the page
+        return array_reverse($trips);
     }
 
     private function buildTripSummary(array $points): array
@@ -140,7 +133,7 @@ class GpsTrackingController extends Controller
             'end_lat'       => $end['latitude'],
             'end_lng'       => $end['longitude'],
             'distance_km'   => round($distanceKm, 1),
-            'points'        => array_reverse($points), // newest-first, matches page convention
+            'points'        => array_reverse($points),
         ];
     }
 
@@ -163,13 +156,13 @@ class GpsTrackingController extends Controller
         $historyData = collect();
 
         if ($search !== '') {
-            $isUuid = (bool) preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $search);
+            $isImei = (bool) preg_match('/^\d{15}$/', $search);
 
             $query = array_filter([
-                'vehicleId' => $isUuid ? $search : null,
-                'imei'      => $isUuid ? null : $search,
-                'from'      => $fromDate,
-                'to'        => $toDate,
+                'vehicleNumber' => $isImei ? null : $search,
+                'imei'          => $isImei ? $search : null,
+                'from'          => $fromDate,
+                'to'            => $toDate,
             ]);
 
             $response = Http::timeout(15)

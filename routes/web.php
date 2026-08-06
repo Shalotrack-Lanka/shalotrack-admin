@@ -16,7 +16,7 @@ use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
 
 use App\Http\Controllers\Admin\Supplier\SupplierProfileController;
 use App\Http\Controllers\Admin\Supplier\SupplierDashboardController;
-use App\Http\Controllers\Admin\Supplier\AddSupplierController;
+use App\Http\Controllers\Admin\Supplier\SupplierManagementController;
 use App\Http\Controllers\Admin\Supplier\SupplierInvoiceController;
 
 
@@ -180,32 +180,32 @@ Route::middleware(['auth'])->group(function () {
 
 Route::prefix('admin/supplier')->group(function () {
 
-        Route::get('/add-supplier',
-        [AddSupplierController::class,'index'])
+        Route::get('/supplier-management',
+        [SupplierManagementController::class,'index'])
         ->name('admin.suppliers');
 
-         Route::get('/add-supplier-invoice',
+         Route::get('/supplier-management-invoice',
         [SupplierInvoiceController::class,'index'])
         ->name('admin.supplier-invoice');
 
-        Route::post('/add-supplier',
-        [AddSupplierController::class, 'store'])
+        Route::post('/supplier-management',
+        [SupplierManagementController::class, 'store'])
         ->name('admin.suppliers.store');
 
         Route::get('/{id}/edit',
-        [AddSupplierController::class, 'edit'])
+        [SupplierManagementController::class, 'edit'])
         ->name('admin.suppliers.edit');
 
         Route::put('/{id}',
-        [AddSupplierController::class, 'update'])
+        [SupplierManagementController::class, 'update'])
         ->name('admin.suppliers.update');
 
         Route::post('/{id}/attach-product',
-        [AddSupplierController::class, 'attachProduct'])
+        [SupplierManagementController::class, 'attachProduct'])
         ->name('admin.suppliers.attach-product');
 
         Route::delete('/{id}/detach-product/{productId}',
-         [AddSupplierController::class, 'detachProduct'])
+         [SupplierManagementController::class, 'detachProduct'])
         ->name('admin.suppliers.detach-product');
 
         Route::get('/dashboard', [SupplierDashboardController::class, 'index'])
@@ -218,7 +218,7 @@ Route::prefix('admin/supplier')->group(function () {
         Route::put('/profile', [SupplierProfileController::class, 'update'])
         ->name('supplier.profile.update');
 
-        Route::patch('/{id}/toggle-status', [AddSupplierController::class, 'toggleStatus'])
+        Route::patch('/{id}/toggle-status', [SupplierManagementController::class, 'toggleStatus'])
        ->name('admin.suppliers.toggle-status');
 
 });

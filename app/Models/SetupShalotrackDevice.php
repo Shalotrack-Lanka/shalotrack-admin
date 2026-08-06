@@ -17,6 +17,7 @@ class SetupShalotrackDevice extends Model
         'cancel_reason',
         'canceled_date',
         'dealer_id',
+        'device_type_id',
     ];
 
     protected $casts = [
@@ -26,5 +27,10 @@ class SetupShalotrackDevice extends Model
     public function dealer()
     {
         return $this->belongsTo(Dealer::class);
+    }
+
+    public function deviceType()
+    {
+        return $this->belongsTo(DeviceType::class, 'device_type_id');
     }
 }

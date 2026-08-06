@@ -11,41 +11,105 @@ class AddDeviceController extends Controller
 {
     public function index()
     {
-        $devices    = SetupShalotrackDevice::latest('shdevice_id')->get();
-        $deviceTypes = DeviceType::all();
+        $devices = SetupShalotrackDevice::with('deviceType')
+            ->latest('shdevice_id')
+            ->get();
 
-        return view('admin.master_pages.add_device', compact('devices', 'deviceTypes'));
+        $deviceTypes = DeviceType::orderBy('device_category')
+            ->orderBy('model')
+            ->get();
+
+        return view(
+            'admin.master_pages.add_device',
+            compact('devices', 'deviceTypes')
+        );
     }
 
     public function store(Request $request)
     {
+        // Validate submitted data
         $validated = $request->validate([
-            'device_category' => 'required|string|max:255',
-            'imei_number'      => [
-            'required',
-            'digits:15',                                   // exactly 15 numeric digits, no letters/spaces
-            'unique:setup_shalotrack_devices,imei_number',
+            'device_type_id' => [
+                'required',
+                'exists:device_types,id',
             ],
-            'sim_number'       => [
+
+            'imei_number' => [
+                'required',
+                'digits:15',
+                'unique:setup_shalotrack_devices,imei_number',
+            ],
+
+            'sim_number' => [
                 'nullable',
                 'digits:10',
             ],
         ], [
-            'imei_number.digits' => 'IMEI number must be exactly 15 digits.',
-            'imei_number.unique' => 'This IMEI number is already registered.',
-            'sim_number.digits'  => 'SIM number must be exactly 10 digits.',
-            ]);
+            'device_type_id.required' =>
+                'Please select a device type.',
 
-        SetupShalotrackDevice::create($validated);
+            'device_type_id.exists' =>
+                'The selected device type is invalid.',
 
-        return redirect()->route('admin.add-device')
-            ->with('success', 'Device Setup Completed Successfully!');
+            'imei_number.digits' =>
+                'IMEI number must be exactly 15 digits.',
+
+            'imei_number.unique' =>
+                'This IMEI number is already registered.',
+
+            'sim_number.digits' =>
+                'SIM number must be exactly 10 digits.',
+        ]);
+
+        // Get the selected Device Type
+        $deviceType = DeviceType::findOrFail(
+            $validated['device_type_id']
+        );
+
+        // Automatically create the readable category
+        // Example: SIM + dialog = "SIM with dialog"
+        $deviceCategory =
+            $deviceType->device_category .
+            ' with ' .
+            $deviceType->model;
+
+        // Register physical device
+        SetupShalotrackDevice::create([
+            'device_type_id' => $deviceType->id,
+
+            'device_category' => $deviceCategory,
+
+            'imei_number' => $validated['imei_number'],
+
+            'sim_number' => $validated['sim_number'] ?? null,
+
+            'status' => 'Not Activated',
+
+            'dealer_id' => null,
+        ]);
+
+        return redirect()
+            ->route('admin.add-device')
+            ->with(
+                'success',
+                'Device Setup Completed Successfully!'
+            );
     }
 
     public function list()
     {
-        $devices = SetupShalotrackDevice::latest('shdevice_id')
-            ->get(['shdevice_id', 'device_category', 'imei_number', 'sim_number', 'created_at']);
+        $devices = SetupShalotrackDevice::with('deviceType')
+            ->latest('shdevice_id')
+            ->get([
+                'shdevice_id',
+                'device_type_id',
+                'device_category',
+                'imei_number',
+                'sim_number',
+                'status',
+                'dealer_id',
+                'created_at',
+            ]);
 
         return response()->json($devices);
     }
