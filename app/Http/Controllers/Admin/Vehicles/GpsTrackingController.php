@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class GpsTrackingController extends Controller
@@ -23,56 +22,39 @@ class GpsTrackingController extends Controller
         $errorMessage = null;
 
         if ($search !== '') {
-            // Auto-detect: if it's a 15-digit number, treat it as IMEI
+            // Auto-detect: a 15-digit number is an IMEI, anything else is
+            // treated as a Vehicle Number. No more raw UUID search — both
+            // IMEI and Vehicle Number are resolved SERVER-SIDE on the API,
+            // since that's the only place the real Vehicles table lives.
             $isImei = (bool) preg_match('/^\d{15}$/', $search);
-            
-            $vehicleId = null;
-            $imei = null;
 
-            if ($isImei) {
-                $imei = $search;
+            $query = array_filter([
+                'vehicleNumber' => $isImei ? null : $search,
+                'imei'          => $isImei ? $search : null,
+                'from'          => $fromDate,
+                'to'            => $toDate,
+            ]);
+
+            $response = Http::timeout(15)
+                ->retry(2, 1000, throw: false)
+                ->withHeaders([
+                    'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
+                ])
+                ->acceptJson()
+                ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
+
+            if ($response->successful()) {
+                $vehicle         = $response->json('vehicle');
+                $currentLocation = $response->json('currentLocation');
+                $historyData     = collect($response->json('trackingHistory') ?? []);
             } else {
-                // Look up the vehicle ID by Vehicle Number in the local database
-                $localVehicle = DB::table('public.Vehicles')
-                    ->where('VehicleNumber', $search)
-                    ->first();
-
-                if ($localVehicle) {
-                    $vehicleId = $localVehicle->VehicleId;
-                } else {
-                    $errorMessage = "Vehicle Number '{$search}' not found in the system.";
-                }
-            }
-
-            if (!isset($errorMessage)) {
-                $query = array_filter([
-                    'vehicleId' => $vehicleId,
-                    'imei'      => $imei,
-                    'from'      => $fromDate,
-                    'to'        => $toDate,
+                Log::error('GPS tracking fetch failed', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
                 ]);
-
-                $response = Http::timeout(15)
-                    ->retry(2, 1000, throw: false)
-                    ->withHeaders([
-                        'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
-                    ])
-                    ->acceptJson()
-                    ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
-
-                if ($response->successful()) {
-                    $vehicle         = $response->json('vehicle');
-                    $currentLocation = $response->json('currentLocation');
-                    $historyData     = collect($response->json('trackingHistory') ?? []);
-                } else {
-                    Log::error('GPS tracking fetch failed', [
-                        'status' => $response->status(),
-                        'body'   => $response->body(),
-                    ]);
-                    $errorMessage = $response->status() === 404
-                        ? ($response->json('message') ?? 'Vehicle or device not found.')
-                        : 'Could not load tracking data (status ' . $response->status() . '). Please try again.';
-                }
+                $errorMessage = $response->status() === 404
+                    ? ($response->json('message') ?? 'Vehicle or device not found.')
+                    : 'Could not load tracking data (status ' . $response->status() . '). Please try again.';
             }
         }
 
@@ -85,7 +67,7 @@ class GpsTrackingController extends Controller
 
     private function segmentTrips($points, float $stopSpeedThreshold = 2.0, int $stopMinutes = 5): array
     {
-        $ordered = $points->reverse()->values(); 
+        $ordered = $points->reverse()->values();
         $trips = [];
         $current = [];
 
@@ -151,7 +133,7 @@ class GpsTrackingController extends Controller
             'end_lat'       => $end['latitude'],
             'end_lng'       => $end['longitude'],
             'distance_km'   => round($distanceKm, 1),
-            'points'        => array_reverse($points), 
+            'points'        => array_reverse($points),
         ];
     }
 
@@ -175,45 +157,25 @@ class GpsTrackingController extends Controller
 
         if ($search !== '') {
             $isImei = (bool) preg_match('/^\d{15}$/', $search);
-            
-            $vehicleId = null;
-            $imei = null;
-            $canSync = true;
 
-            if ($isImei) {
-                $imei = $search;
-            } else {
-                $localVehicle = DB::table('public.Vehicles')
-                    ->where('VehicleNumber', $search)
-                    ->first();
+            $query = array_filter([
+                'vehicleNumber' => $isImei ? null : $search,
+                'imei'          => $isImei ? $search : null,
+                'from'          => $fromDate,
+                'to'            => $toDate,
+            ]);
 
-                if ($localVehicle) {
-                    $vehicleId = $localVehicle->VehicleId;
-                } else {
-                    $canSync = false;
-                }
-            }
+            $response = Http::timeout(15)
+                ->retry(2, 1000, throw: false)
+                ->withHeaders([
+                    'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
+                ])
+                ->acceptJson()
+                ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
 
-            if ($canSync) {
-                $query = array_filter([
-                    'vehicleId' => $vehicleId,
-                    'imei'      => $imei,
-                    'from'      => $fromDate,
-                    'to'        => $toDate,
-                ]);
-
-                $response = Http::timeout(15)
-                    ->retry(2, 1000, throw: false)
-                    ->withHeaders([
-                        'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
-                    ])
-                    ->acceptJson()
-                    ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
-
-                if ($response->successful()) {
-                    $vehicle     = $response->json('vehicle');
-                    $historyData = collect($response->json('trackingHistory') ?? []);
-                }
+            if ($response->successful()) {
+                $vehicle     = $response->json('vehicle');
+                $historyData = collect($response->json('trackingHistory') ?? []);
             }
         }
 

@@ -51,190 +51,203 @@ class StockTransferController extends Controller
 );
     }
 
-    public function store(Request $request)
-{
-    $validated = $request->validate([
-        'device_type_id' => 'required|exists:device_types,id',
-        'supplier_id'    => 'required|exists:suppliers,id',
-        'dealer_id'      => 'required|exists:dealers,id',
-        'quantity'       => 'required|integer|min:1',
-        'remarks'        => 'nullable|string|max:255',
-    ]);
+        public function store(Request $request)
+        {
+            $validated = $request->validate([
+                'device_type_id' => 'required|exists:device_types,id',
+                'supplier_id'    => 'required|exists:suppliers,id',
+                'dealer_id'      => 'required|exists:dealers,id',
+                'quantity'       => 'required|integer|min:1',
+                'remarks'        => 'nullable|string|max:255',
+            ]);
 
-    // Find selected stock
-    $stock = Stock::with('deviceType')
-        ->where('device_type_id', $validated['device_type_id'])
-        ->where('supplier_id', $validated['supplier_id'])
-        ->where(
-            'company_available_stock',
-            '>=',
-            $validated['quantity']
-        )
-        ->orderByDesc('company_available_stock')
-        ->first();
+            try {
 
-    if (!$stock) {
-        return back()->withErrors([
-            'stock' => 'Selected stock record not found or not enough company stock is available.'
-        ])->withInput();
-    }
+                DB::transaction(function () use ($validated) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Check physical registered devices
-    |--------------------------------------------------------------------------
-    |
-    | Stock table tracks quantities.
-    | setup_shalotrack_devices tracks actual IMEI devices.
-    |
-    */
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 1. Find & lock stock
+                    |--------------------------------------------------------------------------
+                    */
 
-    $availableIndividualDevices =
-        SetupShalotrackDevice::whereNull('dealer_id')
-            ->where(
-                'device_type_id',
-                $validated['device_type_id']
-            )
-            ->where('status', 'Not Activated')
-            ->count();
+                    $stock = Stock::where(
+                            'device_type_id',
+                            $validated['device_type_id']
+                        )
+                        ->where(
+                            'supplier_id',
+                            $validated['supplier_id']
+                        )
+                        ->lockForUpdate()
+                        ->first();
 
-    if ($availableIndividualDevices < $validated['quantity']) {
+                    if (!$stock) {
+                        throw new \Exception(
+                            'Selected stock record was not found.'
+                        );
+                    }
 
-        return back()->withErrors([
-            'quantity' =>
-                "Only {$availableIndividualDevices} registered physical device(s) are available for this device type."
-        ])->withInput();
-    }
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 2. Check bulk stock quantity
+                    |--------------------------------------------------------------------------
+                    */
 
-    $assignedCount = 0;
+                    if (
+                        $stock->company_available_stock
+                        < $validated['quantity']
+                    ) {
+                        throw new \Exception(
+                            'Not enough company stock available.'
+                        );
+                    }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Transfer stock + allocate physical devices
-    |--------------------------------------------------------------------------
-    */
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 3. Find actual physical devices
+                    |--------------------------------------------------------------------------
+                    |
+                    | Example:
+                    |
+                    | Stock Transfer:
+                    | SIM with dialog
+                    |
+                    | device_type_id = 7
+                    |
+                    | We ONLY select:
+                    |
+                    | device_type_id = 7
+                    | dealer_id = NULL
+                    | status = Not Activated
+                    |
+                    */
 
-    DB::transaction(function () use (
-        $stock,
-        $validated,
-        &$assignedCount
-    ) {
+                    $devices = SetupShalotrackDevice::where(
+                            'device_type_id',
+                            $validated['device_type_id']
+                        )
+                        ->whereNull('dealer_id')
+                        ->where('status', 'Not Activated')
+                        ->orderBy('shdevice_id')
+                        ->limit($validated['quantity'])
+                        ->lockForUpdate()
+                        ->get();
 
-        /*
-         * Lock stock row so two transfers cannot modify
-         * the same quantity at the same time.
-         */
-        $stock = Stock::where('id', $stock->id)
-            ->lockForUpdate()
-            ->firstOrFail();
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 4. Check physical device availability
+                    |--------------------------------------------------------------------------
+                    */
 
-        if (
-            $stock->company_available_stock
-            < $validated['quantity']
-        ) {
-            throw new \RuntimeException(
-                'Not enough company stock available.'
-            );
-        }
+                    if (
+                        $devices->count()
+                        < $validated['quantity']
+                    ) {
 
-        /*
-         * Get exact physical devices.
-         *
-         * No LIKE matching anymore.
-         * device_type_id provides the exact relationship.
-         */
+                        throw new \Exception(
+                            'Only '
+                            . $devices->count()
+                            . ' registered physical device(s) are available for this device type.'
+                        );
+                    }
 
-        $matchingDevices =
-            SetupShalotrackDevice::whereNull('dealer_id')
-                ->where(
-                    'device_type_id',
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 5. Update Stock
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $stock->company_available_stock -=
+                        $validated['quantity'];
+
+                    $stock->dealer_transferred +=
+                        $validated['quantity'];
+
+                    $stock->total_available -=
+                        $validated['quantity'];
+
+                    $stock->save();
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 6. Create Stock Transfer History
+                    |--------------------------------------------------------------------------
+                    */
+
+                    StockTransfer::create([
+                        'stock_id'  => $stock->id,
+                        'dealer_id' => $validated['dealer_id'],
+                        'quantity'  => $validated['quantity'],
+                        'remarks'   => $validated['remarks'] ?? null,
+                    ]);
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 7. AUTOMATICALLY ASSIGN DEVICES TO DEALER
+                    |--------------------------------------------------------------------------
+                    |
+                    | THIS IS THE IMPORTANT PART.
+                    |
+                    | dealer_id NULL
+                    |
+                    | becomes:
+                    |
+                    | dealer_id = selected dealer
+                    |
+                    */
+
+                    foreach ($devices as $device) {
+
+                        $device->dealer_id =
+                            $validated['dealer_id'];
+
+                        $device->save();
+                    }
+
+                });
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | 8. Success Message
+                |--------------------------------------------------------------------------
+                */
+
+                $dealer = Dealer::findOrFail(
+                    $validated['dealer_id']
+                );
+
+                $deviceType = DeviceType::findOrFail(
                     $validated['device_type_id']
-                )
-                ->where('status', 'Not Activated')
-                ->orderBy('shdevice_id')
-                ->limit($validated['quantity'])
-                ->lockForUpdate()
-                ->get();
+                );
 
-        /*
-         * Recheck inside transaction.
-         */
-        if (
-            $matchingDevices->count()
-            < $validated['quantity']
-        ) {
-            throw new \RuntimeException(
-                'Not enough registered physical devices are available.'
-            );
+                $deviceName =
+                    $deviceType->device_category
+                    . ' with '
+                    . $deviceType->model;
+
+                return back()->with(
+                    'success',
+                    $validated['quantity']
+                    . ' '
+                    . $deviceName
+                    . ' device(s) successfully transferred and allocated to '
+                    . $dealer->full_name
+                    . '.'
+                );
+
+            } catch (\Exception $e) {
+
+                return back()
+                    ->withErrors([
+                        'transfer' => $e->getMessage()
+                    ])
+                    ->withInput();
+            }
         }
-
-        /*
-         * Update bulk stock
-         */
-
-        $stock->company_available_stock -=
-            $validated['quantity'];
-
-        $stock->dealer_transferred +=
-            $validated['quantity'];
-
-        $stock->total_available -=
-            $validated['quantity'];
-
-        $stock->save();
-
-        /*
-         * Create transfer history
-         */
-
-        StockTransfer::create([
-            'stock_id'  => $stock->id,
-            'dealer_id' => $validated['dealer_id'],
-            'quantity'  => $validated['quantity'],
-            'remarks'   => $validated['remarks'] ?? null,
-        ]);
-
-        /*
-         * Allocate each actual IMEI device
-         * to the selected dealer
-         */
-
-        foreach ($matchingDevices as $device) {
-
-            $device->dealer_id =
-                $validated['dealer_id'];
-
-            $device->save();
-        }
-
-        $assignedCount =
-            $matchingDevices->count();
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Success message
-    |--------------------------------------------------------------------------
-    */
-
-    $dealer = Dealer::findOrFail(
-        $validated['dealer_id']
-    );
-
-    $deviceType = DeviceType::findOrFail(
-        $validated['device_type_id']
-    );
-
-    $deviceName =
-        $deviceType->device_category .
-        ' with ' .
-        $deviceType->model;
-
-    return back()->with(
-        'success',
-        "{$assignedCount} {$deviceName} device(s) successfully transferred and allocated to {$dealer->full_name}."
-    );
-}
 
     public function getSuppliers($deviceTypeId)
     {
