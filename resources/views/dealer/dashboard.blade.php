@@ -70,27 +70,6 @@
 
         </div>
 
-     {{-- Allocated Devices --}}
-<div class="bg-white p-6 rounded-3xl
-            border border-slate-200 border-l-4 border-l-blue-950
-            shadow-sm hover:shadow-md transition">
-
-    <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">
-        Allocated Devices
-    </div>
-
-    <div class="text-4xl font-black text-blue-950 mt-3">
-        {{ $allocatedDeviceCount }}
-    </div>
-
-    <div class="text-xs text-slate-400 mt-2">
-        Physical IMEI devices
-    </div>
-
-</div>
-
-
-
         {{-- Ready For Activation --}}
         <div class="bg-white p-6 rounded-3xl
                     border border-slate-200 border-l-4 border-l-green-500
@@ -241,31 +220,6 @@
                     </span>
 
                 </div>
-
-
-                {{-- Allocated Devices --}}
-                <div class="flex justify-between items-center
-                            bg-slate-50 p-4 rounded-2xl
-                            border border-slate-200">
-
-                    <div>
-
-                        <div class="text-sm font-bold text-slate-700">
-                            Allocated IMEI Devices
-                        </div>
-
-                        <div class="text-xs text-slate-400 mt-1">
-                            Individual devices linked to your dealer account
-                        </div>
-
-                    </div>
-
-                    <span class="font-black text-2xl text-blue-950">
-                        {{ $allocatedDeviceCount }}
-                    </span>
-
-                </div>
-
 
                 {{-- Ready For Activation --}}
                 <div class="flex justify-between items-center

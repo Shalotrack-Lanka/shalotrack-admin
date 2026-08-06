@@ -13,5 +13,8 @@ class DeviceType extends Model
         'device_category',
         'model',
         'protocol',
+        'features',
     ];
+
+    protected $casts = ['features' => 'array'];
 }

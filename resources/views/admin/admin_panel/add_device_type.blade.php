@@ -37,6 +37,7 @@
                                         <th class="p-2.5">Device Category</th>
                                         <th class="p-2.5">Model</th>
                                         <th class="p-2.5">Language (Protocol)</th>
+                                        <th class="p-2.5">Features</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 bg-white">
@@ -46,10 +47,22 @@
                                             <td class="p-2.5">{{ $type->device_category }}</td>
                                             <td class="p-2.5">{{ $type->model }}</td>
                                             <td class="p-2.5">{{ $type->protocol }}</td>
+                                            <td class="p-2.5">
+                                                @if(!empty($type->features) && count($type->features) > 0)
+
+                                                    {{ $features
+                                                        ->whereIn('id', $type->features)
+                                                        ->pluck('name')
+                                                        ->join(', ') }}
+
+                                                @else
+                                                    <span class="text-gray-400">-</span>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="p-4 text-center text-gray-400">
+                                            <td colspan="5" class="p-4 text-center text-gray-400">
                                                 No device types added yet.
                                             </td>
                                         </tr>
@@ -83,7 +96,8 @@
                             </div>
                         @endif
 
-                        <form method="POST" action="{{ route('admin.device-types.store') }}" class="space-y-4">
+                        <form method="POST" action="{{ route('admin.device-types.store') }}" class="space-y-4"
+                              x-data="{ model: '{{ old('model', 'Basic') }}' }">
                             @csrf
 
                             <div>
@@ -96,10 +110,12 @@
 
                             <div>
                                 <label class="block mb-1 text-gray-600">Model</label>
-                                <input type="text" name="model" value="{{ old('model') }}"
-                                       required
-                                       placeholder="e.g. GT06N, TK103"
-                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <select name="model" x-model="model" required
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-normal bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="Basic" {{ old('model') === 'Basic' ? 'selected' : '' }}>Basic</option>
+                                    <option value="Plus" {{ old('model') === 'Plus' ? 'selected' : '' }}>Plus</option>
+                                    <option value="Customize" {{ old('model') === 'Customize' ? 'selected' : '' }}>Customize</option>
+                                </select>
                             </div>
 
                             <div>
@@ -110,11 +126,88 @@
                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
 
+                            {{-- Add Features --}}
+
+                            <div>
+                                <label class="block mb-1 text-gray-600">
+                                    Add Features
+                                </label>
+
+                                <select name="features[]"
+                                        multiple
+                                        class="w-full border border-gray-300
+                                            rounded-lg px-3 py-2
+                                            text-xs font-normal bg-white
+                                            focus:outline-none
+                                            focus:ring-2 focus:ring-blue-500
+                                            min-h-[120px]">
+
+                                    @forelse($features as $feature)
+
+                                        <option
+                                            value="{{ $feature->id }}"
+                                            {{ collect(old('features', []))
+                                                ->contains($feature->id) ? 'selected' : '' }}
+                                        >
+                                            {{ $feature->name }}
+                                        </option>
+
+                                    @empty
+
+                                        <option disabled>
+                                            No features available
+                                        </option>
+
+                                    @endforelse
+
+                                </select>
+
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Hold Ctrl (Windows) or Command (Mac) to select multiple features.
+                                </p>
+                            </div>
+
                             <button type="submit"
                                     class="w-full bg-[#0B1B3F] text-white font-semibold py-2.5 rounded-lg hover:bg-blue-900 transition">
                                 Save Device Type
                             </button>
                         </form>
+
+                    </div>
+                </div>
+
+                <!-- NEW CARD: Add Features -->
+                <div class="lg:col-span-5 lg:col-start-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
+                        Add Feature
+                    </div>
+                    <div class="p-5 text-xs font-semibold text-gray-700 space-y-4">
+
+                        <form method="POST" action="{{ route('admin.features.store') }}" class="space-y-4">
+                            @csrf
+                            <div>
+                                <label class="block mb-1 text-gray-600">Feature Name</label>
+                                <input type="text" name="name" value="{{ old('name') }}"
+                                       required
+                                       placeholder="e.g. Geofencing, Ignition Alert, Speed Alert"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <button type="submit"
+                                    class="w-full bg-gray-100 text-gray-700 font-semibold py-2.5 rounded-lg hover:bg-gray-200 transition border border-gray-300">
+                                Add Feature
+                            </button>
+                        </form>
+
+                        <div class="pt-3 border-t border-gray-100">
+                            <p class="text-gray-500 mb-2">Existing Features</p>
+                            <div class="flex flex-wrap gap-2">
+                                @forelse($features as $feature)
+                                    <span class="px-2.5 py-1 bg-gray-100 rounded-full text-gray-600">{{ $feature->name }}</span>
+                                @empty
+                                    <span class="text-gray-400">None yet.</span>
+                                @endforelse
+                            </div>
+                        </div>
 
                     </div>
                 </div>
