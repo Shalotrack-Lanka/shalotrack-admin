@@ -168,6 +168,8 @@ Route::middleware(['auth'])->group(function () {
            [AddDeviceTypeController::class, 'store'])
             ->name('admin.device-types.store');
 
+        Route::post('/add-device-types/add-features', [AddDeviceTypeController::class, 'storeFeature'])->name('admin.features.store');
+
         });
 
 
