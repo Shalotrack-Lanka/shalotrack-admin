@@ -307,6 +307,9 @@ Route::prefix('admin/customer')->middleware('auth')->group(function () {
     Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])
     ->name('admin.customer-setup.refresh');
 
+    Route::get('/setup/{customerId}/receipt', [CustomerSetupController::class, 'generateInvoice'])
+    ->name('admin.customer-setup.receipt');
+
 });
 
 /*

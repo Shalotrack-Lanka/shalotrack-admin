@@ -41,8 +41,11 @@
                     <td class="p-3">{{ $c->subscription_end_date?->format('Y-m-d') ?? '-' }}</td>
                     <td class="p-3">
                         @if($c->bank_invoice_path)
-                            <a href="{{ route('admin.customer-setup.invoice', $c->customer_id) }}" target="_blank" class="text-blue-600 hover:underline">View</a>
-                        @else
+                            <a href="{{ route('admin.customer-setup.receipt', $c->customer_id) }}"
+                            class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-[11px] font-bold">
+                                Receipt
+                            </a>
+                       @else
                             <span class="text-gray-400">None</span>
                         @endif
                     </td>
