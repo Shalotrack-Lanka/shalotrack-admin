@@ -113,4 +113,44 @@ class AddDeviceController extends Controller
 
         return response()->json($devices);
     }
+
+    private function pushDeviceToApi(\App\Models\SetupShalotrackDevice $device): void
+{
+    try {
+        $response = \Illuminate\Support\Facades\Http::timeout(10)
+            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+            ->acceptJson()
+            ->post(config('services.shalotrack_api.base_url') . '/api/internal/setup-devices-sync', [
+                'id'             => $device->shdevice_id,
+                'deviceCategory' => $device->device_category,
+                'imeiNumber'     => $device->imei_number,
+                'simNumber'      => $device->sim_number,
+                'status'         => $device->status,
+                'cancelReason'   => $device->cancel_reason,
+                'canceledDate'   => $device->canceled_date,
+                'dealerId'       => $device->dealer_id,
+                'deviceTypeId'   => $device->device_type_id,
+                'createdAt'      => $device->created_at,
+                'updatedAt'      => $device->updated_at,
+            ]);
+ 
+        if (!$response->successful()) {
+            \Illuminate\Support\Facades\Log::error('Device push to API failed', [
+                'imei'   => $device->imei_number,
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            // Deliberately non-fatal — the device is already saved locally
+            // in Admin's own database; the mobile-side push failing shouldn't
+            // block the Admin user's workflow. Worth a retry/alerting
+            // mechanism later if this needs to be more reliable.
+        }
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error('Device push to API threw an exception', [
+            'imei'  => $device->imei_number,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+
 }

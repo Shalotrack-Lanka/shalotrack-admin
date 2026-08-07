@@ -7,6 +7,7 @@ use App\Models\CustomerAd;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerSetupController extends Controller
 {
@@ -120,6 +121,29 @@ class CustomerSetupController extends Controller
 
         $url = Storage::disk('supabase')->temporaryUrl($customer->bank_invoice_path, now()->addMinutes(10));
         return redirect($url);
+    }
+
+    /**
+     * System-generated subscription receipt (device/period/date confirmation
+     * only — no price, since no charge amount is captured anywhere in this
+     * table). Separate from viewInvoice() above, which serves the bank
+     * proof-of-payment file the customer/admin uploaded, not a generated PDF.
+     */
+    public function generateInvoice(string $customerId)
+    {
+        $customer = CustomerAd::findOrFail($customerId);
+
+        abort_if(
+            $customer->payment_status !== 'paid' || ! $customer->subscription_start_date,
+            404,
+            'This customer has no active subscription to generate a receipt for.'
+        );
+
+        $pdf = Pdf::loadView('admin.customer.subscription_receipt_pdf', compact('customer'));
+
+        $filename = 'subscription_receipt_' . $customer->customer_id . '_' . now()->format('Y-m-d_His') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     private function calculateEndDate($start, string $period)

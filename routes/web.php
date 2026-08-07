@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\Dealer\DealerAccountController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\StockTransferController;
+use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
 
 // FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
 // that doesn't exist — the real one lives in a separate top-level Dealer
@@ -223,6 +224,19 @@ Route::prefix('admin/supplier')->group(function () {
         Route::patch('/{id}/toggle-status', [SupplierManagementController::class, 'toggleStatus'])
        ->name('admin.suppliers.toggle-status');
 
+       Route::post('/supplier-management-invoice',
+      [SupplierInvoiceController::class, 'store'])
+       ->name('admin.supplier-invoice.store');
+
+       Route::get('/{id}/purchase-data',
+      [SupplierInvoiceController::class, 'getSupplierData'])
+      ->name('admin.suppliers.purchase-data');
+
+      Route::get(
+    '/invoice/{id}/download',
+    [SupplierInvoiceController::class, 'download'])
+    ->name('admin.supplier-invoice.download');
+
 });
 
 /*
@@ -262,6 +276,9 @@ Route::prefix('admin/dealer')->group(function () {
     [StockTransferController::class, 'getStockInfo'])
     ->name('admin.dealer.stock.info');
 
+    Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])
+    ->name('admin.dealer.assigned-devices');
+
 
     Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
     Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
@@ -289,6 +306,9 @@ Route::prefix('admin/customer')->middleware('auth')->group(function () {
 
     Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])
     ->name('admin.customer-setup.refresh');
+
+    Route::get('/setup/{customerId}/receipt', [CustomerSetupController::class, 'generateInvoice'])
+    ->name('admin.customer-setup.receipt');
 
 });
 

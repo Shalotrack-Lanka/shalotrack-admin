@@ -12,6 +12,7 @@ class Product extends Model
     protected $fillable = [
         'product_name',
         'description',
+        'device_type_id',
     ];
 
     // The inverse of Supplier::products() — "which suppliers offer this product"
@@ -20,5 +21,13 @@ class Product extends Model
         return $this->belongsToMany(Supplier::class, 'supplier_products')
                      ->withPivot('price', 'discount')
                      ->withTimestamps();
+    }
+
+    // Nullable — only set when this product represents a physical,
+    // stock-tracked device. Products like SIM packages stay unlinked
+    // and never touch the stocks table.
+    public function deviceType()
+    {
+        return $this->belongsTo(DeviceType::class);
     }
 }

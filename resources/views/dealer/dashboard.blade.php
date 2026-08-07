@@ -121,6 +121,161 @@
 
     </div>
 
+    {{-- ============================================================
+         MY ASSIGNED DEVICES (IMEI-level detail)
+         Uses $allocatedDevices, already built and passed by
+         DealerDashboardController — no controller change needed.
+    ============================================================ --}}
+    <div class="bg-white rounded-3xl
+                border border-slate-200
+                shadow-sm overflow-hidden mb-10">
+
+        {{-- Header --}}
+        <div class="p-6 md:p-8
+                    flex justify-between items-center
+                    border-b border-slate-200">
+
+            <div>
+
+                <h2 class="font-extrabold text-blue-950 text-lg
+                           uppercase tracking-wider">
+
+                    My Assigned Devices
+
+                </h2>
+
+                <p class="text-xs text-slate-400 mt-1">
+                    Individual IMEI devices allocated to you
+                </p>
+
+            </div>
+
+
+            <span class="bg-orange-50 text-orange-600
+                         border border-orange-200
+                         py-1.5 px-4 rounded-full
+                         text-xs font-black">
+
+                {{ $allocatedDeviceCount }} Devices
+
+            </span>
+
+        </div>
+
+
+        {{-- Device Table --}}
+        <div class="overflow-x-auto">
+
+            <table class="w-full text-left text-sm whitespace-nowrap">
+
+                <thead class="bg-slate-50
+                              text-slate-500 text-xs
+                              uppercase font-extrabold
+                              tracking-widest
+                              border-b border-slate-200">
+
+                    <tr>
+
+                        <th class="px-8 py-5">
+                            IMEI Number
+                        </th>
+
+                        <th class="px-8 py-5">
+                            SIM Number
+                        </th>
+
+                        <th class="px-8 py-5">
+                            Device Type
+                        </th>
+
+                        <th class="px-8 py-5">
+                            Status
+                        </th>
+
+                        <th class="px-8 py-5">
+                            Allocation Date
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody class="divide-y divide-slate-200 bg-white">
+
+                    @forelse($allocatedDevices as $device)
+
+                        <tr class="hover:bg-slate-50 transition">
+
+                            {{-- IMEI --}}
+                            <td class="px-8 py-5 font-mono text-xs text-slate-600">
+                                {{ $device->imei_number }}
+                            </td>
+
+                            {{-- SIM --}}
+                            <td class="px-8 py-5 text-slate-600">
+                                {{ $device->sim_number ?? '-' }}
+                            </td>
+
+                            {{-- Device Type --}}
+                            <td class="px-8 py-5 font-bold text-blue-950">
+                                {{ $device->deviceType->device_category ?? $device->device_category ?? '-' }}
+                                @if($device->deviceType?->model)
+                                    <span class="text-slate-400 font-normal">— {{ $device->deviceType->model }}</span>
+                                @endif
+                            </td>
+
+                            {{-- Status --}}
+                            <td class="px-8 py-5">
+                                @php
+                                    $statusStyles = match(strtolower(trim((string) $device->status))) {
+                                        'activated' => 'bg-green-50 text-green-700 border-green-200',
+                                        'temporarily stopped' => 'bg-red-50 text-red-700 border-red-200',
+                                        default => 'bg-slate-100 text-slate-500 border-slate-200',
+                                    };
+                                @endphp
+                                <span class="inline-flex items-center px-3 py-1
+                                             rounded-full text-xs font-bold
+                                             border {{ $statusStyles }}">
+                                    {{ $device->status }}
+                                </span>
+                            </td>
+
+                            {{-- Allocation Date --}}
+                            <td class="px-8 py-5 text-slate-500">
+                                @if($device->allocated_at)
+                                    {{ $device->allocated_at->format('d M Y, h:i A') }}
+                                @else
+                                    <span class="text-slate-400 italic text-xs">Not recorded</span>
+                                @endif
+                            </td>
+
+                        </tr>
+
+                    @empty
+
+                        <tr>
+
+                            <td colspan="5"
+                                class="px-8 py-12
+                                       text-center text-slate-400">
+
+                                No devices have been assigned to you yet.
+
+                            </td>
+
+                        </tr>
+
+                    @endforelse
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
 
     {{-- ============================================================
          STOCK SUMMARY + RECENT ACTIVITIES
@@ -247,6 +402,7 @@
             </div>
 
         </div>
+
 
 
         {{-- ========================================================

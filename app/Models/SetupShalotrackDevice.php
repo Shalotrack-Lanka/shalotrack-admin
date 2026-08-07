@@ -18,10 +18,12 @@ class SetupShalotrackDevice extends Model
         'canceled_date',
         'dealer_id',
         'device_type_id',
+        'allocated_at',
     ];
 
     protected $casts = [
         'canceled_date' => 'datetime',
+        'allocated_at'  => 'datetime',
     ];
 
     public function dealer()
