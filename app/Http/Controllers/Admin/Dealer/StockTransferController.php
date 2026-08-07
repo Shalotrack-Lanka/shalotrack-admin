@@ -45,6 +45,15 @@ class StockTransferController extends Controller
         // 3. Kalin transfer karapu history eka
         $transfers = StockTransfer::with(['stock.deviceType', 'dealer'])->latest()->get();
 
+        // 4. Individual transferred IMEI devices — same data as the
+        // standalone Assigned Devices page, embedded here too since this
+        // is where an admin naturally wants to see "which exact devices
+        // did that bulk number actually turn into."
+        $allocatedDevices = SetupShalotrackDevice::with(['dealer', 'deviceType'])
+            ->whereNotNull('dealer_id')
+            ->orderByDesc('allocated_at')
+            ->get();
+
             return view(
                 'admin.dealer.stock_transfer',
                 compact(
@@ -52,7 +61,8 @@ class StockTransferController extends Controller
                     'suppliers',
                     'availableStocks',
                     'dealers',
-                    'transfers'
+                    'transfers',
+                    'allocatedDevices'
                 )
 
 );
