@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class GpsTrackingController extends Controller
@@ -48,34 +49,17 @@ class GpsTrackingController extends Controller
             // since that's the only place the real Vehicles table lives.
             $isImei = (bool) preg_match('/^\d{15}$/', $search);
 
-            $query = array_filter([
-                'vehicleNumber' => $isImei ? null : $search,
-                'imei'          => $isImei ? $search : null,
-                'from'          => $fromDate,
-                'to'            => $toDate,
-            ]);
+            $result = $this->fetchTrackingData(
+                $isImei ? null : $search,
+                $isImei ? $search : null,
+                $fromDate,
+                $toDate
+            );
 
-            $response = Http::timeout(15)
-                ->retry(2, 1000, throw: false)
-                ->withHeaders([
-                    'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
-                ])
-                ->acceptJson()
-                ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
-
-            if ($response->successful()) {
-                $vehicle         = $response->json('vehicle');
-                $currentLocation = $response->json('currentLocation');
-                $historyData     = collect($response->json('trackingHistory') ?? []);
-            } else {
-                Log::error('GPS tracking fetch failed', [
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
-                $errorMessage = $response->status() === 404
-                    ? ($response->json('message') ?? 'Vehicle or device not found.')
-                    : 'Could not load tracking data (status ' . $response->status() . '). Please try again.';
-            }
+            $vehicle         = $result['vehicle'];
+            $currentLocation = $result['currentLocation'];
+            $historyData     = $result['historyData'];
+            $errorMessage    = $result['errorMessage'];
         }
 
         $trips = $this->segmentTrips($historyData);
@@ -83,6 +67,86 @@ class GpsTrackingController extends Controller
         return view('admin.vehicles.gps_tracking', compact(
             'search', 'fromDate', 'toDate', 'vehicle', 'currentLocation', 'historyData', 'trips', 'errorMessage', 'vehicleNumbers'
         ));
+    }
+
+    /**
+     * Pages through /api/internal/gps-tracking-sync until every point in
+     * the requested range has been retrieved.
+     *
+     * The 100-points-only symptom wasn't an API limitation — GpsTrackingFilter
+     * on the API side already supports real pagination (Page/PageSize, capped
+     * at 500 server-side in GpsTrackingService). Laravel just never sent
+     * page/pageSize at all, so it always silently got page 1 of the default
+     * 100. This requests the real max (500) per call and keeps going until a
+     * page comes back with fewer than 500 points — that's the signal there's
+     * nothing left.
+     *
+     * Safety cap at 50 pages (25,000 points): a genuinely wider range than
+     * that needs a narrower date filter from the admin, not an unbounded
+     * loop hammering the API on every search.
+     */
+    private function fetchTrackingData(?string $vehicleNumber, ?string $imei, ?string $fromDate, ?string $toDate): array
+    {
+        $vehicle = null;
+        $currentLocation = null;
+        $historyData = collect();
+        $errorMessage = null;
+        $gotAnySuccessfulPage = false;
+
+        $page = 1;
+        $pageSize = 500; // matches GpsTrackingService's own hard cap — requesting more is pointless
+        $pagePoints = collect();
+
+        do {
+            $query = array_filter([
+                'vehicleNumber' => $vehicleNumber,
+                'imei'          => $imei,
+                'from'          => $fromDate,
+                'to'            => $toDate,
+                'page'          => $page,
+                'pageSize'      => $pageSize,
+            ]);
+
+            $response = Http::timeout(20)
+                ->retry(2, 1000, throw: false)
+                ->withHeaders([
+                    'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
+                ])
+                ->acceptJson()
+                ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
+
+            if (! $response->successful()) {
+                if (! $gotAnySuccessfulPage) {
+                    Log::error('GPS tracking fetch failed', [
+                        'status' => $response->status(),
+                        'body'   => $response->body(),
+                        'page'   => $page,
+                    ]);
+                    $errorMessage = $response->status() === 404
+                        ? ($response->json('message') ?? 'Vehicle or device not found.')
+                        : 'Could not load tracking data (status ' . $response->status() . '). Please try again.';
+                }
+                // A later page failing after earlier pages succeeded just
+                // stops the loop — whatever was already fetched is kept
+                // and shown, rather than throwing away good data.
+                break;
+            }
+
+            $gotAnySuccessfulPage = true;
+
+            if ($page === 1) {
+                $vehicle         = $response->json('vehicle');
+                $currentLocation = $response->json('currentLocation');
+            }
+
+            $pagePoints  = collect($response->json('trackingHistory') ?? []);
+            $historyData = $historyData->concat($pagePoints);
+
+            $page++;
+
+        } while ($pagePoints->count() >= $pageSize && $page <= 50);
+
+        return compact('vehicle', 'currentLocation', 'historyData', 'errorMessage');
     }
 
     private function segmentTrips($points, float $stopSpeedThreshold = 2.0, int $stopMinutes = 5): array
@@ -178,25 +242,15 @@ class GpsTrackingController extends Controller
         if ($search !== '') {
             $isImei = (bool) preg_match('/^\d{15}$/', $search);
 
-            $query = array_filter([
-                'vehicleNumber' => $isImei ? null : $search,
-                'imei'          => $isImei ? $search : null,
-                'from'          => $fromDate,
-                'to'            => $toDate,
-            ]);
+            $result = $this->fetchTrackingData(
+                $isImei ? null : $search,
+                $isImei ? $search : null,
+                $fromDate,
+                $toDate
+            );
 
-            $response = Http::timeout(15)
-                ->retry(2, 1000, throw: false)
-                ->withHeaders([
-                    'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
-                ])
-                ->acceptJson()
-                ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
-
-            if ($response->successful()) {
-                $vehicle     = $response->json('vehicle');
-                $historyData = collect($response->json('trackingHistory') ?? []);
-            }
+            $vehicle     = $result['vehicle'];
+            $historyData = $result['historyData'];
         }
 
         $pdf = Pdf::loadView('admin.vehicles.reports.gps_tracking_pdf', compact('vehicle', 'historyData', 'fromDate', 'toDate'));
