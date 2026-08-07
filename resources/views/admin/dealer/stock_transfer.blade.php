@@ -40,7 +40,7 @@
                         </option>
                     @empty
                         <option value="" disabled>
-                            No device types available
+                          No device types available
                         </option>
                     @endforelse
 
@@ -85,15 +85,33 @@
                 </div>
 
                 <div class="md:col-span-1">
-                    <label class="block mb-1 font-semibold text-gray-700">Available Stock</label>
+                    <label class="block mb-1 font-semibold text-gray-700">Bulk Stock (Supplier)</label>
 
                     <input type="text" id="available_stock" class="w-full rounded-lg border-gray-300 h-10 bg-gray-100" value="0" readonly>
+                </div>
+
+                <div class="md:col-span-1">
+                    <label class="block mb-1 font-semibold text-gray-700">
+                        Ready to Transfer <span class="text-gray-400 font-normal">(Registered IMEIs)</span>
+                    </label>
+
+                    <input type="text" id="physical_available" class="w-full rounded-lg border-gray-300 h-10 bg-gray-100" value="0" readonly>
+                </div>
+
+                <div class="md:col-span-2">
+                    <p id="stock_mismatch_note" class="text-[11px] text-amber-600 font-bold hidden">
+                        Bulk stock is higher than registered IMEIs — only the registered count can actually be transferred. Register more devices via Master Pages &rarr; Add Device to unlock the rest.
+                    </p>
                 </div>
 
                 <input id="quantity" type="number" name="quantity" min="1" required placeholder="Ex: 50" class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 text-xs">
 
                 <div class="md:col-span-1 flex gap-2">
-                    <button type="submit" class="w-full bg-[#17a2b8] hover:bg-[#138496] text-white px-4 h-10 rounded-lg font-bold shadow-sm transition">Transfer</button>
+                    <button type="submit"
+                            id="transferBtn"
+                            class="w-full bg-[#17a2b8] hover:bg-[#138496] text-white px-4 h-10 rounded-lg font-bold shadow-sm transition">
+                        Transfer
+                    </button>
                 </div>
             </form>
         </div>
@@ -141,8 +159,17 @@ document.addEventListener("DOMContentLoaded", function () {
     const device = document.getElementById("device_type");
     const supplier = document.getElementById("supplier");
     const availableStock = document.getElementById("available_stock");
+    const physicalAvailable = document.getElementById("physical_available");
+    const mismatchNote = document.getElementById("stock_mismatch_note");
     const quantity = document.getElementById("quantity");
     const transferBtn = document.querySelector("button[type='submit']");
+
+    function resetStockFields() {
+        availableStock.value = 0;
+        physicalAvailable.value = 0;
+        mismatchNote.classList.add("hidden");
+        quantity.value = "";
+    }
 
     // -------------------------------
     // Load Suppliers
@@ -152,9 +179,7 @@ document.addEventListener("DOMContentLoaded", function () {
         supplier.innerHTML =
             '<option value="">Loading...</option>';
 
-        availableStock.value = 0;
-        quantity.value = "";
-        transferBtn.disabled = true;
+        resetStockFields();
 
         console.log("Device:", this.value);
 
@@ -209,13 +234,11 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // -------------------------------
-    // Load Available Stock
+    // Load Available Stock (bulk + physical)
     // -------------------------------
     supplier.addEventListener("change", function () {
 
-        availableStock.value = 0;
-        quantity.value = "";
-        transferBtn.disabled = true;
+        resetStockFields();
 
         fetch('/admin/dealer/stock-info/' + device.value + '/' + supplier.value)
 
@@ -233,10 +256,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 console.log(data);
 
-                availableStock.value = data.available;
+                const bulk = parseInt(data.available) || 0;
+                const physical = parseInt(data.physical_available) || 0;
 
-                if (parseInt(data.available) > 0) {
-                    transferBtn.disabled = false;
+                availableStock.value = bulk;
+                physicalAvailable.value = physical;
+
+                // Bulk stock and registered IMEIs are tracked independently
+                // on purpose (bulk = what the supplier promised, physical =
+                // what's actually been scanned in) — so they don't have to
+                // match. The real ceiling on any transfer is whichever is
+                // smaller.
+                const maxTransferable = Math.min(bulk, physical);
+
+                if (bulk > physical) {
+                    mismatchNote.classList.remove("hidden");
                 }
 
             })
@@ -252,30 +286,23 @@ document.addEventListener("DOMContentLoaded", function () {
     // -------------------------------
     // Quantity Validation
     // -------------------------------
-    quantity.addEventListener("input", function () {
+   quantity.addEventListener("input", function () {
 
-        let available = parseInt(availableStock.value) || 0;
-        let entered = parseInt(this.value) || 0;
+    let bulk = parseInt(availableStock.value) || 0;
+    let physical = parseInt(physicalAvailable.value) || 0;
+    let maxTransferable = Math.min(bulk, physical);
+    let entered = parseInt(this.value) || 0;
 
-        if (entered > available) {
+    if (entered > maxTransferable) {
 
-            alert("Maximum available stock is " + available);
+        alert(
+            "Only " + maxTransferable +
+            " device(s) can actually be transferred right now."
+        );
 
-            this.value = available;
-
-        }
-
-        if (entered <= 0) {
-            transferBtn.disabled = true;
-        } else {
-            transferBtn.disabled = false;
-        }
-
-    });
-
+        this.value = maxTransferable;
+    }
+});
 
 });
 </script>
-
-
-

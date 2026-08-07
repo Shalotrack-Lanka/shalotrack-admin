@@ -100,11 +100,17 @@ class SupplierManagementController extends Controller
             | Available Products
             |--------------------------------------------------------------------------
             | Products that are NOT already attached to this supplier.
+            |
+            | FIX: the products table column is `product_name`, not `name`
+            | (see products migration + Product::$fillable). Sorting by
+            | `name` here threw SQLSTATE[42703] "column name does not
+            | exist" on every Edit click — that was the 500 you were
+            | seeing.
             */
             $attachedIds = $selectedProducts->pluck('id');
 
             $availableProducts = Product::whereNotIn('id', $attachedIds)
-                ->orderBy('name')
+                ->orderBy('product_name')
                 ->get();
 
 

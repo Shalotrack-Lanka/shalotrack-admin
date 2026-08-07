@@ -26,10 +26,17 @@ class StockTransferController extends Controller
         // 2. Database eken Active wela inna Dealers lawa gannawa
         $dealers = Dealer::where('status', 'active')->orderBy('full_name')->get();
 
+        /*
+        | groupBy('device_types.id') instead of ->distinct() — DISTINCT on
+        | select('device_types.*') needs equality on every selected column,
+        | including the json `features` column, which plain `json` doesn't
+        | support in Postgres. Grouping by the primary key gives the same
+        | "one row per device type" result without that problem.
+        */
         $deviceTypes = DeviceType::select('device_types.*')
     ->join('stocks', 'stocks.device_type_id', '=', 'device_types.id')
     ->where('stocks.company_available_stock', '>', 0)
-    ->distinct()
+    ->groupBy('device_types.id')
     ->orderBy('device_types.device_category')
     ->get();
 
@@ -121,6 +128,10 @@ class StockTransferController extends Controller
                     | dealer_id = NULL
                     | status = Not Activated
                     |
+                    | NOTE: intentionally left as 'Not Activated' only for
+                    | now — whether Activated-but-unassigned devices should
+                    | also be transferable is still an open decision, not
+                    | forgotten.
                     */
 
                     $devices = SetupShalotrackDevice::where(
@@ -197,12 +208,17 @@ class StockTransferController extends Controller
                     |
                     | dealer_id = selected dealer
                     |
+                    | allocated_at is stamped here too — this is the one
+                    | true moment of allocation, not something to infer
+                    | later from updated_at.
                     */
 
                     foreach ($devices as $device) {
 
                         $device->dealer_id =
                             $validated['dealer_id'];
+
+                        $device->allocated_at = now();
 
                         $device->save();
                     }
@@ -268,14 +284,24 @@ class StockTransferController extends Controller
             ->where('supplier_id', $supplierId)
             ->first();
 
+        // Physical devices aren't tied to a supplier in setup_shalotrack_devices
+        // (no supplier_id column there), so this count is by device type only —
+        // same as the real constraint checked in store().
+        $physicalAvailable = SetupShalotrackDevice::where('device_type_id', $deviceTypeId)
+            ->whereNull('dealer_id')
+            ->where('status', 'Not Activated')
+            ->count();
+
         if (!$stock) {
             return response()->json([
-                'available' => 0
+                'available' => 0,
+                'physical_available' => $physicalAvailable,
             ]);
         }
 
         return response()->json([
-            'available' => $stock->company_available_stock
+            'available' => $stock->company_available_stock,
+            'physical_available' => $physicalAvailable,
         ]);
     }
 

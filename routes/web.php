@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\Dealer\DealerAccountController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\StockTransferController;
+use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
 
 // FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
 // that doesn't exist — the real one lives in a separate top-level Dealer
@@ -261,6 +262,9 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/stock-info/{deviceType}/{supplier}',
     [StockTransferController::class, 'getStockInfo'])
     ->name('admin.dealer.stock.info');
+
+    Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])
+    ->name('admin.dealer.assigned-devices');
 
 
     Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
