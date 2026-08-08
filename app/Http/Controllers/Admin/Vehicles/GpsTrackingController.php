@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Vehicles;
 
 use App\Http\Controllers\Controller;
+use App\Services\AddressResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -11,10 +12,25 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class GpsTrackingController extends Controller
 {
+    private AddressResolver $addressResolver;
+
+    public function __construct(AddressResolver $addressResolver)
+    {
+        $this->addressResolver = $addressResolver;
+    }
+
     public function index(Request $request)
     {
+        // The paginated GPS fetch below is legitimate, bounded work that
+        // can genuinely take a while on a wide date range (up to 50 pages).
+        // Address geocoding used to stack on top of this in the same
+        // request and could blow well past any reasonable limit — that's
+        // gone now (see resolveAddress()), so this margin only has to
+        // cover the fetch loop itself.
+        set_time_limit(120);
+
         $search    = trim((string) $request->input('search'));
-        $fromDate  = $request->input('from_date');
+        $fromDate  = $request->input('from_date'); // plain date, e.g. 2026-08-07 — used for repopulating the form
         $toDate    = $request->input('to_date');
 
         $vehicle = null;
@@ -52,8 +68,8 @@ class GpsTrackingController extends Controller
             $result = $this->fetchTrackingData(
                 $isImei ? null : $search,
                 $isImei ? $search : null,
-                $fromDate,
-                $toDate
+                $this->toDayStart($fromDate),
+                $this->toDayEnd($toDate)
             );
 
             $vehicle         = $result['vehicle'];
@@ -70,20 +86,47 @@ class GpsTrackingController extends Controller
     }
 
     /**
+     * Lightweight AJAX endpoint — resolves exactly ONE coordinate per call.
+     * Called from the blade view, one at a time, after the page has already
+     * rendered. This is what replaces eager geocoding inside index(): moving
+     * the work out of the page request means no single request can ever do
+     * more than one Nominatim lookup, so nothing can accumulate toward a
+     * 60-second execution limit no matter how many trips a search returns.
+     */
+    public function resolveAddress(Request $request)
+    {
+        $validated = $request->validate([
+            'lat' => 'required|numeric',
+            'lng' => 'required|numeric',
+        ]);
+
+        return response()->json([
+            'address' => $this->addressResolver->resolve(
+                (float) $validated['lat'],
+                (float) $validated['lng']
+            ),
+        ]);
+    }
+
+    /**
+     * Filter is day-based, not datetime-local — the form only collects a
+     * date (e.g. 2026-08-07). These expand that into the full-day boundary
+     * the API's DateTime From/To params actually need.
+     */
+    private function toDayStart(?string $date): ?string
+    {
+        return $date ? $date . 'T00:00:00' : null;
+    }
+
+    private function toDayEnd(?string $date): ?string
+    {
+        return $date ? $date . 'T23:59:59' : null;
+    }
+
+    /**
      * Pages through /api/internal/gps-tracking-sync until every point in
-     * the requested range has been retrieved.
-     *
-     * The 100-points-only symptom wasn't an API limitation — GpsTrackingFilter
-     * on the API side already supports real pagination (Page/PageSize, capped
-     * at 500 server-side in GpsTrackingService). Laravel just never sent
-     * page/pageSize at all, so it always silently got page 1 of the default
-     * 100. This requests the real max (500) per call and keeps going until a
-     * page comes back with fewer than 500 points — that's the signal there's
-     * nothing left.
-     *
-     * Safety cap at 50 pages (25,000 points): a genuinely wider range than
-     * that needs a narrower date filter from the admin, not an unbounded
-     * loop hammering the API on every search.
+     * the requested range has been retrieved (API supports real pagination
+     * via Page/PageSize, capped at 500 server-side).
      */
     private function fetchTrackingData(?string $vehicleNumber, ?string $imei, ?string $fromDate, ?string $toDate): array
     {
@@ -94,7 +137,7 @@ class GpsTrackingController extends Controller
         $gotAnySuccessfulPage = false;
 
         $page = 1;
-        $pageSize = 500; // matches GpsTrackingService's own hard cap — requesting more is pointless
+        $pageSize = 500;
         $pagePoints = collect();
 
         do {
@@ -126,9 +169,6 @@ class GpsTrackingController extends Controller
                         ? ($response->json('message') ?? 'Vehicle or device not found.')
                         : 'Could not load tracking data (status ' . $response->status() . '). Please try again.';
                 }
-                // A later page failing after earlier pages succeeded just
-                // stops the loop — whatever was already fetched is kept
-                // and shown, rather than throwing away good data.
                 break;
             }
 
@@ -208,10 +248,22 @@ class GpsTrackingController extends Controller
         $startTime = \Carbon\Carbon::parse($start['eventTime']);
         $endTime = \Carbon\Carbon::parse($end['eventTime']);
 
+        // Carbon 3 changed diffInMinutes() to return a precise float by
+        // default (e.g. 30.85), unlike Carbon 2 which truncated to an int.
+        // Casting explicitly here so duration is always a whole number of
+        // minutes regardless of which Carbon version is running.
+        $durationMin = (int) round($startTime->diffInMinutes($endTime));
+
+        // NOTE: no start_address/end_address computed here anymore — that
+        // used to call the AddressResolver eagerly for every trip, which is
+        // exactly what caused the 60-second timeout on any search with
+        // several never-before-cached locations. Addresses are now resolved
+        // client-side, one at a time, after the page has already rendered
+        // (see resolveAddress() above and the blade's JS).
         return [
             'start_time'    => $startTime,
             'end_time'      => $endTime,
-            'duration_min'  => $startTime->diffInMinutes($endTime),
+            'duration_min'  => $durationMin,
             'start_lat'     => $start['latitude'],
             'start_lng'     => $start['longitude'],
             'end_lat'       => $end['latitude'],
@@ -232,6 +284,8 @@ class GpsTrackingController extends Controller
 
     public function exportPdf(Request $request)
     {
+        set_time_limit(120);
+
         $search    = trim((string) $request->input('search'));
         $fromDate  = $request->input('from_date');
         $toDate    = $request->input('to_date');
@@ -245,8 +299,8 @@ class GpsTrackingController extends Controller
             $result = $this->fetchTrackingData(
                 $isImei ? null : $search,
                 $isImei ? $search : null,
-                $fromDate,
-                $toDate
+                $this->toDayStart($fromDate),
+                $this->toDayEnd($toDate)
             );
 
             $vehicle     = $result['vehicle'];
