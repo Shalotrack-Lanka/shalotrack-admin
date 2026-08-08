@@ -331,6 +331,9 @@ Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
      Route::get('/gps-tracking/export', 
      [GpsTrackingController::class, 'exportPdf'])
     ->name('gps.export');
+
+    Route::get('/gps-tracking/resolve-address', [GpsTrackingController::class, 'resolveAddress'])
+    ->name('gps.resolve-address');
 });
 
 /*

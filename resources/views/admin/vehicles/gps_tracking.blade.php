@@ -18,7 +18,6 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                 <div>
-                    <!-- Updated Label and Placeholder for Vehicle Number -->
                     <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle Number or IMEI</label>
                     <input type="text" name="search" value="{{ $search }}" list="vehicle-numbers-list" autocomplete="off"
                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
@@ -32,13 +31,14 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">From Date/Time</label>
-                    <input type="datetime-local" name="from_date" value="{{ $fromDate }}" class="w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+                    <input type="date" name="from_date" value="{{ $fromDate }}" class="w-full border-gray-300 rounded-md shadow-sm p-2 border">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">To Date/Time</label>
-                    <input type="datetime-local" name="to_date" value="{{ $toDate }}" class="w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+                    <input type="date" name="to_date" value="{{ $toDate }}" class="w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                    <p class="text-xs text-gray-400 mt-1">Covers the full day, midnight to midnight.</p>
                 </div>
             </div>
 
@@ -85,7 +85,10 @@
                 <div>
                     <div class="text-gray-400 text-xs uppercase font-bold mb-1">Current Location</div>
                     @if($currentLocation)
-                        <div class="font-medium">{{ $currentLocation['latitude'] }}, {{ $currentLocation['longitude'] }}</div>
+                        <div class="font-medium js-address"
+                             data-lat="{{ $currentLocation['latitude'] }}" data-lng="{{ $currentLocation['longitude'] }}">
+                            {{ $currentLocation['latitude'] }}, {{ $currentLocation['longitude'] }}
+                        </div>
                         <div class="text-gray-500">{{ \Carbon\Carbon::parse($currentLocation['eventTime'])->diffForHumans() }}</div>
                     @else
                         <div class="text-gray-400">No recent data</div>
@@ -152,11 +155,17 @@
                         </div>
                         <div class="mt-1 flex items-center gap-2 text-xs text-gray-500">
                             <span class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
-                            <span class="truncate">{{ number_format($trip['start_lat'], 5) }}, {{ number_format($trip['start_lng'], 5) }}</span>
+                            <span class="truncate js-address"
+                                  data-lat="{{ $trip['start_lat'] }}" data-lng="{{ $trip['start_lng'] }}">
+                                {{ $trip['start_lat'] }}, {{ $trip['start_lng'] }}
+                            </span>
                         </div>
                         <div class="mt-1 flex items-center gap-2 text-xs text-gray-500">
                             <span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
-                            <span class="truncate">{{ number_format($trip['end_lat'], 5) }}, {{ number_format($trip['end_lng'], 5) }}</span>
+                            <span class="truncate js-address"
+                                  data-lat="{{ $trip['end_lat'] }}" data-lng="{{ $trip['end_lng'] }}">
+                                {{ $trip['end_lat'] }}, {{ $trip['end_lng'] }}
+                            </span>
                         </div>
                     </div>
                     <div class="flex items-center gap-6 flex-shrink-0 text-sm">
@@ -225,15 +234,46 @@
 <script>
     window.gpsHistoryData = @json($historyData->reverse()->values());
 
+    // Background address resolution — the page has already fully rendered
+    // with raw coordinates by the time this runs. Every .js-address span
+    // gets queued and resolved ONE AT A TIME: each call hits Nominatim's
+    // free reverse-geocoding endpoint, limited to 1 request/second. Keeping
+    // exactly one request in flight at a time (not parallel) is what
+    // actually respects that limit correctly.
+    document.addEventListener('DOMContentLoaded', function () {
+        const queue = Array.from(document.querySelectorAll('.js-address'));
+
+        function resolveNext() {
+            const el = queue.shift();
+            if (!el) return;
+
+            const lat = el.dataset.lat;
+            const lng = el.dataset.lng;
+
+            fetch(`{{ route('admin.vehicles.gps.resolve-address') }}?lat=${lat}&lng=${lng}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.address) {
+                        el.textContent = data.address;
+                    }
+                })
+                .catch(() => {
+                    // Leave the coordinate placeholder as-is on failure.
+                })
+                .finally(resolveNext);
+        }
+
+        resolveNext();
+    });
+</script>
+
+<script>
     document.addEventListener('DOMContentLoaded', function () {
         const points = window.gpsHistoryData;
         if (!points || points.length === 0) return;
 
         const latLngs = points.map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
 
-        // Smooths the raw GPS points into a curved line for display only —
-        // playback still moves through the real recorded points/timestamps
-        // below, this is purely visual so the route doesn't look jagged.
         function smoothPath(pts, segmentsPerPoint = 6) {
             if (pts.length < 3) return pts;
             const at = (i) => pts[Math.max(0, Math.min(pts.length - 1, i))];
@@ -279,12 +319,6 @@
 
         map.fitBounds(latLngs, { padding: [30, 30] });
 
-        // --- Playback ---
-        // Top-down "3D" car: gradient body + windshield panes + soft drop
-        // shadow for depth, rotated to match each point's heading. The
-        // rotation transform lives on an INNER div, not the marker's own
-        // element — Leaflet uses the outer element's transform for
-        // positioning, overwriting it directly would break map placement.
         const playbackIcon = L.divIcon({
             className: '',
             html: `
@@ -339,9 +373,6 @@
                 return;
             }
 
-            // Reduced clamp — snappier playback. Still paced by the real time
-            // gap between points (scaled by speed), just with a tighter floor
-            // and ceiling so it never feels sluggish even on a long trip.
             const speedMultiplier = parseFloat(speedSelect.value);
             const t0 = new Date(points[playIndex].eventTime).getTime();
             const t1 = new Date(points[playIndex + 1].eventTime).getTime();
