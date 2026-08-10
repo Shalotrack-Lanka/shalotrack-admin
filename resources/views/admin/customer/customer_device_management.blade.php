@@ -43,9 +43,9 @@
                     <h3 class="text-xl font-bold text-gray-800">Active Devices</h3>
                     <span class="text-sm font-semibold text-green-700">{{ $activeDevices->count() }} devices</span>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto overflow-y-auto max-h-96">
                     <table class="w-full text-left text-sm border-collapse">
-                        <thead class="bg-gray-50 border-b border-gray-200 font-bold text-gray-700">
+                        <thead class="bg-gray-50 border-b border-gray-200 font-bold text-gray-700 sticky top-0 z-10">
                             <tr>
                                 <th class="p-3">Customer ID</th>
                                 <th class="p-3">Customer Name</th>
@@ -60,16 +60,17 @@
                             @forelse($activeDevices as $d)
                                 @php
                                     $editPayload = [
-                                        'activated_device_id' => $d->activated_device_id,
-                                        'customer_name'       => $d->customer_name,
-                                        'vehicle_number'      => $d->vehicle_number,
-                                        'imei_number'         => $d->imei_number,
-                                        'sim_number'          => $d->sim_number,
-                                        'device_category'     => $d->device_category,
-                                        'payment_status'      => $d->payment_status,
-                                        'subscription_model'  => $d->subscription_model,
-                                        'bank_invoice'        => $d->bank_invoice,
-                                        'bank_slip_url'       => $d->bank_slip ? asset('storage/' . $d->bank_slip) : null,
+                                        'activated_device_id'     => $d->activated_device_id,
+                                        'customer_name'           => $d->customer_name,
+                                        'vehicle_number'          => $d->vehicle_number,
+                                        'imei_number'             => $d->imei_number,
+                                        'sim_number'              => $d->sim_number,
+                                        'device_category'         => $d->device_category,
+                                        'payment_status'          => $d->payment_status,
+                                        'subscription_model'      => $d->subscription_model,
+                                        'subscription_start_date' => optional($d->subscription_start_date)->format('Y-m-d'),
+                                        'bank_invoice'            => $d->bank_invoice,
+                                        'bank_slip_url'           => $d->bank_slip ? asset('storage/' . $d->bank_slip) : null,
                                     ];
                                 @endphp
                             <tr>
@@ -101,15 +102,75 @@
                 </div>
             </div>
 
+            {{-- ===================== EXPIRED SUBSCRIPTION DEVICES ===================== --}}
+            <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
+                <div class="px-6 py-4 border-b border-gray-100 bg-amber-50 flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-800">Expired-Subscription-Devices</h3>
+                    <span class="text-sm font-semibold text-amber-700">{{ $expiredDevices->count() }} devices</span>
+                </div>
+                <div class="overflow-x-auto overflow-y-auto max-h-96">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead class="bg-amber-50/60 border-b border-gray-200 font-bold text-gray-700 sticky top-0 z-10">
+                            <tr>
+                                <th class="p-3">Customer ID</th>
+                                <th class="p-3">Customer Name</th>
+                                <th class="p-3">Vehicle Number</th>
+                                <th class="p-3">Model</th>
+                                <th class="p-3">GPS Device</th>
+                                <th class="p-3">Vehicle ID</th>
+                                <th class="p-3 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @forelse($expiredDevices as $e)
+                                @php
+                                    $reactivatePayload = [
+                                        'expired_device_id' => $e->expired_device_id,
+                                        'customer_name'      => $e->customer_name,
+                                        'vehicle_number'      => $e->vehicle_number,
+                                        'imei_number'         => $e->imei_number,
+                                        'sim_number'          => $e->sim_number,
+                                        'device_category'     => $e->device_category,
+                                    ];
+                                @endphp
+                            <tr>
+                                <td class="p-3 font-mono text-xs" title="{{ $e->customer_id }}">{{ $e->customer_id }}</td>
+                                <td class="p-3 font-semibold">{{ $e->customer_name }}</td>
+                                <td class="p-3">{{ $e->vehicle_number }}</td>
+                                <td class="p-3">{{ $e->model }}</td>
+                                <td class="p-3">{{ $e->has_gps_device ? 'Yes' : 'No' }}</td>
+                                <td class="p-3 font-mono text-xs" title="{{ $e->vehicle_id }}">{{ $e->vehicle_id }}</td>
+                                <td class="p-3 text-center">
+                                    <div class="inline-flex items-center gap-2">
+                                        <span class="text-xs font-bold text-amber-600">{{ $e->status }}</span>
+                                        <button type="button"
+                                            title="Reactivate device"
+                                            @click='$store.deviceMgmt.openReactivate(@json($reactivatePayload))'
+                                            class="text-gray-500 hover:text-blue-600">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="7" class="p-6 text-center text-gray-400">No expired subscriptions.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             {{-- ===================== INACTIVE DEVICES ===================== --}}
             <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
                 <div class="px-6 py-4 border-b border-gray-100 bg-red-50 flex items-center justify-between">
                     <h3 class="text-xl font-bold text-gray-800">Inactive Devices</h3>
                     <span class="text-sm font-semibold text-red-700">{{ $inactiveDevices->count() }} vehicles</span>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto overflow-y-auto max-h-96">
                     <table class="w-full text-left text-sm border-collapse">
-                        <thead class="bg-gray-50 border-b border-gray-200 font-bold text-gray-700">
+                        <thead class="bg-gray-50 border-b border-gray-200 font-bold text-gray-700 sticky top-0 z-10">
                             <tr>
                                 <th class="p-3">Customer ID</th>
                                 <th class="p-3">Customer Name</th>
@@ -162,7 +223,7 @@
     </div>
 </div>
 
-{{-- ===================== SHARED ACTIVATE / EDIT MODAL ===================== --}}
+{{-- ===================== SHARED ACTIVATE / EDIT / REACTIVATE MODAL ===================== --}}
 <div x-show="$store.deviceMgmt.open"
      x-cloak
      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
@@ -172,7 +233,7 @@
 
         <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
-                <h3 class="text-lg font-bold text-gray-800" x-text="$store.deviceMgmt.mode === 'edit' ? 'Edit Device' : 'Activate Device'"></h3>
+                <h3 class="text-lg font-bold text-gray-800" x-text="$store.deviceMgmt.modalTitle"></h3>
                 <p class="text-xs text-gray-500" x-text="$store.deviceMgmt.vehicleLabel"></p>
             </div>
             <button type="button" @click="$store.deviceMgmt.close()" class="text-gray-400 hover:text-gray-600">&#10005;</button>
@@ -182,40 +243,52 @@
             @csrf
             <input type="hidden" name="_method" :value="$store.deviceMgmt.methodField">
 
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1.5">IMEI Number</label>
-                <select name="imei_number" x-model="$store.deviceMgmt.form.imei_number" @change="$store.deviceMgmt.onImeiChange()" required
-                        class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
-                    <option value="" disabled>-- Select IMEI --</option>
-                    <template x-for="opt in $store.deviceMgmt.imeiOptions" :key="opt.imei_number">
-                        <option :value="opt.imei_number" x-text="opt.imei_number"></option>
-                    </template>
-                </select>
-            </div>
+            <template x-if="$store.deviceMgmt.mode === 'reactivate'">
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600 space-y-1">
+                    <p><span class="font-semibold text-gray-700">IMEI:</span> <span x-text="$store.deviceMgmt.form.imei_number"></span></p>
+                    <p><span class="font-semibold text-gray-700">SIM:</span> <span x-text="$store.deviceMgmt.form.sim_number"></span></p>
+                    <p><span class="font-semibold text-gray-700">Category:</span> <span x-text="$store.deviceMgmt.form.device_category"></span></p>
+                </div>
+            </template>
 
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1.5">SIM Number</label>
-                <select name="sim_number" x-model="$store.deviceMgmt.form.sim_number" required
-                        class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
-                    <option value="" disabled>-- Select SIM --</option>
-                    <template x-for="sim in $store.deviceMgmt.simOptions" :key="sim">
-                        <option :value="sim" x-text="sim"></option>
-                    </template>
-                </select>
-                <p class="text-[11px] text-gray-400 mt-1">Auto-suggested from the selected IMEI — you can change it.</p>
-            </div>
+            <template x-if="$store.deviceMgmt.mode !== 'reactivate'">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">IMEI Number</label>
+                        <select name="imei_number" x-model="$store.deviceMgmt.form.imei_number" @change="$store.deviceMgmt.onImeiChange()" required
+                                class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                            <option value="" disabled>-- Select IMEI --</option>
+                            <template x-for="opt in $store.deviceMgmt.imeiOptions" :key="opt.imei_number">
+                                <option :value="opt.imei_number" x-text="opt.imei_number"></option>
+                            </template>
+                        </select>
+                    </div>
 
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Device Category</label>
-                <select name="device_category" x-model="$store.deviceMgmt.form.device_category" required
-                        class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
-                    <option value="" disabled>-- Select Category --</option>
-                    @foreach($deviceCategories as $cat)
-                        <option value="{{ $cat }}">{{ $cat }}</option>
-                    @endforeach
-                </select>
-                <p class="text-[11px] text-gray-400 mt-1">Auto-suggested from the selected IMEI — you can change it.</p>
-            </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">SIM Number</label>
+                        <select name="sim_number" x-model="$store.deviceMgmt.form.sim_number" required
+                                class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                            <option value="" disabled>-- Select SIM --</option>
+                            <template x-for="sim in $store.deviceMgmt.simOptions" :key="sim">
+                                <option :value="sim" x-text="sim"></option>
+                            </template>
+                        </select>
+                        <p class="text-[11px] text-gray-400 mt-1">Auto-suggested from the selected IMEI — you can change it.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Device Category</label>
+                        <select name="device_category" x-model="$store.deviceMgmt.form.device_category" required
+                                class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                            <option value="" disabled>-- Select Category --</option>
+                            @foreach($deviceCategories as $cat)
+                                <option value="{{ $cat }}">{{ $cat }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-[11px] text-gray-400 mt-1">Auto-suggested from the selected IMEI — you can change it.</p>
+                    </div>
+                </div>
+            </template>
 
             <div>
                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Payment Status</label>
@@ -243,6 +316,13 @@
                     </div>
 
                     <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Subscription Start Date</label>
+                        <input type="date" name="subscription_start_date" x-model="$store.deviceMgmt.form.subscription_start_date"
+                               :required="$store.deviceMgmt.form.payment_status === 'Paid'"
+                               class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                    </div>
+
+                    <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1.5">Bank Invoice</label>
                         <input type="text" name="bank_invoice" x-model="$store.deviceMgmt.form.bank_invoice"
                                :required="$store.deviceMgmt.form.payment_status === 'Paid'"
@@ -262,7 +342,7 @@
 
             <div class="pt-2">
                 <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors">
-                    <span x-text="$store.deviceMgmt.mode === 'edit' ? 'Save Changes' : 'Activate Device'"></span>
+                    <span x-text="$store.deviceMgmt.submitLabel"></span>
                 </button>
             </div>
         </form>
@@ -271,12 +351,15 @@
 
 <script>
 document.addEventListener('alpine:init', () => {
-    const activateUrlTemplate = "{{ route('admin.customer-device-management.activate', ['vehicleId' => '__ID__']) }}";
-    const updateUrlTemplate = "{{ route('admin.customer-device-management.update', ['activatedDevice' => '__ID__']) }}";
+    const activateUrlTemplate   = "{{ route('admin.customer-device-management.activate', ['vehicleId' => '__ID__']) }}";
+    const updateUrlTemplate     = "{{ route('admin.customer-device-management.update', ['activatedDevice' => '__ID__']) }}";
+    const reactivateUrlTemplate = "{{ route('admin.customer-device-management.reactivate', ['expiredDevice' => '__ID__']) }}";
+
+    const todayDateString = () => new Date().toISOString().slice(0, 10);
 
     Alpine.store('deviceMgmt', {
         open: false,
-        mode: 'activate',
+        mode: 'activate', // activate | edit | reactivate
         actionUrl: '',
         methodField: 'POST',
         vehicleLabel: '',
@@ -289,7 +372,20 @@ document.addEventListener('alpine:init', () => {
             device_category: '',
             payment_status: 'not-Paid',
             subscription_model: '',
+            subscription_start_date: '',
             bank_invoice: '',
+        },
+
+        get modalTitle() {
+            if (this.mode === 'edit') return 'Edit Device';
+            if (this.mode === 'reactivate') return 'Reactivate Device';
+            return 'Activate Device';
+        },
+
+        get submitLabel() {
+            if (this.mode === 'edit') return 'Save Changes';
+            if (this.mode === 'reactivate') return 'Activate Device';
+            return 'Activate Device';
         },
 
         get imeiOptions() {
@@ -326,6 +422,7 @@ document.addEventListener('alpine:init', () => {
                 device_category: '',
                 payment_status: 'not-Paid',
                 subscription_model: '',
+                subscription_start_date: todayDateString(),
                 bank_invoice: '',
             };
             this.open = true;
@@ -348,7 +445,27 @@ document.addEventListener('alpine:init', () => {
                 device_category: device.device_category,
                 payment_status: device.payment_status,
                 subscription_model: device.subscription_model || '',
+                subscription_start_date: device.subscription_start_date || todayDateString(),
                 bank_invoice: device.bank_invoice || '',
+            };
+            this.open = true;
+        },
+
+        openReactivate(device) {
+            this.mode = 'reactivate';
+            this.actionUrl = reactivateUrlTemplate.replace('__ID__', device.expired_device_id);
+            this.methodField = 'POST';
+            this.vehicleLabel = device.customer_name + ' — ' + device.vehicle_number;
+            this.editExtraOption = null;
+            this.currentBankSlipUrl = null;
+            this.form = {
+                imei_number: device.imei_number,
+                sim_number: device.sim_number,
+                device_category: device.device_category,
+                payment_status: 'Paid',
+                subscription_model: '',
+                subscription_start_date: todayDateString(),
+                bank_invoice: '',
             };
             this.open = true;
         },
