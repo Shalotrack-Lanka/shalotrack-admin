@@ -18,14 +18,9 @@
                 <tr>
                     <th class="p-3">Name</th>
                     <th class="p-3">Phone</th>
-                    <th class="p-3">IMEI</th>
-                    <th class="p-3">SIM</th>
-                    <th class="p-3">Device</th>
-                    <th class="p-3">Period</th>
-                    <th class="p-3">Start</th>
-                    <th class="p-3">End</th>
-                    <th class="p-3">Invoice</th>
-                    <th class="p-3 text-center">Action</th>
+                    <th class="p-3">Email</th>
+                    <th class="p-3">NIC</th>
+                    <th class="p-3 text-center">Cus-status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -33,32 +28,14 @@
                 <tr>
                     <td class="p-3 font-semibold">{{ $c->full_name }}</td>
                     <td class="p-3">{{ $c->phone_number }}</td>
-                    <td class="p-3">{{ $c->imei_number ?? '-' }}</td>
-                    <td class="p-3">{{ $c->sim_number ?? '-' }}</td>
-                    <td class="p-3">{{ $c->device_type ?? '-' }}</td>
-                    <td class="p-3">{{ $c->subscription_period ?? '-' }}</td>
-                    <td class="p-3">{{ $c->subscription_start_date?->format('Y-m-d') ?? '-' }}</td>
-                    <td class="p-3">{{ $c->subscription_end_date?->format('Y-m-d') ?? '-' }}</td>
-                    <td class="p-3">
-                        @if($c->bank_invoice_path)
-                            <a href="{{ route('admin.customer-setup.receipt', $c->customer_id) }}"
-                            class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-[11px] font-bold">
-                                Receipt
-                            </a>
-                       @else
-                            <span class="text-gray-400">None</span>
-                        @endif
-                    </td>
+                    <td class="p-3">{{ $c->email }}</td>
+                    <td class="p-3">{{ $c->nic_number }}</td>
                     <td class="p-3 text-center">
-                        <button
-                            @click="editModal = true; editing = {{ json_encode($c) }}"
-                            class="bg-blue-900 hover:bg-blue-800 text-white px-3 py-1.5 rounded text-xs font-semibold">
-                            Edit
-                        </button>
+                        @include('admin.customer._status_toggle', ['c' => $c])
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="10" class="p-6 text-center text-gray-400">No active customers.</td></tr>
+                <tr><td colspan="5" class="p-6 text-center text-gray-400">No active customers.</td></tr>
                 @endforelse
             </tbody>
         </table>
