@@ -228,6 +228,10 @@
                     Customer Setup
                 </a>
 
+                <a href="{{ route('admin.customer-device-management') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                    Customer Device Management
+                </a>
+
             </div>
 
         </div>
