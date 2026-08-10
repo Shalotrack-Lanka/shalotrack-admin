@@ -34,6 +34,7 @@ use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
 use App\Http\Controllers\Admin\Dealer\DealerDashboardController;
 
 use App\Http\Controllers\Admin\Customer\CustomerSetupController;
+use App\Http\Controllers\Admin\Customer\CustomerDeviceManagementController;
 
 use App\Http\Controllers\Admin\Complains_Enquiries\TroubleshootController;
 use App\Http\Controllers\Admin\Complains_Enquiries\ViewComplainsController;
@@ -303,6 +304,15 @@ Route::prefix('admin/customer')->middleware('auth')->group(function () {
 
     Route::patch('/setup/{customerId}/status', [CustomerSetupController::class, 'toggleStatus'])
         ->name('admin.customer-setup.toggle-status');
+
+    Route::get('/device-management', [CustomerDeviceManagementController::class, 'index'])
+        ->name('admin.customer-device-management');
+
+    Route::post('/device-management/{vehicleId}/activate', [CustomerDeviceManagementController::class, 'activate'])
+        ->name('admin.customer-device-management.activate');
+
+    Route::patch('/device-management/{activatedDevice}', [CustomerDeviceManagementController::class, 'update'])
+        ->name('admin.customer-device-management.update');
 
 });
 
