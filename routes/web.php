@@ -298,17 +298,11 @@ Route::prefix('admin/customer')->middleware('auth')->group(function () {
     Route::get('/setup', [CustomerSetupController::class, 'index'])
         ->name('admin.customer-setup');
 
-    Route::put('/setup/{customerId}', [CustomerSetupController::class, 'update'])
-        ->name('admin.customer-setup.update');
-
-    Route::get('/setup/{customerId}/invoice', [CustomerSetupController::class, 'viewInvoice'])
-        ->name('admin.customer-setup.invoice');
-
     Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])
-    ->name('admin.customer-setup.refresh');
+        ->name('admin.customer-setup.refresh');
 
-    Route::get('/setup/{customerId}/receipt', [CustomerSetupController::class, 'generateInvoice'])
-    ->name('admin.customer-setup.receipt');
+    Route::patch('/setup/{customerId}/status', [CustomerSetupController::class, 'toggleStatus'])
+        ->name('admin.customer-setup.toggle-status');
 
 });
 

@@ -20,7 +20,7 @@
                     <th class="p-3">Phone</th>
                     <th class="p-3">Email</th>
                     <th class="p-3">NIC</th>
-                    <th class="p-3 text-center">Action</th>
+                    <th class="p-3 text-center">Cus-status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -31,11 +31,7 @@
                     <td class="p-3">{{ $c->email }}</td>
                     <td class="p-3">{{ $c->nic_number }}</td>
                     <td class="p-3 text-center">
-                        <button
-                            @click="editModal = true; editing = {{ json_encode($c) }}"
-                            class="bg-blue-900 hover:bg-blue-800 text-white px-3 py-1.5 rounded text-xs font-semibold">
-                            Edit
-                        </button>
+                        @include('admin.customer._status_toggle', ['c' => $c])
                     </td>
                 </tr>
                 @empty
