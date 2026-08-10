@@ -4,10 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ActivatedDevice extends Model
+class ExpiredDevice extends Model
 {
-    protected $table = 'activated_devices';
-    protected $primaryKey = 'activated_device_id';
+    protected $table = 'expired_devices';
+    protected $primaryKey = 'expired_device_id';
 
     protected $fillable = [
         'vehicle_id',

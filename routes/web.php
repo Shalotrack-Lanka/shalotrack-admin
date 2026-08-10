@@ -314,6 +314,9 @@ Route::prefix('admin/customer')->middleware('auth')->group(function () {
     Route::patch('/device-management/{activatedDevice}', [CustomerDeviceManagementController::class, 'update'])
         ->name('admin.customer-device-management.update');
 
+    Route::post('/device-management/{expiredDevice}/reactivate', [CustomerDeviceManagementController::class, 'reactivate'])
+        ->name('admin.customer-device-management.reactivate');
+
 });
 
 /*
