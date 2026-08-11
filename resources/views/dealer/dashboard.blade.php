@@ -6,6 +6,23 @@
 
 @if(!$dealer)
 
+
+        {{-- Success Alert Message --}}
+        @if(session('success'))
+            <div x-data="{ show: true }" 
+                x-show="show" 
+                x-init="setTimeout(() => show = false, 4000)" 
+                class="mb-6 p-4 bg-green-100 border border-green-300 text-green-800 rounded-2xl flex justify-between items-center shadow-sm">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span class="font-bold text-sm">{{ session('success') }}</span>
+                </div>
+                <button @click="show = false" class="text-green-600 hover:text-green-800 font-bold">&times;</button>
+            </div>
+        @endif
+
     {{-- ============================================================
          NO DEALER ACCOUNT LINKED
     ============================================================ --}}
@@ -30,118 +47,132 @@
 
 <div class="max-w-7xl mx-auto">
 
-  {{-- ============================================================
-         WELCOME SECTION & ADD CUSTOMER MODAL
-    ============================================================ --}}
-    <div x-data="{ isAddCustomerOpen: false }" class="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+ {{-- ============================================================
+     WELCOME SECTION & ADD CUSTOMER MODAL
+============================================================ --}}
+<div x-data="{ 
+        isAddCustomerOpen: {{ $errors->any() ? 'true' : 'false' }},
+        deviceCount: {{ old('no_of_devices', 1) }}
+     }" 
+     class="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
 
-        <div>
-            <h1 class="text-3xl font-black text-blue-950">
-                Welcome back, {{ $dealer->full_name ?? Auth::user()->full_name }}
-            </h1>
-            <p class="text-slate-500 mt-2">
-                Here is what's happening with your stock and devices today.
-            </p>
-        </div>
+    <div>
+        <h1 class="text-3xl font-black text-blue-950">
+            Welcome back, {{ $dealer->full_name ?? Auth::user()->full_name }}
+        </h1>
+        <p class="text-slate-500 mt-2">
+            Here is what's happening with your stock and devices today.
+        </p>
+    </div>
 
-        <!-- Add Customer Button -->
-        <button @click="isAddCustomerOpen = true" 
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-sm transition flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Add Customer
-        </button>
+    <!-- Add Customer Button -->
+    <button @click="isAddCustomerOpen = true" 
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-sm transition flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Add Customer
+    </button>
 
-        <!-- Alpine.js Modal Background -->
-        <div x-show="isAddCustomerOpen" 
-             style="display: none;"
-             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm px-4">
-            
-            <!-- Modal Content -->
-            <div @click.away="isAddCustomerOpen = false" 
-                 x-transition
-                 class="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden">
-                 
-                <!-- Header -->
-                <div class="bg-blue-950 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-white font-bold text-lg">Add New Customer</h3>
-                    <button @click="isAddCustomerOpen = false" class="text-slate-300 hover:text-white transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
+    <!-- Alpine.js Modal Background -->
+    <div x-show="isAddCustomerOpen" 
+         x-cloak
+         style="display: none;"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm px-4">
+        
+        <!-- Modal Content -->
+        <div @click.away="isAddCustomerOpen = false" 
+             x-transition
+             class="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+             
+            <!-- Header -->
+            <div class="bg-blue-950 px-6 py-4 flex justify-between items-center shrink-0">
+                <h3 class="text-white font-bold text-lg">Add New Customer</h3>
+                <button type="button" @click="isAddCustomerOpen = false" class="text-slate-300 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form action="{{ route('dealer.customer-ad.store') }}" method="POST" class="p-6 overflow-y-auto space-y-4">
+                @csrf
+                
+                {{-- Global Validation Errors Alert Box --}}
+                @if($errors->any())
+                    <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs font-semibold space-y-1">
+                        <p class="font-bold text-sm mb-1 text-red-800">Please fix the following errors:</p>
+                        @foreach ($errors->all() as $error)
+                            <p>• {{ $error }}</p>
+                        @endforeach
+                    </div>
+                @endif
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Customer Name *</label>
+                    <input type="text" name="name" value="{{ old('name') }}" required 
+                           class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200">
                 </div>
 
-                <!-- Form -->
-                <!-- Form -->
-<form action="{{ route('dealer.customer-ad.store') }}" method="POST" class="p-6">
-    @csrf
-    
-    <div class="space-y-4">
-        <div>
-            <label class="block text-sm font-bold text-slate-700 mb-1">Customer Name *</label>
-            <input type="text" name="name" value="{{ old('name') }}" required 
-                   class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('name') border-red-500 @enderror">
-            @error('name')
-                <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
-            @enderror
-        </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Contact No (10 Digits) *</label>
+                        <input type="text" name="contact" value="{{ old('contact') }}" maxlength="10" required 
+                               placeholder="07XXXXXXXX"
+                               class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">NIC / ID</label>
+                        <input type="text" name="nic_or_id" value="{{ old('nic_or_id') }}" 
+                               class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200">
+                    </div>
+                </div>
 
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-bold text-slate-700 mb-1">Contact No *</label>
-                <input type="text" name="contact" value="{{ old('contact') }}" required 
-                       class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('contact') border-red-500 @enderror">
-                @error('contact')
-                    <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
-                @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-slate-700 mb-1">NIC / ID</label>
-                <input type="text" name="nic_or_id" value="{{ old('nic_or_id') }}" 
-                       class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('nic_or_id') border-red-500 @enderror">
-                @error('nic_or_id')
-                    <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
+                <!-- Devices Count -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">No of Devices Required *</label>
+                    <input type="number" name="no_of_devices" x-model.number="deviceCount" min="1" max="50" required 
+                           class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200">
+                </div>
 
-        <div>
-            <label class="block text-sm font-bold text-slate-700 mb-1">No of Devices Required *</label>
-            <input type="number" name="no_of_devices" value="{{ old('no_of_devices', 1) }}" min="1" required 
-                   class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('no_of_devices') border-red-500 @enderror">
-            @error('no_of_devices')
-                <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
-            @else
-                <p class="text-xs text-orange-600 mt-1 font-semibold">* More devices mean more commission!</p>
-            @enderror
-        </div>
+                <!-- Dynamic IMEI Inputs -->
+                <div x-show="deviceCount > 0" class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <label class="block text-xs font-extrabold uppercase text-slate-500 tracking-wider">
+                        Enter IMEI Numbers (15 Digits Each) *
+                    </label>
 
-        <div>
-            <label class="block text-sm font-bold text-slate-700 mb-1">Address</label>
-            <textarea name="address" rows="2" 
-                      class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('address') border-red-500 @enderror">{{ old('address') }}</textarea>
-            @error('address')
-                <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
-            @enderror
-        </div>
-    </div>
+                    <template x-for="i in deviceCount" :key="i">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400 min-w-[50px]" x-text="'IMEI ' + i + ':'"></span>
+                            <input type="text" 
+                                   name="imei_numbers[]" 
+                                   maxlength="15"
+                                   required
+                                   :placeholder="'Enter 15-digit IMEI ' + i" 
+                                   class="w-full text-xs font-mono border-slate-300 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200">
+                        </div>
+                    </template>
+                </div>
 
-    <!-- Footer Buttons -->
-    <div class="mt-8 flex justify-end gap-3">
-        <button type="button" @click="isAddCustomerOpen = false" class="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
-            Cancel
-        </button>
-        <button type="submit" class="px-5 py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition">
-            Save Customer
-        </button>
-    </div>
-</form>
-            </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Address</label>
+                    <textarea name="address" rows="2" class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200">{{ old('address') }}</textarea>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" @click="isAddCustomerOpen = false" class="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition">
+                        Save Customer
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-
+</div>
 
     {{-- ============================================================
          SUMMARY CARDS

@@ -301,6 +301,7 @@ Route::prefix('admin/dealer')->group(function () {
     Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
     Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
     Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');
+    Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
 
 
     Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');

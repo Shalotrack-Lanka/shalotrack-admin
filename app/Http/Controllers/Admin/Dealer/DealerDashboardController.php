@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Dealer;
 
 use App\Models\DealerCustomerAd;
+use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\StockTransfer;
 use App\Models\SetupShalotrackDevice;
@@ -247,31 +248,97 @@ class DealerDashboardController extends Controller
         ));
     }
 
-    public function storeDealerCustomerAd(DealerStoreCustomerAdRequest $request)
-    {
-       $dealerId = auth()->user()->dealer->id ?? 1; // Dealer ID
+    public function storeDealerCustomerAd(Request $request)
+{
+   $dealerId = auth()->user()->dealer->id ?? 1;
+    $newImeis = array_filter($request->imei_numbers ?? []);
 
-    DealerCustomerAd::create([
-        'dealer_id' => $dealerId,
-        'name' => $request->name,
-        'contact' => $request->contact,
-        'no_of_devices' => $request->no_of_devices,
-        'nic_or_id' => $request->nic_or_id,
-        'address' => $request->address,
-    ]);
+    // -------------------------------------------------------------
+    // Database එකේ අනිත් Customers ලාගේ IMEI සමඟ Duplicate වෙනවාදැයි පරීක්ෂා කිරීම
+    // -------------------------------------------------------------
+    $allExistingCustomers = DealerCustomerAd::all();
+    $usedImeis = [];
 
-    return back()->with('success', 'Customer Added Successfully!');
+    foreach ($allExistingCustomers as $customer) {
+        // වත්මන් Customer update වන අවස්ථාවකදී ඔහුගේම පරණ IMEIs අතහැර අනිත් ඒවා පරීක්ෂා කරයි
+        if ($customer->dealer_id == $dealerId && strtolower(trim($customer->name)) === strtolower(trim($request->name))) {
+            continue;
+        }
+
+        if (!empty($customer->imei_numbers) && is_array($customer->imei_numbers)) {
+            $usedImeis = array_merge($usedImeis, $customer->imei_numbers);
+        }
+    }
+
+    // අලුතින් ගහපු IMEI එකක් කලින් පාවිච්චි කර තිබේදැයි බලයි
+    foreach ($newImeis as $imei) {
+        if (in_array($imei, $usedImeis)) {
+            return back()
+                ->withInput()
+                ->withErrors(['imei_numbers' => "The IMEI number {$imei} has already been added to another customer!"]);
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Save or Update Logic
+    // -------------------------------------------------------------
+    $existingCustomer = DealerCustomerAd::where('dealer_id', $dealerId)
+        ->where('name', trim($request->name))
+        ->first();
+
+    if ($existingCustomer) {
+        $currentImeis = $existingCustomer->imei_numbers ?? [];
+        $mergedImeis = array_merge($currentImeis, $newImeis);
+
+        $existingCustomer->update([
+            'no_of_devices' => $existingCustomer->no_of_devices + $request->no_of_devices,
+            'imei_numbers' => $mergedImeis,
+            'contact' => $request->contact,
+            'nic_or_id' => $request->nic_or_id ?? $existingCustomer->nic_or_id,
+            'address' => $request->address ?? $existingCustomer->address,
+        ]);
+
+        $message = 'Customer details updated with new devices successfully!';
+    } else {
+        DealerCustomerAd::create([
+            'dealer_id' => $dealerId,
+            'name' => trim($request->name),
+            'contact' => $request->contact,
+            'nic_or_id' => $request->nic_or_id,
+            'no_of_devices' => $request->no_of_devices,
+            'imei_numbers' => $newImeis,
+            'address' => $request->address,
+        ]);
+
+        $message = 'New Customer Added Successfully!';
+    }
+
+    return back()->with('success', $message);
 }
 
-public function customerList()
-{
-    $dealerId = auth()->user()->dealer->id ?? null;
+        public function customerList()
+        {
+            $dealerId = auth()->user()->dealer->id ?? null;
 
-   
-    $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)
-                    ->latest()
-                    ->get();
+        
+            $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)
+                            ->latest()
+                            ->get();
 
-    return view('dealer.customer_list', compact('customerAds'));
+            return view('dealer.customer_list', compact('customerAds'));
+        }
+
+        public function destroyCustomerAd($id)
+            {
+                $dealerId = auth()->user()->dealer->id ?? null;
+
+                //remove the customer ad from the database
+                $customerAd = DealerCustomerAd::where('dealer_id', $dealerId)
+                                ->where('id', $id)
+                                ->firstOrFail();
+
+                $customerAd->delete();
+
+                return back()->with('success', 'Customer deleted successfully!');
 }
 }
