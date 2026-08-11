@@ -15,12 +15,12 @@ class DealerStoreCustomerAdRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'contact' => ['required', 'digits:10'], // හරියටම අංක 10ක් විය යුතුය
+            'contact' => ['required', 'digits:10'], // Contact number must be exactly 10 digits
             'nic_or_id' => ['nullable', 'string', 'max:20'],
             'no_of_devices' => ['required', 'integer', 'min:1', 'max:50'],
             'address' => ['nullable', 'string', 'max:500'],
             'imei_numbers' => ['required', 'array'],
-            'imei_numbers.*' => ['required', 'digits:15', 'distinct'], // Digits 15ක් විය යුතුය, Form එක ඇතුළෙත් Duplicate විය නොහැක
+            'imei_numbers.*' => ['required', 'digits:15', 'distinct'], // Each IMEI number must be exactly 15 digits and unique
         ];
     }
 
