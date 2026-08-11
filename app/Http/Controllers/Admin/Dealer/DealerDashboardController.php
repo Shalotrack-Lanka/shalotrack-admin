@@ -32,8 +32,7 @@ class DealerDashboardController extends Controller
         |--------------------------------------------------------------------------
         |
         | IMPORTANT:
-        | Blade එක variables expect කරන නිසා empty/default values
-        | ඔක්කොම මෙතනත් යවනවා.
+       
         |
         */
         if (!$dealer) {
@@ -58,7 +57,6 @@ class DealerDashboardController extends Controller
         | setup_shalotrack_devices table එකේ
         | dealer_id = logged-in dealer id
         |
-        | තියෙන actual IMEI devices විතරයි.
         |
         */
         $allocatedDevices = SetupShalotrackDevice::with('deviceType')
@@ -80,7 +78,6 @@ class DealerDashboardController extends Controller
         | 6. Ready For Activation
         |--------------------------------------------------------------------------
         |
-        | Dealerට allocate වෙලා තියෙන devices අතරින්
         | status = Not Activated
         |
         */
@@ -101,7 +98,6 @@ class DealerDashboardController extends Controller
         |--------------------------------------------------------------------------
         |
         | IMPORTANT:
-        | Existing StockTransfer logic වෙනස් කරන්නේ නෑ.
         |
         */
         $transfers = StockTransfer::with([
@@ -134,7 +130,7 @@ class DealerDashboardController extends Controller
         | 9. Latest Stock Received
         |--------------------------------------------------------------------------
         |
-        | Latest StockTransfer record එකේ quantity එක.
+        | 
         |
         */
         $latestTransfer = $transfers->first();
@@ -149,7 +145,7 @@ class DealerDashboardController extends Controller
         | 10. Recent Activities
         |--------------------------------------------------------------------------
         |
-        | Latest 5 stock transfers dashboard activity feed එකට.
+        | 
         |
         */
         $recentActivity = $transfers
