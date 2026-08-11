@@ -13,9 +13,17 @@ class TraceRequestMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        if ($request->path() === 'up') {
+        if (app()->environment('local')) {
             return $next($request);
         }
+
+    if ($request->path() === 'up') {
+        return $next($request);
+    }
+
+    if ($request->path() === 'up') {
+        return $next($request);
+    }
 
         // NEW: mark request start for duration histogram in terminate()
         $request->attributes->set('otel_start', microtime(true));
@@ -38,6 +46,10 @@ class TraceRequestMiddleware
 
     public function terminate(Request $request, $response): void
     {
+        if (app()->environment('local')) {
+            return;
+        }
+
         $span = $request->attributes->get('otel_span');
 
         if ($span === null) {

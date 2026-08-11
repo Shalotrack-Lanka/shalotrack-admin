@@ -19,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Dashboard statistics update middleware
         $middleware->trustProxies(at: '*');
-        $middleware->append(\App\Http\Middleware\TraceRequestMiddleware::class);
+       // $middleware->append(\App\Http\Middleware\TraceRequestMiddleware::class);
 
         // Register the custom Firebase middleware alias
         $middleware->alias([

@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Models\DealerCustomerAd;
 use App\Http\Controllers\Controller;
 use App\Models\StockTransfer;
 use App\Models\SetupShalotrackDevice;
+use App\Http\Requests\DealerStoreCustomerAdRequest; 
 
 class DealerDashboardController extends Controller
 {
@@ -30,8 +32,7 @@ class DealerDashboardController extends Controller
         |--------------------------------------------------------------------------
         |
         | IMPORTANT:
-        | Blade එක variables expect කරන නිසා empty/default values
-        | ඔක්කොම මෙතනත් යවනවා.
+       
         |
         */
         if (!$dealer) {
@@ -56,7 +57,6 @@ class DealerDashboardController extends Controller
         | setup_shalotrack_devices table එකේ
         | dealer_id = logged-in dealer id
         |
-        | තියෙන actual IMEI devices විතරයි.
         |
         */
         $allocatedDevices = SetupShalotrackDevice::with('deviceType')
@@ -78,7 +78,6 @@ class DealerDashboardController extends Controller
         | 6. Ready For Activation
         |--------------------------------------------------------------------------
         |
-        | Dealerට allocate වෙලා තියෙන devices අතරින්
         | status = Not Activated
         |
         */
@@ -99,7 +98,6 @@ class DealerDashboardController extends Controller
         |--------------------------------------------------------------------------
         |
         | IMPORTANT:
-        | Existing StockTransfer logic වෙනස් කරන්නේ නෑ.
         |
         */
         $transfers = StockTransfer::with([
@@ -132,7 +130,7 @@ class DealerDashboardController extends Controller
         | 9. Latest Stock Received
         |--------------------------------------------------------------------------
         |
-        | Latest StockTransfer record එකේ quantity එක.
+        | 
         |
         */
         $latestTransfer = $transfers->first();
@@ -147,7 +145,7 @@ class DealerDashboardController extends Controller
         | 10. Recent Activities
         |--------------------------------------------------------------------------
         |
-        | Latest 5 stock transfers dashboard activity feed එකට.
+        | 
         |
         */
         $recentActivity = $transfers
@@ -248,4 +246,32 @@ class DealerDashboardController extends Controller
 
         ));
     }
+
+    public function storeDealerCustomerAd(DealerStoreCustomerAdRequest $request)
+    {
+       $dealerId = auth()->user()->dealer->id ?? 1; // Dealer ID
+
+    DealerCustomerAd::create([
+        'dealer_id' => $dealerId,
+        'name' => $request->name,
+        'contact' => $request->contact,
+        'no_of_devices' => $request->no_of_devices,
+        'nic_or_id' => $request->nic_or_id,
+        'address' => $request->address,
+    ]);
+
+    return back()->with('success', 'Customer Added Successfully!');
+}
+
+public function customerList()
+{
+    $dealerId = auth()->user()->dealer->id ?? null;
+
+   
+    $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)
+                    ->latest()
+                    ->get();
+
+    return view('dealer.customer_list', compact('customerAds'));
+}
 }

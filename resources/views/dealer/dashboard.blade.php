@@ -30,19 +30,116 @@
 
 <div class="max-w-7xl mx-auto">
 
-    {{-- ============================================================
-         WELCOME SECTION
+  {{-- ============================================================
+         WELCOME SECTION & ADD CUSTOMER MODAL
     ============================================================ --}}
-    <div class="mb-8">
+    <div x-data="{ isAddCustomerOpen: false }" class="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
 
-        <h1 class="text-3xl font-black text-blue-950">
-            Welcome back, {{ $dealer->full_name ?? Auth::user()->full_name }}
-        </h1>
+        <div>
+            <h1 class="text-3xl font-black text-blue-950">
+                Welcome back, {{ $dealer->full_name ?? Auth::user()->full_name }}
+            </h1>
+            <p class="text-slate-500 mt-2">
+                Here is what's happening with your stock and devices today.
+            </p>
+        </div>
 
-        <p class="text-slate-500 mt-2">
-            Here is what's happening with your stock and devices today.
-        </p>
+        <!-- Add Customer Button -->
+        <button @click="isAddCustomerOpen = true" 
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-sm transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add Customer
+        </button>
 
+        <!-- Alpine.js Modal Background -->
+        <div x-show="isAddCustomerOpen" 
+             style="display: none;"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm px-4">
+            
+            <!-- Modal Content -->
+            <div @click.away="isAddCustomerOpen = false" 
+                 x-transition
+                 class="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden">
+                 
+                <!-- Header -->
+                <div class="bg-blue-950 px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-white font-bold text-lg">Add New Customer</h3>
+                    <button @click="isAddCustomerOpen = false" class="text-slate-300 hover:text-white transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Form -->
+                <!-- Form -->
+<form action="{{ route('dealer.customer-ad.store') }}" method="POST" class="p-6">
+    @csrf
+    
+    <div class="space-y-4">
+        <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">Customer Name *</label>
+            <input type="text" name="name" value="{{ old('name') }}" required 
+                   class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('name') border-red-500 @enderror">
+            @error('name')
+                <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Contact No *</label>
+                <input type="text" name="contact" value="{{ old('contact') }}" required 
+                       class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('contact') border-red-500 @enderror">
+                @error('contact')
+                    <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">NIC / ID</label>
+                <input type="text" name="nic_or_id" value="{{ old('nic_or_id') }}" 
+                       class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('nic_or_id') border-red-500 @enderror">
+                @error('nic_or_id')
+                    <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">No of Devices Required *</label>
+            <input type="number" name="no_of_devices" value="{{ old('no_of_devices', 1) }}" min="1" required 
+                   class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('no_of_devices') border-red-500 @enderror">
+            @error('no_of_devices')
+                <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
+            @else
+                <p class="text-xs text-orange-600 mt-1 font-semibold">* More devices mean more commission!</p>
+            @enderror
+        </div>
+
+        <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">Address</label>
+            <textarea name="address" rows="2" 
+                      class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 @error('address') border-red-500 @enderror">{{ old('address') }}</textarea>
+            @error('address')
+                <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+
+    <!-- Footer Buttons -->
+    <div class="mt-8 flex justify-end gap-3">
+        <button type="button" @click="isAddCustomerOpen = false" class="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+            Cancel
+        </button>
+        <button type="submit" class="px-5 py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition">
+            Save Customer
+        </button>
+    </div>
+</form>
+            </div>
+        </div>
     </div>
 
 

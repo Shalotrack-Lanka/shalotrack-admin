@@ -66,8 +66,26 @@ use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
 |--------------------------------------------------------------------------
 */
 
+use Illuminate\Support\Facades\Auth;
+
 Route::get('/', function () {
+
+    if (Auth::check()) {
+
+        $user = Auth::user();
+
+        return match ($user->role) {
+            'ADMIN'      => redirect()->route('admin.dashboard'),
+            'DEALER'     => redirect()->route('dealer.dashboard'),
+            'FINANCE'    => redirect()->route('finance.dashboard'),
+            'TECHNICIAN' => redirect()->route('technician.dashboard'),
+            'SUPPLIER'   => redirect()->route('supplier.dashboard'),
+            default      => redirect()->route('login'),
+        };
+    }
+
     return redirect()->route('login');
+
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {
@@ -279,6 +297,10 @@ Route::prefix('admin/dealer')->group(function () {
 
     Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])
     ->name('admin.dealer.assigned-devices');
+
+    Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
+    Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
+    Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');
 
 
     Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
