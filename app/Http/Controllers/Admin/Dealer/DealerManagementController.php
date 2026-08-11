@@ -120,7 +120,6 @@ class DealerManagementController extends Controller
 
     public function dealerCustomers()
 {
-    // Dealer ගේ details (Eager Loading) එක්ක සියලුම records ලබාගැනීම
     $customerAds = DealerCustomerAd::with('dealer')->latest()->get();
 
     return view('admin.dealer.dealer_customers', compact('customerAds'));
