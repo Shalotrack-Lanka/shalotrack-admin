@@ -5,7 +5,7 @@
 @section('content')
 <div class="max-w-7xl mx-auto">
 
-    <!-- Header Section -->
+    <!-- Header Sections -->
     <div class="mb-6 flex justify-between items-center">
         <div>
             <h1 class="text-2xl font-black text-blue-950">Customers Added by Dealers</h1>
