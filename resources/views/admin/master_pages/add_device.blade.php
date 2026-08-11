@@ -71,7 +71,7 @@
 
                         <div>
                             <label class="block mb-1">Device SIM Number</label>
-                            <input type="text" name="sim_number" maxlength="10" inputmode="numeric" pattern="\d{10}" placeholder="0771234567" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                            <input type="text" name="sim_number" maxlength="10" inputmode="numeric" pattern="\d{10}" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
                         </div>
 
                         <div class="md:col-span-2 flex gap-2 pt-2">
