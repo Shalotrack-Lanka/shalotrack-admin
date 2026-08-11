@@ -11,6 +11,7 @@ class Stock extends Model
 
     protected $fillable = [
         'device_type_id',
+        'device_category_type',
         'company_available_stock',
     ];
 
