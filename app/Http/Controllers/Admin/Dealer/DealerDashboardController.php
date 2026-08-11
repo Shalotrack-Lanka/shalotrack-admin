@@ -254,13 +254,13 @@ class DealerDashboardController extends Controller
     $newImeis = array_filter($request->imei_numbers ?? []);
 
     // -------------------------------------------------------------
-    // Database එකේ අනිත් Customers ලාගේ IMEI සමඟ Duplicate වෙනවාදැයි පරීක්ෂා කිරීම
+    // Validate IMEI Numbers
     // -------------------------------------------------------------
     $allExistingCustomers = DealerCustomerAd::all();
     $usedImeis = [];
 
     foreach ($allExistingCustomers as $customer) {
-        // වත්මන් Customer update වන අවස්ථාවකදී ඔහුගේම පරණ IMEIs අතහැර අනිත් ඒවා පරීක්ෂා කරයි
+        // Check if the customer belongs to the current dealer
         if ($customer->dealer_id == $dealerId && strtolower(trim($customer->name)) === strtolower(trim($request->name))) {
             continue;
         }
@@ -270,7 +270,7 @@ class DealerDashboardController extends Controller
         }
     }
 
-    // අලුතින් ගහපු IMEI එකක් කලින් පාවිච්චි කර තිබේදැයි බලයි
+    // check for duplicates in the new IMEIs against the used IMEIs
     foreach ($newImeis as $imei) {
         if (in_array($imei, $usedImeis)) {
             return back()
