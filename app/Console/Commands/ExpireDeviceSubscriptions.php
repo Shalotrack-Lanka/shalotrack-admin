@@ -40,6 +40,7 @@ class ExpireDeviceSubscriptions extends Command
                     'subscription_model'      => null,
                     'subscription_start_date' => null,
                     'subscription_end_date'   => null,
+                    'expired_date'            => $device->subscription_end_date,
                     'bank_invoice'            => null,
                     'bank_slip'               => null,
                     'status'                  => 'Expired',
