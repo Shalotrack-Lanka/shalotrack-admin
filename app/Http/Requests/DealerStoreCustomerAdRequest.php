@@ -6,43 +6,34 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class DealerStoreCustomerAdRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        // මෙතන true කරන්න ඕනේ, නැත්නම් form එක submit කරන්න දෙන්නේ නෑ
-        return true; 
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array|string>
-     */
     public function rules(): array
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'contact' => ['required', 'string', 'min:10', 'max:15', 'regex:/^([0-9\s\-\+\(\)]*)$/'], // අංක පමණක් (සහ +, - වගේ ලකුණු)
+            'contact' => ['required', 'digits:10'], // Contact number must be exactly 10 digits
             'nic_or_id' => ['nullable', 'string', 'max:20'],
-            'no_of_devices' => ['required', 'integer', 'min:1', 'max:1000'], // අවම 1ක් වත් තියෙන්න ඕනේ
+            'no_of_devices' => ['required', 'integer', 'min:1', 'max:50'],
             'address' => ['nullable', 'string', 'max:500'],
+            'imei_numbers' => ['required', 'array'],
+            'imei_numbers.*' => ['required', 'digits:15', 'distinct'], // Each IMEI number must be exactly 15 digits and unique
         ];
     }
 
-    /**
-     * Get custom messages for validator errors.
-     */
     public function messages(): array
     {
         return [
             'name.required' => 'Customer name is required.',
-            'contact.required' => 'A contact number is required.',
-            'contact.regex' => 'Please enter a valid phone number.',
-            'contact.min' => 'Contact number must be at least 10 digits.',
-            'no_of_devices.required' => 'Please specify the number of devices.',
-            'no_of_devices.min' => 'Number of devices must be at least 1.',
+            'contact.required' => 'Contact number is required.',
+            'contact.digits' => 'Contact number must be exactly 10 digits.',
+            'no_of_devices.required' => 'Please enter the number of devices.',
+            'imei_numbers.*.required' => 'All IMEI numbers are required.',
+            'imei_numbers.*.digits' => 'Each IMEI number must be exactly 15 digits.',
+            'imei_numbers.*.distinct' => 'Duplicate IMEI numbers entered in the form.',
         ];
     }
 }
