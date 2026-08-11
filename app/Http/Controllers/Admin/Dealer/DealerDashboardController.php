@@ -6,7 +6,7 @@ use App\Models\DealerCustomerAd;
 use App\Http\Controllers\Controller;
 use App\Models\StockTransfer;
 use App\Models\SetupShalotrackDevice;
-use App\Http\Requests\DealerStoreCustomerAdRequest; // මේක import කරන්න
+use App\Http\Requests\DealerStoreCustomerAdRequest; 
 
 class DealerDashboardController extends Controller
 {
@@ -271,7 +271,7 @@ public function customerList()
 {
     $dealerId = auth()->user()->dealer->id ?? null;
 
-    // Login වෙලා ඉන්න Dealer ගේ Customer Ads ටික ගන්නවා
+   
     $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)
                     ->latest()
                     ->get();
