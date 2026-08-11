@@ -20,11 +20,6 @@ class Stock extends Model
         return $this->belongsTo(DeviceType::class);
     }
 
-    public function sims()
-    {
-        return $this->hasMany(Sim::class);
-    }
-
     public function ledgerEntries()
     {
         return $this->hasMany(StockTransferLedger::class);
