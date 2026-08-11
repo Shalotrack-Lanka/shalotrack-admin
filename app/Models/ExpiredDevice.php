@@ -23,6 +23,7 @@ class ExpiredDevice extends Model
         'subscription_model',
         'subscription_start_date',
         'subscription_end_date',
+        'expired_date',
         'bank_invoice',
         'bank_slip',
         'status',
@@ -32,5 +33,6 @@ class ExpiredDevice extends Model
         'has_gps_device'          => 'boolean',
         'subscription_start_date' => 'datetime',
         'subscription_end_date'   => 'datetime',
+        'expired_date'            => 'datetime',
     ];
 }
