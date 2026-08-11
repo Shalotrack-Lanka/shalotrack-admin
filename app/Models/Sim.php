@@ -9,14 +9,16 @@ class Sim extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
-
-    protected $casts = [
-        'canceled_at' => 'datetime',
+    protected $fillable = [
+        'sim_number',
+        'sim_type',
+        'imsi',
+        'iccid',
+        'activation_required',
+        'sim_status',
     ];
 
-    public function stock()
-    {
-        return $this->belongsTo(Stock::class, 'stock_id');
-    }
+    protected $casts = [
+        'activation_required' => 'boolean',
+    ];
 }
