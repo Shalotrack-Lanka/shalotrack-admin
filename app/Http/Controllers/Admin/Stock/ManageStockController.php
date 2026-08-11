@@ -41,22 +41,27 @@ class ManageStockController extends Controller
         ]);
 
         DB::transaction(function () use ($validated) {
+            $deviceType = DeviceType::findOrFail($validated['device_type_id']);
+            $deviceLabel = "{$deviceType->device_category} with {$deviceType->model}";
+
             $stock = Stock::firstOrCreate(
                 ['device_type_id' => $validated['device_type_id']],
                 ['company_available_stock' => 0]
             );
 
+            $stock->device_category_type = $deviceLabel;
             $stock->company_available_stock += $validated['stock_in'];
             $stock->save();
 
             $supplier = Supplier::findOrFail($validated['supplier_id']);
 
             StockTransferLedger::create([
-                'stock_id'        => $stock->id,
-                'supplier_id'     => $supplier->id,
-                'supplier'        => $supplier->name,
-                'stock_in'        => $validated['stock_in'],
-                'stocked_in_date' => now()->toDateString(),
+                'stock_id'              => $stock->id,
+                'device_category_type'  => $deviceLabel,
+                'supplier_id'           => $supplier->id,
+                'supplier'              => $supplier->name,
+                'stock_in'              => $validated['stock_in'],
+                'stocked_in_date'       => now()->toDateString(),
             ]);
         });
 
