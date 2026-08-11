@@ -128,7 +128,7 @@
                                 @forelse($stocks as $stock)
                                     <tr class="hover:bg-gray-50/70 transition">
                                         <td class="p-3 text-gray-400 font-mono">{{ $stock->id }}</td>
-                                        <td class="p-3">{{ $stock->deviceType->device_category }} with {{ $stock->deviceType->model }}</td>
+                                        <td class="p-3">{{ $stock->device_category_type }}</td>
                                         <td class="p-3 text-right font-bold text-green-600 font-mono tabular-nums">{{ $stock->company_available_stock }}</td>
                                         <td class="p-3 text-gray-400 font-mono text-[11px] whitespace-nowrap">{{ optional($stock->updated_at)->format('Y-m-d H:i') }}</td>
                                     </tr>
@@ -159,6 +159,7 @@
                         <table class="w-full min-w-[900px] text-left border-collapse table-auto">
                             <thead class="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-600 uppercase tracking-wider whitespace-nowrap sticky top-0 z-10">
                                 <tr>
+                                    <th class="p-3 min-w-[200px]">Device Category / Type</th>
                                     <th class="p-3 w-20">Supplier Id</th>
                                     <th class="p-3 min-w-[150px]">Supplier</th>
                                     <th class="p-3 text-right">Stock In</th>
@@ -170,6 +171,7 @@
                             <tbody class="divide-y divide-gray-200 bg-white text-xs font-semibold text-gray-700">
                                 @forelse($ledgerEntries as $entry)
                                     <tr class="hover:bg-gray-50/70 transition">
+                                        <td class="p-3">{{ $entry->device_category_type }}</td>
                                         <td class="p-3 text-gray-400 font-mono">{{ $entry->supplier_id }}</td>
                                         <td class="p-3">{{ $entry->supplier }}</td>
                                         <td class="p-3 text-right font-mono tabular-nums">{{ $entry->stock_in }}</td>
@@ -193,7 +195,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="6" class="p-6 text-center text-gray-400 font-medium italic">No stock transfer ledger records yet.</td></tr>
+                                    <tr><td colspan="7" class="p-6 text-center text-gray-400 font-medium italic">No stock transfer ledger records yet.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
