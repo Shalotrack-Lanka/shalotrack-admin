@@ -8,6 +8,7 @@ class StockTransferLedger extends Model
 {
     protected $fillable = [
         'stock_id',
+        'device_category_type',
         'supplier_id',
         'supplier',
         'stock_in',
