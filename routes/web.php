@@ -66,8 +66,26 @@ use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
 |--------------------------------------------------------------------------
 */
 
+use Illuminate\Support\Facades\Auth;
+
 Route::get('/', function () {
+
+    if (Auth::check()) {
+
+        $user = Auth::user();
+
+        return match ($user->role) {
+            'ADMIN'      => redirect()->route('admin.dashboard'),
+            'DEALER'     => redirect()->route('dealer.dashboard'),
+            'FINANCE'    => redirect()->route('finance.dashboard'),
+            'TECHNICIAN' => redirect()->route('technician.dashboard'),
+            'SUPPLIER'   => redirect()->route('supplier.dashboard'),
+            default      => redirect()->route('login'),
+        };
+    }
+
     return redirect()->route('login');
+
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {

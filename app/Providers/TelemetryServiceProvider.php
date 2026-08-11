@@ -23,11 +23,17 @@ class TelemetryServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Defined once here, shared by all three providers below via `use ($resource)`
+        // Disable OpenTelemetry completely on local environment
+        if (app()->environment('local')) {
+            return;
+        }
+
         $resource = ResourceInfoFactory::defaultResource()->merge(
-            ResourceInfo::create(Attributes::create([
-                ResourceAttributes::SERVICE_NAME => 'shalotrack-admin',
-            ]))
+            ResourceInfo::create(
+                Attributes::create([
+                    ResourceAttributes::SERVICE_NAME => 'shalotrack-admin',
+                ])
+            )
         );
 
         $this->app->singleton(TracerProvider::class, function () use ($resource) {
@@ -41,31 +47,14 @@ class TelemetryServiceProvider extends ServiceProvider
 
             $exporter = new SpanExporter($transport);
 
-            // SimpleSpanProcessor exports synchronously, one span at a time —
-            // deliberate choice here, since PHP-FPM's process dies right after
-            // the request ends. A batching processor relies on a background
-            // thread/timer that PHP doesn't have between requests.
-            return new TracerProvider(new SimpleSpanProcessor($exporter), null, $resource);
+            return new TracerProvider(
+                new SimpleSpanProcessor($exporter),
+                null,
+                $resource
+            );
         });
 
-        $this->app->singleton(MeterProvider::class, function () use ($resource) {
-            $transport = (new OtlpHttpTransportFactory())->create(
-                'http://otel.shalotrack.internal:4318/v1/metrics',
-                'application/x-protobuf',
-                [],
-                null,
-                2
-            );
-            $exporter = new MetricExporter($transport);
-            // ExportingReader (not periodic) — this process dies after each request,
-            // so metrics are pushed explicitly at the end of the request, same reasoning
-            // as SimpleSpanProcessor for traces.
-            $reader = new ExportingReader($exporter);
-            return MeterProvider::builder()
-                ->setResource($resource)
-                ->addReader($reader)
-                ->build();
-        });
+    
 
         $this->app->singleton(LoggerProvider::class, function () use ($resource) {
             $transport = (new OtlpHttpTransportFactory())->create(
@@ -75,8 +64,14 @@ class TelemetryServiceProvider extends ServiceProvider
                 null,
                 2
             );
+
             $exporter = new LogsExporter($transport);
-            return new LoggerProvider(new SimpleLogRecordProcessor($exporter), null, $resource);
+
+            return new LoggerProvider(
+                new SimpleLogRecordProcessor($exporter),
+                null,
+                $resource
+            );
         });
     }
 

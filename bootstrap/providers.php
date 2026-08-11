@@ -5,5 +5,5 @@ use App\Providers\TelemetryServiceProvider;
 
 return [
     AppServiceProvider::class,
-    TelemetryServiceProvider::class,
+    //TelemetryServiceProvider::class,
 ];
