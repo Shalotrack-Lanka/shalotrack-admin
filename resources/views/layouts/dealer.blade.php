@@ -55,34 +55,11 @@
                 </button>
 
                 <div x-show="open" class="ml-5 text-sm">
-                    <span class="block py-3 text-gray-500 cursor-not-allowed" title="Not available yet — no Dealer/Customer link exists in the system">Customer List</span>
-                    <span class="block py-3 text-gray-500 cursor-not-allowed" title="Not available yet — no Dealer/Vehicle link exists in the system">Vehicle List</span>
+                    <a href="{{ route('dealer.customers.index') }}" class="block py-2 text-white hover:bg-blue-900 rounded-lg transition">Customer List</a>
+                    <a href="#" class="block px-2 py-3 text-white hover:bg-blue-900 rounded-lg transition">Vehicle List</a>
                 </div>
             </div>
 
-            <!-- QUICK ACTIONS -->
-            <div x-data="{open:false}">
-                <button
-                    @click="open=!open"
-                    class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
-
-                    <span>Quick Actions</span>
-                    <svg :class="open ? 'rotate-180' : ''"
-                         class="w-4 h-4 transition-transform duration-200"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-
-                </button>
-
-                <div x-show="open" class="ml-5 text-sm">
-                    <span class="block py-3 text-gray-500 cursor-not-allowed" title="Not built yet — needs the Customer/Dealer link">Add Customer</span>
-                    <span class="block py-3 text-gray-500 cursor-not-allowed" title="Not built yet — needs the Customer/Dealer link">View Customers</span>
-                    <span class="block py-3 text-gray-500 cursor-not-allowed" title="Not built yet">Assign Device</span>
-                    <a href="{{ route('dealer.dashboard') }}#stock-summary" class="block py-3 text-white hover:bg-blue-900 rounded-lg transition">View Stock</a>
-                    <span class="block py-3 text-gray-500 cursor-not-allowed" title="Not built yet — needs the Customer/Dealer link">View Vehicles</span>
-                </div>
-            </div>
 
         </nav>
 

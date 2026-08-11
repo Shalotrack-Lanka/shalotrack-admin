@@ -298,6 +298,10 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])
     ->name('admin.dealer.assigned-devices');
 
+    Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
+    Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
+    Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');
+
 
     Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
     Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');

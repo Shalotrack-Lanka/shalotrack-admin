@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Models\DealerCustomerAd;
 use App\Http\Controllers\Controller;
 use App\Models\StockTransfer;
 use App\Models\SetupShalotrackDevice;
+use App\Http\Requests\DealerStoreCustomerAdRequest; // මේක import කරන්න
 
 class DealerDashboardController extends Controller
 {
@@ -248,4 +250,32 @@ class DealerDashboardController extends Controller
 
         ));
     }
+
+    public function storeDealerCustomerAd(DealerStoreCustomerAdRequest $request)
+    {
+       $dealerId = auth()->user()->dealer->id ?? 1; // Dealer ID
+
+    DealerCustomerAd::create([
+        'dealer_id' => $dealerId,
+        'name' => $request->name,
+        'contact' => $request->contact,
+        'no_of_devices' => $request->no_of_devices,
+        'nic_or_id' => $request->nic_or_id,
+        'address' => $request->address,
+    ]);
+
+    return back()->with('success', 'Customer Added Successfully!');
+}
+
+public function customerList()
+{
+    $dealerId = auth()->user()->dealer->id ?? null;
+
+    // Login වෙලා ඉන්න Dealer ගේ Customer Ads ටික ගන්නවා
+    $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)
+                    ->latest()
+                    ->get();
+
+    return view('dealer.customer_list', compact('customerAds'));
+}
 }

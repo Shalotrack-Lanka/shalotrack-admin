@@ -3,6 +3,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Models\DealerCustomerAd;
 use App\Http\Controllers\Controller;
 use App\Models\Dealer;
 use App\Models\Admin;
@@ -116,4 +117,12 @@ class DealerManagementController extends Controller
 
         return $username;
     }
+
+    public function dealerCustomers()
+{
+    // Dealer ගේ details (Eager Loading) එක්ක සියලුම records ලබාගැනීම
+    $customerAds = DealerCustomerAd::with('dealer')->latest()->get();
+
+    return view('admin.dealer.dealer_customers', compact('customerAds'));
+}
 }
