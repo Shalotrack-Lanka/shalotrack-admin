@@ -69,6 +69,7 @@
                                         'payment_status'          => $d->payment_status,
                                         'subscription_model'      => $d->subscription_model,
                                         'subscription_start_date' => optional($d->subscription_start_date)->format('Y-m-d'),
+                                        'subscription_end_date'   => optional($d->subscription_end_date)->format('Y-m-d'),
                                         'bank_invoice'            => $d->bank_invoice,
                                         'bank_slip_url'           => $d->bank_slip ? asset('storage/' . $d->bank_slip) : null,
                                     ];
@@ -131,6 +132,7 @@
                                         'imei_number'         => $e->imei_number,
                                         'sim_number'          => $e->sim_number,
                                         'device_category'     => $e->device_category,
+                                        'expired_date'        => optional($e->expired_date)->format('Y-m-d'),
                                     ];
                                 @endphp
                             <tr>
@@ -322,6 +324,22 @@
                                class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
                     </div>
 
+                    <template x-if="$store.deviceMgmt.mode === 'edit'">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Subscription Ending Date</label>
+                            <input type="date" disabled x-model="$store.deviceMgmt.subscriptionEndDate"
+                                   class="w-full rounded-lg border-gray-300 bg-gray-100 text-sm shadow-sm cursor-not-allowed">
+                        </div>
+                    </template>
+
+                    <template x-if="$store.deviceMgmt.mode === 'reactivate'">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Expired Date</label>
+                            <input type="date" disabled x-model="$store.deviceMgmt.expiredDate"
+                                   class="w-full rounded-lg border-gray-300 bg-gray-100 text-sm shadow-sm cursor-not-allowed">
+                        </div>
+                    </template>
+
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1.5">Bank Invoice</label>
                         <input type="text" name="bank_invoice" x-model="$store.deviceMgmt.form.bank_invoice"
@@ -365,6 +383,8 @@ document.addEventListener('alpine:init', () => {
         vehicleLabel: '',
         currentBankSlipUrl: null,
         editExtraOption: null,
+        subscriptionEndDate: '',
+        expiredDate: '',
         notActivated: @json($notActivatedDevices),
         form: {
             imei_number: '',
@@ -416,6 +436,8 @@ document.addEventListener('alpine:init', () => {
             this.vehicleLabel = vehicle.customer_name + ' — ' + vehicle.vehicle_number;
             this.editExtraOption = null;
             this.currentBankSlipUrl = null;
+            this.subscriptionEndDate = '';
+            this.expiredDate = '';
             this.form = {
                 imei_number: '',
                 sim_number: '',
@@ -439,6 +461,8 @@ document.addEventListener('alpine:init', () => {
                 device_category: device.device_category,
             };
             this.currentBankSlipUrl = device.bank_slip_url;
+            this.subscriptionEndDate = device.subscription_end_date || '';
+            this.expiredDate = '';
             this.form = {
                 imei_number: device.imei_number,
                 sim_number: device.sim_number,
@@ -458,6 +482,8 @@ document.addEventListener('alpine:init', () => {
             this.vehicleLabel = device.customer_name + ' — ' + device.vehicle_number;
             this.editExtraOption = null;
             this.currentBankSlipUrl = null;
+            this.subscriptionEndDate = '';
+            this.expiredDate = device.expired_date || '';
             this.form = {
                 imei_number: device.imei_number,
                 sim_number: device.sim_number,
