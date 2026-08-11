@@ -38,14 +38,16 @@
                 </div>
             @endif
 
+            {{-- ===================== ADD RAW DEVICES ===================== --}}
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full"
                  x-data="{
                      deviceTypeId: '',
                      supplierId: '',
                      stockIn: 0,
-                     companyAvail: 0,
-                     get total() { return (Number(this.stockIn) || 0) + (Number(this.companyAvail) || 0); },
-                     reset() { this.deviceTypeId = ''; this.supplierId = ''; this.stockIn = 0; this.companyAvail = 0; }
+                     stockMap: {{ \Illuminate\Support\Js::from($stockMap) }},
+                     get baseAvailable() { return Number(this.stockMap[this.deviceTypeId] ?? 0); },
+                     get total() { return this.baseAvailable + (Number(this.stockIn) || 0); },
+                     reset() { this.deviceTypeId = ''; this.supplierId = ''; this.stockIn = 0; }
                  }">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
                     <span class="font-bold text-gray-800 text-sm">Add Raw Devices</span>
@@ -53,7 +55,7 @@
 
                 <div class="p-5 text-xs font-semibold text-gray-700">
                     <form action="{{ route('admin.stock.store') }}" method="POST"
-                          class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-end">
+                          class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
                         @csrf
 
                         <div>
@@ -85,20 +87,10 @@
                         <div>
                             <label class="block mb-1">Stock In</label>
                             <div class="flex items-center gap-2">
-                                <button type="button" @click="stockIn--" class="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold shrink-0">&minus;</button>
-                                <input type="number" name="stock_in" x-model.number="stockIn" required
+                                <button type="button" @click="stockIn = Math.max(0, Number(stockIn) - 1)" class="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold shrink-0">&minus;</button>
+                                <input type="number" name="stock_in" x-model.number="stockIn" min="0" required
                                        class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm text-center">
-                                <button type="button" @click="stockIn++" class="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold shrink-0">+</button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block mb-1">Company Avail.</label>
-                            <div class="flex items-center gap-2">
-                                <button type="button" @click="companyAvail--" class="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold shrink-0">&minus;</button>
-                                <input type="number" name="company_available_stock" x-model.number="companyAvail" required
-                                       class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm text-center">
-                                <button type="button" @click="companyAvail++" class="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold shrink-0">+</button>
+                                <button type="button" @click="stockIn = Number(stockIn) + 1" class="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold shrink-0">+</button>
                             </div>
                         </div>
 
@@ -107,7 +99,7 @@
                             <span class="font-bold text-gray-900 text-sm" x-text="total"></span>
                         </div>
 
-                        <div class="md:col-span-2 xl:col-span-5 flex gap-2 justify-end pt-2 border-t border-gray-100 mt-2">
+                        <div class="md:col-span-2 xl:col-span-4 flex gap-2 justify-end pt-2 border-t border-gray-100 mt-2">
                             <button type="button" @click="reset()" class="px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded font-bold transition">Reset</button>
                             <button type="submit" class="px-8 bg-[#17a2b8] hover:bg-[#138496] text-white py-2.5 rounded font-bold shadow-sm transition">Add Stock</button>
                         </div>
@@ -115,129 +107,100 @@
                 </div>
             </div>
 
-            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full"
-                 x-data="{
-                     rows: {{ \Illuminate\Support\Js::from($stockRows) }},
-                     deletedIds: [],
-                     rowTotal(row) { return (Number(row.stock_in) || 0) + (Number(row.company_available_stock) || 0); },
-                     moveUp(index) {
-                         if (index === 0) return;
-                         [this.rows[index - 1], this.rows[index]] = [this.rows[index], this.rows[index - 1]];
-                     },
-                     moveDown(index) {
-                         if (index === this.rows.length - 1) return;
-                         [this.rows[index + 1], this.rows[index]] = [this.rows[index], this.rows[index + 1]];
-                     },
-                     removeRow(index) {
-                         this.deletedIds.push(this.rows[index].id);
-                         this.rows.splice(index, 1);
-                     }
-                 }">
-                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
-                    <h3 class="font-bold text-gray-800 text-sm">Raw Stock Records</h3>
-                    <button type="submit" form="bulkStockForm" class="bg-[#17a2b8] hover:bg-[#138496] text-white px-5 py-2 rounded text-xs font-bold shadow-sm transition">
-                        Save Changes
-                    </button>
+            {{-- ===================== COMPANY AVAILABLE STOCK ===================== --}}
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                    <h3 class="font-bold text-gray-800 text-sm">Company Available Stock</h3>
                 </div>
 
-                <form id="bulkStockForm" action="{{ route('admin.stock.bulk-update') }}" method="POST">
-                    @csrf
-                    @method('PUT')
-
-                    <template x-for="id in deletedIds" :key="'del-' + id">
-                        <input type="hidden" name="deleted_ids[]" :value="id">
-                    </template>
-
-                    <div class="p-5">
-                        <div class="border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
-                            <table class="w-full min-w-[1000px] text-left border-collapse table-auto">
-                                <thead class="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-600 uppercase tracking-wider whitespace-nowrap">
-                                    <tr>
-                                        <th class="p-3 text-center w-12">#</th>
-                                        <th class="p-3 min-w-[200px]">Device Category / Type</th>
-                                        <th class="p-3 w-64">Supplier fdfdfdfd</th>
-                                        <th class="p-3 text-right">Stock In</th>
-                                        <th class="p-3 text-right">Company Avail.</th>
-                                        <th class="p-3 text-center">Dealer Transfer</th>
-                                        <th class="p-3 text-right"> Availables</th>
-                                        <th class="p-3 min-w-[150px]">Description</th>
-                                        <th class="p-3">Last Edited</th>
-                                        <th class="p-3 text-center">Del</th>
+                <div class="p-5">
+                    <div class="border border-gray-200 rounded-xl shadow-sm overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full min-w-[600px] text-left border-collapse table-auto">
+                            <thead class="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-600 uppercase tracking-wider whitespace-nowrap sticky top-0 z-10">
+                                <tr>
+                                    <th class="p-3 w-20">Stock Id</th>
+                                    <th class="p-3 min-w-[220px]">Device Category / Type</th>
+                                    <th class="p-3 text-right">Company Available Stock</th>
+                                    <th class="p-3">Last Edited Date</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white text-xs font-semibold text-gray-700">
+                                @forelse($stocks as $stock)
+                                    <tr class="hover:bg-gray-50/70 transition">
+                                        <td class="p-3 text-gray-400 font-mono">{{ $stock->id }}</td>
+                                        <td class="p-3">{{ $stock->device_category_type }}</td>
+                                        <td class="p-3 text-right font-bold text-green-600 font-mono tabular-nums">{{ $stock->company_available_stock }}</td>
+                                        <td class="p-3 text-gray-400 font-mono text-[11px] whitespace-nowrap">{{ optional($stock->updated_at)->format('Y-m-d H:i') }}</td>
                                     </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 bg-white text-xs font-semibold text-gray-700">
-                                    <template x-for="(row, index) in rows" :key="row.id">
-                                        <tr class="hover:bg-gray-50/70 transition"
-                                            :class="row.is_superseded ? 'line-through decoration-red-300 text-red-300 bg-red-50/40 hover:bg-red-50/60' : ''">
-
-                                            <td class="p-3 text-center align-middle">
-                                                <input type="hidden" :name="'rows[' + index + '][id]'" :value="row.id">
-                                                <div class="flex flex-col items-center gap-1" x-show="row.is_superseded">
-                                                    <button type="button" @click="moveUp(index)" class="w-7 h-6 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs leading-none">&#9650;</button>
-                                                    <button type="button" @click="moveDown(index)" class="w-7 h-6 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs leading-none">&#9660;</button>
-                                                </div>
-                                                <span class="text-gray-400 font-bold" x-show="!row.is_superseded" x-text="index + 1"></span>
-                                            </td>
-
-                                            <td class="p-2">
-                                                <select :name="'rows[' + index + '][device_type_id]'" x-model.number="row.device_type_id"
-                                                        class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm">
-                                                    @foreach($deviceTypes as $type)
-                                                        <option value="{{ $type->id }}">{{ $type->device_category }} with {{ $type->model }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </td>
-
-                                            <td class="p-2">
-                                                <!-- මෙතන class එකට min-w-[150px] අලුතින් දැම්මා -->
-                                                <select :name="'rows[' + index + '][supplier_id]'" x-model.number="row.supplier_id"
-                                                        class="w-full min-w-[150px] rounded-lg border-gray-300 h-10 text-xs shadow-sm px-2">
-                                                    @foreach($suppliers as $supplier)
-                                                        <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </td>
-
-                                            <td class="p-2 bg-slate-50/70">
-                                                <input type="number" :name="'rows[' + index + '][stock_in]'" x-model.number="row.stock_in"
-                                                       class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm text-right font-mono tabular-nums px-3">
-                                            </td>
-
-                                            <td class="p-2 bg-slate-50/70">
-                                                <input type="number" :name="'rows[' + index + '][company_available_stock]'" x-model.number="row.company_available_stock"
-                                                       class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm text-right font-mono tabular-nums px-3">
-                                            </td>
-
-                                            <td class="p-2 text-center">
-                                                <span class="bg-orange-50 text-orange-600 rounded font-bold" x-text="row.dealer_transferred"></span>
-                                            </td>
-
-                                            <td class="p-3 text-right font-bold text-green-600 text-sm font-mono tabular-nums bg-slate-50/70" x-text="rowTotal(row)"></td>
-
-                                            <td class="p-2">
-                                                <input type="text" :name="'rows[' + index + '][description]'" x-model="row.description"
-                                                       placeholder="—"
-                                                       class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm">
-                                            </td>
-
-                                            <td class="p-3 text-gray-400 font-mono text-[11px] whitespace-nowrap" x-text="row.updated_at"></td>
-
-                                            <td class="p-3 text-center">
-                                                <input type="hidden" :name="'rows[' + index + '][sort_order]'" :value="rows.length - index">
-                                                <button type="button" @click="removeRow(index)"
-                                                        class="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold">&times;</button>
-                                            </td>
-                                        </tr>
-                                    </template>
-
-                                    <tr x-show="rows.length === 0">
-                                        <td colspan="10" class="p-6 text-center text-gray-400 font-medium italic">No raw stock records yet.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                @empty
+                                    <tr><td colspan="4" class="p-6 text-center text-gray-400 font-medium italic">No stock recorded yet.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
-                </form>
+                </div>
+            </div>
+
+            {{-- ===================== STOCK TRANSFER LEDGER ===================== --}}
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                    <h3 class="font-bold text-gray-800 text-sm">Stock Transfer Ledger</h3>
+                </div>
+
+                @foreach($ledgerEntries as $entry)
+                    <form id="ledger-desc-{{ $entry->id }}" action="{{ route('admin.stock.ledger.update', $entry) }}" method="POST" class="hidden">
+                        @csrf
+                        @method('PATCH')
+                    </form>
+                @endforeach
+
+                <div class="p-5">
+                    <div class="border border-gray-200 rounded-xl shadow-sm overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full min-w-[900px] text-left border-collapse table-auto">
+                            <thead class="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-600 uppercase tracking-wider whitespace-nowrap sticky top-0 z-10">
+                                <tr>
+                                    <th class="p-3 min-w-[200px]">Device Category / Type</th>
+                                    <th class="p-3 w-20">Supplier Id</th>
+                                    <th class="p-3 min-w-[150px]">Supplier</th>
+                                    <th class="p-3 text-right">Stock In</th>
+                                    <th class="p-3 min-w-[200px]">Description</th>
+                                    <th class="p-3">Stocked-In Date</th>
+                                    <th class="p-3 text-center">Save & Delete</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white text-xs font-semibold text-gray-700">
+                                @forelse($ledgerEntries as $entry)
+                                    <tr class="hover:bg-gray-50/70 transition">
+                                        <td class="p-3">{{ $entry->device_category_type }}</td>
+                                        <td class="p-3 text-gray-400 font-mono">{{ $entry->supplier_id }}</td>
+                                        <td class="p-3">{{ $entry->supplier }}</td>
+                                        <td class="p-3 text-right font-mono tabular-nums">{{ $entry->stock_in }}</td>
+                                        <td class="p-2">
+                                            <input type="text" name="description" form="ledger-desc-{{ $entry->id }}"
+                                                   value="{{ $entry->description }}" placeholder="Add description"
+                                                   class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm">
+                                        </td>
+                                        <td class="p-3 text-gray-500 font-mono text-[11px] whitespace-nowrap">{{ optional($entry->stocked_in_date)->format('Y-m-d') }}</td>
+                                        <td class="p-3 text-center">
+                                            <div class="inline-flex items-center gap-2">
+                                                <button type="submit" form="ledger-desc-{{ $entry->id }}"
+                                                        class="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold">Save</button>
+                                                <form action="{{ route('admin.stock.ledger.destroy', $entry) }}" method="POST"
+                                                      onsubmit="return confirm('Delete this ledger record?')" class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold">Delete</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="7" class="p-6 text-center text-gray-400 font-medium italic">No stock transfer ledger records yet.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
