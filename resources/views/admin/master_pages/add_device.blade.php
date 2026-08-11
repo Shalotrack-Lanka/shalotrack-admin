@@ -71,7 +71,14 @@
 
                         <div>
                             <label class="block mb-1">Device SIM Number</label>
-                            <input type="text" name="sim_number" maxlength="10" inputmode="numeric" pattern="\d{10}" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                            <select name="sim_number" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                                <option value="">-- Select SIM Number --</option>
+                                @forelse($activatedSimNumbers as $simNumber)
+                                    <option value="{{ $simNumber }}" {{ old('sim_number') == $simNumber ? 'selected' : '' }}>{{ $simNumber }}</option>
+                                @empty
+                                    <option value="" disabled>No activated SIMs available</option>
+                                @endforelse
+                            </select>
                         </div>
 
                         <div class="md:col-span-2 flex gap-2 pt-2">

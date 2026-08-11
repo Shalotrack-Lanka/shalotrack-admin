@@ -75,10 +75,11 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 20%;">SIM Number</th>
-                <th style="width: 20%;">SIM Type</th>
-                <th style="width: 20%;">Provider</th>
-                <th style="width: 25%;">IMEI Number</th>
+                <th style="width: 15%;">SIM Number</th>
+                <th style="width: 15%;">SIM Type</th>
+                <th style="width: 20%;">IMSI</th>
+                <th style="width: 20%;">ICCID</th>
+                <th style="width: 15%;">Activation / Testing Required</th>
                 <th style="width: 15%;">Status</th>
             </tr>
         </thead>
@@ -87,12 +88,13 @@
                 <tr>
                     <td>{{ $sim->sim_number }}</td>
                     <td>{{ $sim->sim_type }}</td>
-                    <td>{{ $sim->provider }}</td>
-                    <td>{{ $sim->imei_number ?? '-' }}</td>
+                    <td>{{ $sim->imsi }}</td>
+                    <td>{{ $sim->iccid }}</td>
+                    <td>{{ $sim->activation_required ? 'Yes' : 'No' }}</td>
                     <td><span class="status-pill">Activated</span></td>
                 </tr>
             @empty
-                <tr><td colspan="5" style="text-align: center; color: #999;">No activated SIMs found.</td></tr>
+                <tr><td colspan="6" style="text-align: center; color: #999;">No activated SIMs found.</td></tr>
             @endforelse
         </tbody>
     </table>

@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin\MasterPages;
 use App\Http\Controllers\Controller;
 use App\Models\SetupShalotrackDevice;
 use App\Models\DeviceType;
+use App\Models\Sim;
 use App\Models\Stock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AddDeviceController extends Controller
@@ -22,9 +24,13 @@ class AddDeviceController extends Controller
             ->orderBy('model')
             ->get();
 
+        $activatedSimNumbers = Sim::where('sim_status', 'Activated')
+            ->orderBy('sim_number')
+            ->pluck('sim_number');
+
         return view(
             'admin.master_pages.add_device',
-            compact('devices', 'deviceTypes')
+            compact('devices', 'deviceTypes', 'activatedSimNumbers')
         );
     }
 
@@ -46,6 +52,7 @@ class AddDeviceController extends Controller
             'sim_number' => [
                 'nullable',
                 'digits:10',
+                Rule::exists('sims', 'sim_number')->where('sim_status', 'Activated'),
             ],
         ], [
             'device_type_id.required' =>
@@ -93,7 +100,7 @@ class AddDeviceController extends Controller
             // Register physical device
             // FIX: was not capturing the created model, so pushDeviceToApi()
             // had nothing to push — this device never actually reached the API.
-            return SetupShalotrackDevice::create([
+            $device = SetupShalotrackDevice::create([
                 'device_type_id' => $deviceType->id,
 
                 'device_category' => $deviceCategory,
@@ -106,6 +113,16 @@ class AddDeviceController extends Controller
 
                 'dealer_id' => null,
             ]);
+
+            // The SIM is now attached to a physical device, so it no longer
+            // belongs in the pool of Activated SIMs available for setup.
+            if (!empty($validated['sim_number'])) {
+                Sim::where('sim_number', $validated['sim_number'])
+                    ->where('sim_status', 'Activated')
+                    ->delete();
+            }
+
+            return $device;
         });
 
         // NEW: push this newly registered device to the API so the mobile
