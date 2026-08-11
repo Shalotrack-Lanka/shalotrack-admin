@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Admin\MasterPages;
 use App\Http\Controllers\Controller;
 use App\Models\SetupShalotrackDevice;
 use App\Models\DeviceType;
+use App\Models\Stock;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AddDeviceController extends Controller
 {
@@ -73,22 +76,37 @@ class AddDeviceController extends Controller
             ' with ' .
             $deviceType->model;
 
-        // Register physical device
-        // FIX: was not capturing the created model, so pushDeviceToApi()
-        // had nothing to push — this device never actually reached the API.
-        $device = SetupShalotrackDevice::create([
-            'device_type_id' => $deviceType->id,
+        // Company Available Stock must cover this setup — one unit of
+        // physical stock is consumed per device setup, for this Device
+        // Category / Type specifically.
+        $device = DB::transaction(function () use ($deviceType, $deviceCategory, $validated) {
+            $stock = Stock::where('device_type_id', $deviceType->id)->lockForUpdate()->first();
 
-            'device_category' => $deviceCategory,
+            if (!$stock || $stock->company_available_stock < 1) {
+                throw ValidationException::withMessages([
+                    'device_type_id' => 'No Company Available Stock left for this Device Category / Type.',
+                ]);
+            }
 
-            'imei_number' => $validated['imei_number'],
+            $stock->decrement('company_available_stock');
 
-            'sim_number' => $validated['sim_number'] ?? null,
+            // Register physical device
+            // FIX: was not capturing the created model, so pushDeviceToApi()
+            // had nothing to push — this device never actually reached the API.
+            return SetupShalotrackDevice::create([
+                'device_type_id' => $deviceType->id,
 
-            'status' => 'Not Activated',
+                'device_category' => $deviceCategory,
 
-            'dealer_id' => null,
-        ]);
+                'imei_number' => $validated['imei_number'],
+
+                'sim_number' => $validated['sim_number'] ?? null,
+
+                'status' => 'Not Activated',
+
+                'dealer_id' => null,
+            ]);
+        });
 
         // NEW: push this newly registered device to the API so the mobile
         // side knows about it for activation purposes.
