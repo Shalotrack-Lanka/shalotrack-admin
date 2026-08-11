@@ -400,7 +400,8 @@ Route::prefix('admin/stock')->middleware('auth')->group(function () {
 
     Route::get('/manage-stock', [ManageStockController::class, 'index'])->name('admin.stock.manage');
     Route::post('/manage-stock', [ManageStockController::class, 'store'])->name('admin.stock.store');
-    Route::put('/manage-stock/bulk-update', [ManageStockController::class, 'bulkUpdate'])->name('admin.stock.bulk-update');
+    Route::patch('/ledger/{ledger}', [ManageStockController::class, 'updateLedgerDescription'])->name('admin.stock.ledger.update');
+    Route::delete('/ledger/{ledger}', [ManageStockController::class, 'destroyLedger'])->name('admin.stock.ledger.destroy');
 
     // 2. Current Stock Route
     //Route::get('/current-stock', [CurrentStockController::class, 'index'])->name('admin.current-stock');

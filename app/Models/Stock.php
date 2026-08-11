@@ -11,12 +11,8 @@ class Stock extends Model
 
     protected $fillable = [
         'device_type_id',
-        'supplier_id',
-        'stock_in',
+        'device_category_type',
         'company_available_stock',
-        'total_available',
-        'description',
-        'sort_order',
     ];
 
     public function deviceType()
@@ -24,13 +20,13 @@ class Stock extends Model
         return $this->belongsTo(DeviceType::class);
     }
 
-    public function supplier()
-    {
-        return $this->belongsTo(Supplier::class);
-    }
-
     public function sims()
     {
         return $this->hasMany(Sim::class);
+    }
+
+    public function ledgerEntries()
+    {
+        return $this->hasMany(StockTransferLedger::class);
     }
 }
