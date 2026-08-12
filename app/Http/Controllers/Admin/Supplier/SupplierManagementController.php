@@ -245,7 +245,7 @@ class SupplierManagementController extends Controller
 
 
     /**
-     * Attach a product to supplier.
+     * Attach a product to supplier
      */
     public function attachProduct(Request $request, $id)
     {
