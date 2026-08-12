@@ -114,7 +114,6 @@
             @endforelse
         </tbody>
     </table>
-
     <div class="footer">ShaloTrack Admin Portal — Auto-generated report</div>
 
 </body>
