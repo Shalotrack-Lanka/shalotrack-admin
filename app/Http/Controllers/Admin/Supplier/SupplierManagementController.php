@@ -271,7 +271,7 @@ class SupplierManagementController extends Controller
 
 
     /**
-     * Remove a product from supplier.
+     * Remove a product from supplier
      */
     public function detachProduct($id, $productId)
     {
