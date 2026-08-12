@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin\Dealer;
 
 use App\Http\Controllers\Controller;
 use App\Models\DealerCustomerAd;
-use App\Models\StockTransfer;
+use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
 use App\Http\Requests\DealerStoreCustomerAdRequest; 
 use Illuminate\Http\Request;
@@ -90,8 +90,7 @@ class DealerDashboardController extends Controller
         | 6. Stock Transfers & History
         |--------------------------------------------------------------------------
         */
-        $transfers = StockTransfer::with(['stock.deviceType'])
-            ->where('dealer_id', $dealerId)
+        $transfers = DealerTransferLedger::where('dealer_id', $dealerId)
             ->latest()
             ->get();
 
@@ -108,34 +107,9 @@ class DealerDashboardController extends Controller
         $recentActivity = $transfers
             ->take(5)
             ->map(function ($transfer) {
-                $deviceType = $transfer->stock?->deviceType;
-
-                if ($deviceType) {
-                    $category = $deviceType->device_category ?? '';
-                    $model    = $deviceType->model ?? '';
-
-                    if ($category && $model) {
-                        $deviceName = $category . ' with ' . $model;
-                    } elseif ($model) {
-                        $deviceName = $model;
-                    } elseif ($category) {
-                        $deviceName = $category;
-                    } else {
-                        $deviceName = 'device';
-                    }
-                } else {
-                    $deviceName = 'device';
-                }
-
-                $text = 'Received ' . $transfer->quantity . ' × ' . $deviceName;
-
-                if (!empty($transfer->remarks)) {
-                    $text .= ' — ' . $transfer->remarks;
-                }
-
                 return [
                     'date' => $transfer->created_at,
-                    'text' => $text,
+                    'text' => 'Received ' . $transfer->quantity . ' × ' . $transfer->device_category,
                 ];
             })
             ->values();
