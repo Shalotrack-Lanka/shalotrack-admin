@@ -346,22 +346,6 @@
             </div>
         </div>
 
-        {{-- Feature 2: Commission Guidelines --}}
-        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div>
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 mb-4 border border-emerald-100">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </div>
-                <h3 class="font-bold text-slate-800 text-base">Dealer Commission Policy</h3>
-                <p class="text-xs text-slate-500 leading-relaxed mt-2">
-                    Higher device counts per customer lead increase dealer commission yield. Make sure to assign valid IMEI digits for instant system verification.
-                </p>
-            </div>
-            <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                <span>Policy Version 2.0</span>
-                <span class="font-bold text-blue-950">Dealer Terms Applied</span>
-            </div>
-        </div>
 
         {{-- Feature 3: Quick Navigation Widget --}}
         <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
