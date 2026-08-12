@@ -19,7 +19,13 @@
 
     <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
         <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h3 class="text-base font-bold text-gray-800">Transfer Stock to Dealer</h3>
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-bold text-gray-800">Setuped Device Transfered to Dealers</h2>
+                <a href="{{ route('admin.dealer.stock_transfer.report') }}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-md transition inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Generate Full Transfer Report
+                </a>
+            </div>
         </div>
         <div class="p-6">
             <form action="{{ route('admin.dealer.stock_transfer.store') }}" method="POST" id="transfer_form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end text-sm">

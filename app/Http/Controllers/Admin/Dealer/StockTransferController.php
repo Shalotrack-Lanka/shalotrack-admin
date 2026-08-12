@@ -9,6 +9,8 @@ use App\Models\SetupShalotrackDevice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class StockTransferController extends Controller
 {
@@ -210,5 +212,37 @@ class StockTransferController extends Controller
             // drops them the moment it renders.
             'sim_numbers'     => $selected->merge($available)->unique()->sort()->values(),
         ]);
+    }
+
+    public function generateReport()
+    {
+        // 1. Fetch Transferred Device History
+        $transfers = DealerTransferLedger::with('dealer')->latest()->get();
+
+        // 2. Fetch Transferred IMEI / Devices
+        $allocatedDevices = SetupShalotrackDevice::with(['dealer', 'deviceType'])
+            ->whereNotNull('dealer_id')
+            ->orderByDesc('allocated_at')
+            ->get();
+
+        $title = 'DEALER STOCK TRANSFER FULL REPORT';
+
+        // Watermark Logo Converter
+        $logoPath = public_path('images/logo.png');
+        $logoBase64 = '';
+        if (file_exists($logoPath)) {
+            $typeImg = pathinfo($logoPath, PATHINFO_EXTENSION);
+            $dataImg = file_get_contents($logoPath);
+            $logoBase64 = 'data:image/' . $typeImg . ';base64,' . base64_encode($dataImg);
+        }
+
+        $pdf = Pdf::loadView('admin.dealer.stock_transfer_report_pdf', compact(
+            'transfers',
+            'allocatedDevices',
+            'title',
+            'logoBase64'
+        ))->setPaper('a4', 'landscape'); // Clear view for both tables
+
+        return $pdf->stream('dealer_stock_transfer_report.pdf');
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerAd;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerSetupController extends Controller
 {
@@ -76,5 +77,35 @@ class CustomerSetupController extends Controller
             'active_html'   => view('admin.customer._active_table', compact('activeCustomers'))->render(),
             'inactive_html' => view('admin.customer._inactive_table', compact('inactiveCustomers'))->render(),
         ]);
+    }
+
+    // PDF Report Generator Method
+    public function generateReport(Request $request)
+    {
+        $type = $request->query('type', 'active');
+
+        if ($type === 'active') {
+            $customers = CustomerAd::where('cus_status', 'verified')->orderBy('full_name')->get();
+            $title = 'Active Customers Report';
+        } else {
+            $customers = CustomerAd::where(function ($query) {
+                $query->where('cus_status', 'not_verified')->orWhereNull('cus_status');
+            })->orderBy('full_name')->get();
+            $title = 'Inactive Customers Report';
+        }
+
+        // Watermark Image එක Base64 වලට Convert කරගැනීම
+        $logoPath = public_path('images/logo.png'); // ඔයාගේ Logo එක තියෙන Path එක දෙන්න
+        $logoBase64 = '';
+        if (file_exists($logoPath)) {
+            $typeImg = pathinfo($logoPath, PATHINFO_EXTENSION);
+            $dataImg = file_get_contents($logoPath);
+            $logoBase64 = 'data:image/' . $typeImg . ';base64,' . base64_encode($dataImg);
+        }
+
+        $pdf = Pdf::loadView('admin.customer.report_pdf', compact('customers', 'title', 'logoBase64'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream(strtolower(str_replace(' ', '_', $title)) . '.pdf');
     }
 }

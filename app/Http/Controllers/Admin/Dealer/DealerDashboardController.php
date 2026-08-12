@@ -8,6 +8,7 @@ use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
 use App\Http\Requests\DealerStoreCustomerAdRequest; 
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DealerDashboardController extends Controller
 {
@@ -34,6 +35,7 @@ class DealerDashboardController extends Controller
                 'dealer'                  => null,
                 'allocatedDevices'        => collect(),
                 'allocatedDeviceCount'    => 0,
+                'myStockCount'            => 0,
                 'readyForActivationCount' => 0,
                 'transfers'               => collect(),
                 'totalStockReceived'      => 0,
@@ -64,7 +66,7 @@ class DealerDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | 4. Physical Devices Allocated To Dealer
+        | 4. Physical Devices Allocated To Dealer (From setup_shalotrack_devices)
         |--------------------------------------------------------------------------
         */
         $allocatedDevices = SetupShalotrackDevice::with('deviceType')
@@ -73,6 +75,7 @@ class DealerDashboardController extends Controller
             ->get();
 
         $allocatedDeviceCount = $allocatedDevices->count();
+        $myStockCount        = $allocatedDeviceCount; //
 
         /*
         |--------------------------------------------------------------------------
@@ -123,6 +126,7 @@ class DealerDashboardController extends Controller
             'dealer',
             'allocatedDevices',
             'allocatedDeviceCount',
+            'myStockCount',
             'readyForActivationCount',
             'transfers',
             'totalStockReceived',
@@ -242,5 +246,28 @@ class DealerDashboardController extends Controller
         $customerAd->delete();
 
         return back()->with('success', 'Customer deleted successfully!');
+    }
+
+    /**
+     * Generate PDF Report for Customers Added by Dealer
+     */
+    public function generateReport(Request $request)
+    {
+        $customers = DealerCustomerAd::with('dealer')->latest()->get(); 
+        
+        $title = 'CUSTOMERS ADDED BY DEALERS REPORT';
+
+        $logoPath = public_path('images/logo.png');
+        $logoBase64 = '';
+        if (file_exists($logoPath)) {
+            $typeImg = pathinfo($logoPath, PATHINFO_EXTENSION);
+            $dataImg = file_get_contents($logoPath);
+            $logoBase64 = 'data:image/' . $typeImg . ';base64,' . base64_encode($dataImg);
+        }
+
+        $pdf = Pdf::loadView('admin.dealer.customer_report_pdf', compact('customers', 'title', 'logoBase64'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->stream('customers_added_by_dealers_report.pdf');
     }
 }

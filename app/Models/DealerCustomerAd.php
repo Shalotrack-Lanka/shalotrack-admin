@@ -25,8 +25,9 @@ class DealerCustomerAd extends Model
     'imei_numbers' => 'array', //  auto cast array to JSON  
 ];
 
+    
     public function dealer()
     {
-        return $this->belongsTo(Dealer::class);
+        return $this->belongsTo(Dealer::class, 'dealer_id');
     }
 }

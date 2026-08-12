@@ -313,6 +313,10 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
     Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
 
+    // pdf report generation
+    Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
+
+    Route::get('/admin/dealer/stock-transfer/report', [StockTransferController::class, 'generateReport'])->name('admin.dealer.stock_transfer.report');
 });
 
 /*
@@ -343,6 +347,10 @@ Route::prefix('admin/customer')->middleware('auth')->group(function () {
 
     Route::post('/device-management/{expiredDevice}/reactivate', [CustomerDeviceManagementController::class, 'reactivate'])
         ->name('admin.customer-device-management.reactivate');
+
+    Route::get('/setup/report', [CustomerSetupController::class, 'generateReport'])->name('admin.customer-setup.report');
+
+    Route::get('customer-device-management/report', [CustomerDeviceManagementController::class, 'generateReport'])->name('admin.customer-device-management.report');
 
 });
 
@@ -429,6 +437,8 @@ Route::prefix('admin/stock')->middleware('auth')->group(function () {
     Route::post('/manage-stock', [ManageStockController::class, 'store'])->name('admin.stock.store');
     Route::patch('/ledger/{ledger}', [ManageStockController::class, 'updateLedgerDescription'])->name('admin.stock.ledger.update');
     Route::delete('/ledger/{ledger}', [ManageStockController::class, 'destroyLedger'])->name('admin.stock.ledger.destroy');
+
+    Route::get('/report', [ManageStockController::class, 'generateReport'])->name('admin.stock.report');
 
     // 2. Current Stock Route
     //Route::get('/current-stock', [CurrentStockController::class, 'index'])->name('admin.current-stock');
