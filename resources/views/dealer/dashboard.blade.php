@@ -341,7 +341,7 @@
             <div>
                 <h3 class="font-bold text-blue-950 text-base">Vehicles API Integration Status</h3>
                 <p class="text-xs text-slate-600 leading-relaxed mt-1">
-                    Vehicle Tracking and Live GPS Mapping modules are currently undergoing backend synchronization. Dealer-to-Vehicle allocation APIs will be enabled upon full telemetry setup.
+                    Vehicle Tracking and Live GPS Mapping modules are currently undergoing backend synchronization. Dealer-to-Vehicle allocation APIs will be enabled full telemetry setup.
                 </p>
             </div>
         </div>
