@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin\Dealer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Dealer;
-use App\Models\StockTransfer;
+use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
 use Illuminate\Http\Request;
 
@@ -23,8 +23,7 @@ class DealerProfileController extends Controller
             ->latest('shdevice_id')
             ->get();
 
-        $transfers = StockTransfer::with(['stock.deviceType'])
-            ->where('dealer_id', $id)
+        $transfers = DealerTransferLedger::where('dealer_id', $id)
             ->latest()
             ->get();
 
@@ -33,7 +32,7 @@ class DealerProfileController extends Controller
         $recentActivity = $transfers->take(5)->map(function ($t) {
             return [
                 'date' => $t->created_at,
-                'text' => "Received {$t->quantity} × " . ($t->stock->deviceType->model ?? 'device') . ($t->remarks ? " — {$t->remarks}" : ''),
+                'text' => "Received {$t->quantity} × " . $t->device_category,
             ];
         })->values();
 
