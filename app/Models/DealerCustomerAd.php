@@ -22,7 +22,7 @@ class DealerCustomerAd extends Model
     ];
 
     protected $casts = [
-    'imei_numbers' => 'array', //  auto cast array to JSON and vice versa 
+    'imei_numbers' => 'array', //  auto cast array to JSON  
 ];
 
     public function dealer()
