@@ -56,7 +56,7 @@ class SupplierInvoiceController extends Controller
 
     /**
      * AJAX: contact details + linked products (with real price/discount
-     * from supplier_products) for the supplier just picked in the wizard.
+     * from supplier_products) for the supplier just picked in the wizard
      */
     public function getSupplierData($id)
     {
