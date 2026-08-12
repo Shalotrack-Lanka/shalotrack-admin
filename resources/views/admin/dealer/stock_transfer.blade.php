@@ -1,16 +1,16 @@
 @extends('layouts.admin')
 
-@section('title', 'Dealer Stock Transfer')
+@section('title', 'Setuped Device Transfered to Dealers')
 
 @section('content')
 <div class="space-y-6">
-    
+
     @if(session('success'))
         <div class="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs font-bold">
             {{ session('success') }}
         </div>
     @endif
-    
+
     @if ($errors->any())
         <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-bold">
             {{ $errors->first() }}
@@ -22,45 +22,25 @@
             <h3 class="text-base font-bold text-gray-800">Transfer Stock to Dealer</h3>
         </div>
         <div class="p-6">
-            <form action="{{ route('admin.dealer.stock_transfer.store') }}" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end text-sm">
+            <form action="{{ route('admin.dealer.stock_transfer.store') }}" method="POST" id="transfer_form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end text-sm">
                 @csrf
-                
+
                 <div class="md:col-span-1">
-                <label class="block mb-1 font-semibold text-gray-700">Select Stock Type</label>
-                   <select id="device_type" name="device_type_id" required
+                    <label class="block mb-1 font-semibold text-gray-700">Device Category / Type</label>
+                    <select id="device_category" name="device_category" required
                         class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
 
-                    <option value="" disabled selected>
-                        -- Select Device Category / Type --
-                    </option>
-
-                    @forelse($deviceTypes as $type)
-                        <option value="{{ $type->id }}">
-                            {{ $type->device_category }} with {{ $type->model }}
+                        <option value="" disabled selected>
+                            -- Select Device Category / Type --
                         </option>
-                    @empty
-                        <option value="" disabled>
-                          No device types available
-                        </option>
-                    @endforelse
 
-                </select>
-                </div>
-                
+                        @forelse($deviceCategories as $category)
+                            <option value="{{ $category }}">{{ $category }}</option>
+                        @empty
+                            <option value="" disabled>No device categories available</option>
+                        @endforelse
 
-                <div class="md:col-span-1">
-                    <label class="block mb-1 font-semibold text-gray-700">
-                        Select Supplier
-                    </label>
-
-                        <select id="supplier"
-                                name="supplier_id"
-                                required
-                                class="w-full rounded-lg border-gray-300 h-10 text-xs">
-
-                            <option value="">-- Select Supplier --</option>
-
-                        </select>
+                    </select>
                 </div>
 
                 <div class="md:col-span-1">
@@ -68,7 +48,7 @@
                         Select Dealer
                     </label>
 
-                    <select name="dealer_id" required
+                    <select id="dealer_id" name="dealer_id" required
                         class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 focus:border-blue-500 text-xs">
 
                         <option value="" selected disabled>
@@ -85,29 +65,23 @@
                 </div>
 
                 <div class="md:col-span-1">
-                    <label class="block mb-1 font-semibold text-gray-700">Bulk Stock (Supplier)</label>
+                    <label class="block mb-1 font-semibold text-gray-700">Sim_number</label>
 
-                    <input type="text" id="available_stock" class="w-full rounded-lg border-gray-300 h-10 bg-gray-100" value="0" readonly>
+                    <select id="sim_numbers" name="sim_numbers[]" multiple required
+                        class="w-full rounded-lg border-gray-300 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500 h-24">
+                        <option value="" disabled>-- Select Device Category / Type first --</option>
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">Hold Ctrl (Cmd on Mac) and click to select multiple SIM numbers.</p>
                 </div>
 
                 <div class="md:col-span-1">
-                    <label class="block mb-1 font-semibold text-gray-700">
-                        Ready to Transfer <span class="text-gray-400 font-normal">(Registered IMEIs)</span>
-                    </label>
-
-                    <input type="text" id="physical_available" class="w-full rounded-lg border-gray-300 h-10 bg-gray-100" value="0" readonly>
+                    <label class="block mb-1 font-semibold text-gray-700">Nu of Devices</label>
+                    <input type="text" id="nu_of_devices" class="w-full rounded-lg border-gray-300 h-10 bg-gray-100" value="0" readonly>
                 </div>
 
-                <div class="md:col-span-2">
-                    <p id="stock_mismatch_note" class="text-[11px] text-amber-600 font-bold hidden">
-                        Bulk stock is higher than registered IMEIs — only the registered count can actually be transferred. Register more devices via Master Pages &rarr; Add Device to unlock the rest.
-                    </p>
-                </div>
-
-                <input id="quantity" type="number" name="quantity" min="1" required placeholder="Ex: 50" class="w-full rounded-lg border-gray-300 h-10 focus:ring-blue-500 text-xs">
-
-                <div class="md:col-span-1 flex gap-2">
-                    <button type="submit" id="transfer_btn" class="w-full bg-[#17a2b8] hover:bg-[#138496] text-white px-4 h-10 rounded-lg font-bold shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#17a2b8]" disabled>Transfer</button>
+                <div class="md:col-span-4 flex gap-2 justify-end">
+                    <button type="button" id="reset_btn" class="px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 h-10 rounded-lg font-bold transition">Reset</button>
+                    <button type="submit" id="transfer_btn" class="px-8 bg-[#17a2b8] hover:bg-[#138496] text-white h-10 rounded-lg font-bold shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#17a2b8]" disabled>Transfer</button>
                 </div>
             </form>
         </div>
@@ -115,17 +89,18 @@
 
     <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
         <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h3 class="text-base font-bold text-gray-800">Transferred Stock History</h3>
+            <h3 class="text-base font-bold text-gray-800">Transferred Device History</h3>
         </div>
         <div class="p-6">
             <div class="border border-gray-200 rounded-lg overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-gray-50 border-b border-gray-200 text-xs text-gray-700 uppercase">
                         <tr>
-                            <th class="p-4">Date</th>
-                            <th class="p-4">Dealer Name</th>
-                            <th class="p-4">Device Model</th>
-                            <th class="p-4 text-center">Qty Transferred</th>
+                            <th class="p-4">Date & time</th>
+                            <th class="p-4">Dealer</th>
+                            <th class="p-4">Device Category / Type</th>
+                            <th class="p-4 text-center">Nu of Devices</th>
+                            <th class="p-4 text-center">Delete & Edit</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 bg-white text-sm font-medium text-gray-700">
@@ -133,12 +108,29 @@
                             <tr class="hover:bg-gray-50 transition">
                                 <td class="p-4 text-xs text-gray-500">{{ $transfer->created_at->format('Y-m-d h:i A') }}</td>
                                 <td class="p-4 font-bold">{{ $transfer->dealer->full_name ?? '-' }}</td>
-                                <td class="p-4">{{ $transfer->stock->deviceType->model ?? '-' }}</td>
+                                <td class="p-4">{{ $transfer->device_category }}</td>
                                 <td class="p-4 text-center font-bold text-blue-600 bg-blue-50">{{ $transfer->quantity }}</td>
+                                <td class="p-4 text-center">
+                                    <div class="inline-flex items-center gap-2">
+                                        <button type="button"
+                                            class="edit-transfer-btn px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold"
+                                            data-id="{{ $transfer->id }}"
+                                            data-category="{{ $transfer->device_category }}">
+                                            Edit
+                                        </button>
+
+                                        <form action="{{ route('admin.dealer.stock_transfer.destroy', $transfer) }}" method="POST"
+                                              onsubmit="return confirm('Delete this transfer history record? The devices will remain assigned to the dealer.')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="p-8 text-center text-gray-400">No stock transfers found.</td>
+                                <td colspan="5" class="p-8 text-center text-gray-400">No stock transfers found.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -205,169 +197,182 @@
         </div>
     </div>
 </div>
+
+{{-- ===================== EDIT TRANSFER MODAL ===================== --}}
+<div id="edit_modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <h3 class="text-base font-bold text-gray-800">Edit Transfer Record</h3>
+            <button type="button" id="edit_modal_close" class="text-gray-400 hover:text-gray-600 font-bold text-lg leading-none">&times;</button>
+        </div>
+        <form id="edit_form" method="POST" class="p-6 space-y-4 text-sm">
+            @csrf
+            @method('PUT')
+
+            <div>
+                <label class="block mb-1 font-semibold text-gray-700">Device Category / Type</label>
+                <input type="text" id="edit_device_category" class="w-full rounded-lg border-gray-300 h-10 bg-gray-100 text-xs" readonly>
+            </div>
+
+            <div>
+                <label class="block mb-1 font-semibold text-gray-700">Select Dealer</label>
+                <select id="edit_dealer_id" name="dealer_id" required
+                    class="w-full rounded-lg border-gray-300 h-10 text-xs">
+                    @foreach($dealers as $dealer)
+                        <option value="{{ $dealer->id }}">{{ $dealer->full_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block mb-1 font-semibold text-gray-700">Sim_number</label>
+                <select id="edit_sim_numbers" name="sim_numbers[]" multiple required
+                    class="w-full rounded-lg border-gray-300 text-xs h-32"></select>
+                <p class="text-[11px] text-gray-400 mt-1">Hold Ctrl (Cmd on Mac) and click to select multiple SIM numbers.</p>
+            </div>
+
+            <div>
+                <label class="block mb-1 font-semibold text-gray-700">Nu of Devices</label>
+                <input type="text" id="edit_nu_of_devices" class="w-full rounded-lg border-gray-300 h-10 bg-gray-100" value="0" readonly>
+            </div>
+
+            <div class="flex gap-2 justify-end pt-2 border-t border-gray-100">
+                <button type="button" id="edit_modal_cancel" class="px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 h-10 rounded-lg font-bold transition">Cancel</button>
+                <button type="submit" class="px-8 bg-[#17a2b8] hover:bg-[#138496] text-white h-10 rounded-lg font-bold shadow-sm transition">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-    const device = document.getElementById("device_type");
-    const supplier = document.getElementById("supplier");
-    const availableStock = document.getElementById("available_stock");
-    const physicalAvailable = document.getElementById("physical_available");
-    const mismatchNote = document.getElementById("stock_mismatch_note");
-    const quantity = document.getElementById("quantity");
+    const deviceCategory = document.getElementById("device_category");
+    const dealer = document.getElementById("dealer_id");
+    const simNumbers = document.getElementById("sim_numbers");
+    const nuOfDevices = document.getElementById("nu_of_devices");
     const transferBtn = document.getElementById("transfer_btn");
+    const resetBtn = document.getElementById("reset_btn");
+    const transferForm = document.getElementById("transfer_form");
 
-    function resetStockFields() {
-        availableStock.value = 0;
-        physicalAvailable.value = 0;
-        mismatchNote.classList.add("hidden");
-        quantity.value = "";
+    function updateNuOfDevices(selectEl, outputEl, btnEl) {
+        const count = Array.from(selectEl.selectedOptions).filter(o => o.value).length;
+        outputEl.value = count;
+        if (btnEl) {
+            btnEl.disabled = count === 0;
+        }
+        return count;
+    }
+
+    function resetTransferFields() {
+        simNumbers.innerHTML = '<option value="" disabled>-- Select Device Category / Type first --</option>';
+        nuOfDevices.value = 0;
         transferBtn.disabled = true;
     }
 
-    // -------------------------------
-    // Load Suppliers
-    // -------------------------------
-    device.addEventListener("change", function () {
+    function loadSimNumbers(category, selectEl, callback) {
+        selectEl.innerHTML = '<option value="" disabled>Loading...</option>';
 
-        supplier.innerHTML =
-            '<option value="">Loading...</option>';
-
-        resetStockFields();
-
-        console.log("Device:", this.value);
-
-        fetch('/admin/dealer/suppliers/' + this.value)
-
+        fetch('/admin/dealer/device-categories/' + encodeURIComponent(category) + '/sim-numbers')
             .then(response => {
-
                 if (!response.ok) {
                     throw new Error("HTTP " + response.status);
                 }
-
                 return response.json();
-
             })
-
             .then(data => {
-
-                console.log(data);
-
-                supplier.innerHTML =
-                    '<option value="">-- Select Supplier --</option>';
+                selectEl.innerHTML = '';
 
                 if (data.length === 0) {
-
-                    supplier.innerHTML =
-                        '<option value="">No Suppliers Found</option>';
-
+                    selectEl.innerHTML = '<option value="" disabled>No SIM numbers available</option>';
                     return;
                 }
 
-                data.forEach(function (item) {
-
-                    supplier.innerHTML += `
-                        <option value="${item.id}">
-                            ${item.name}
-                        </option>
-                    `;
-
+                data.forEach(function (sim) {
+                    const opt = document.createElement('option');
+                    opt.value = sim;
+                    opt.textContent = sim;
+                    selectEl.appendChild(opt);
                 });
 
+                if (callback) callback();
             })
-
             .catch(error => {
-
                 console.error(error);
-
-                supplier.innerHTML =
-                    '<option value="">Failed to load suppliers</option>';
-
+                selectEl.innerHTML = '<option value="" disabled>Failed to load SIM numbers</option>';
             });
+    }
 
+    // -------------------------------
+    // Create form
+    // -------------------------------
+    deviceCategory.addEventListener("change", function () {
+        resetTransferFields();
+        if (this.value) {
+            loadSimNumbers(this.value, simNumbers);
+        }
+    });
+
+    simNumbers.addEventListener("change", function () {
+        updateNuOfDevices(simNumbers, nuOfDevices, transferBtn);
+    });
+
+    resetBtn.addEventListener("click", function () {
+        transferForm.reset();
+        resetTransferFields();
     });
 
     // -------------------------------
-    // Load Available Stock (bulk + physical)
+    // Edit modal
     // -------------------------------
-    supplier.addEventListener("change", function () {
+    const editModal = document.getElementById("edit_modal");
+    const editForm = document.getElementById("edit_form");
+    const editDeviceCategory = document.getElementById("edit_device_category");
+    const editDealer = document.getElementById("edit_dealer_id");
+    const editSimNumbers = document.getElementById("edit_sim_numbers");
+    const editNuOfDevices = document.getElementById("edit_nu_of_devices");
 
-        resetStockFields();
+    function openEditModal(id) {
+        editForm.action = '/admin/dealer/stock-transfer/' + id;
 
-        fetch('/admin/dealer/stock-info/' + device.value + '/' + supplier.value)
-
-            .then(response => {
-
-                if (!response.ok) {
-                    throw new Error("HTTP " + response.status);
-                }
-
-                return response.json();
-
-            })
-
+        fetch('/admin/dealer/stock-transfer/' + id + '/edit-data')
+            .then(response => response.json())
             .then(data => {
+                editDeviceCategory.value = data.device_category;
+                editDealer.value = data.dealer_id;
 
-                console.log(data);
+                editSimNumbers.innerHTML = '';
+                data.sim_numbers.forEach(function (sim) {
+                    const opt = document.createElement('option');
+                    opt.value = sim;
+                    opt.textContent = sim;
+                    opt.selected = data.selected.includes(sim);
+                    editSimNumbers.appendChild(opt);
+                });
 
-                const bulk = parseInt(data.available) || 0;
-                const physical = parseInt(data.physical_available) || 0;
-
-                availableStock.value = bulk;
-                physicalAvailable.value = physical;
-
-                // Bulk stock and registered IMEIs are tracked independently
-                // on purpose (bulk = what the supplier promised, physical =
-                // what's actually been scanned in) — so they don't have to
-                // match. The real ceiling on any transfer is whichever is
-                // smaller.
-                const maxTransferable = Math.min(bulk, physical);
-
-                if (bulk > physical) {
-                    mismatchNote.classList.remove("hidden");
-                }
-
-                if (maxTransferable > 0) {
-                    transferBtn.disabled = false;
-                }
-
+                updateNuOfDevices(editSimNumbers, editNuOfDevices, null);
+                editModal.classList.remove("hidden");
             })
+            .catch(error => console.error(error));
+    }
 
-            .catch(error => {
+    function closeEditModal() {
+        editModal.classList.add("hidden");
+    }
 
-                console.error(error);
-
-            });
-
+    document.querySelectorAll(".edit-transfer-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            openEditModal(this.dataset.id);
+        });
     });
 
-    // -------------------------------
-    // Quantity Validation
-    // -------------------------------
-    quantity.addEventListener("input", function () {
-
-        let bulk = parseInt(availableStock.value) || 0;
-        let physical = parseInt(physicalAvailable.value) || 0;
-        let maxTransferable = Math.min(bulk, physical);
-        let entered = parseInt(this.value) || 0;
-
-        if (entered > maxTransferable) {
-
-            alert("Only " + maxTransferable + " device(s) can actually be transferred right now (limited by registered IMEIs).");
-
-            this.value = maxTransferable;
-
-        }
-
-        if (entered <= 0) {
-            transferBtn.disabled = true;
-        } else {
-            transferBtn.disabled = false;
-        }
-
+    editSimNumbers.addEventListener("change", function () {
+        updateNuOfDevices(editSimNumbers, editNuOfDevices, null);
     });
 
+    document.getElementById("edit_modal_close").addEventListener("click", closeEditModal);
+    document.getElementById("edit_modal_cancel").addEventListener("click", closeEditModal);
 
 });
 </script>
