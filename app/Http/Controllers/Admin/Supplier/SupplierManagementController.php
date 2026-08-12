@@ -229,7 +229,7 @@ class SupplierManagementController extends Controller
 
 
     /**
-     * Activate / Deactivate Supplier.
+     * Activate / Deactivate Supplier
      */
     public function toggleStatus($id)
     {
