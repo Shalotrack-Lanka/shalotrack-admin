@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin\Supplier;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use App\Models\Product;
-use App\Models\Stock;
+use App\Models\StockTransferLedger; // Stock වෙනුවට StockTransferLedger Model එක යොදා ගන්න
 use Illuminate\Http\Request;
 
 class SupplierManagementController extends Controller
@@ -99,13 +99,6 @@ class SupplierManagementController extends Controller
             |--------------------------------------------------------------------------
             | Available Products
             |--------------------------------------------------------------------------
-            | Products that are NOT already attached to this supplier.
-            |
-            | FIX: the products table column is `product_name`, not `name`
-            | (see products migration + Product::$fillable). Sorting by
-            | `name` here threw SQLSTATE[42703] "column name does not
-            | exist" on every Edit click — that was the 500 you were
-            | seeing.
             */
             $attachedIds = $selectedProducts->pluck('id');
 
@@ -118,8 +111,10 @@ class SupplierManagementController extends Controller
             |--------------------------------------------------------------------------
             | Supplier Stock / Supply History
             |--------------------------------------------------------------------------
+            | FIX: Querying StockTransferLedger instead of Stock table
+            | because supplier_id exists in stock_transfer_ledgers.
             */
-            $stockHistory = Stock::with('deviceType')
+            $stockHistory = StockTransferLedger::with('stock.deviceType')
                 ->where('supplier_id', $selectedSupplier->id)
                 ->orderByDesc('created_at')
                 ->get();
@@ -157,72 +152,32 @@ class SupplierManagementController extends Controller
      */
     public function store(Request $request)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Validation
-        |--------------------------------------------------------------------------
-        */
         $validated = $request->validate([
-
             'supplier_name' => 'required|string|max:255',
-
-            'address' => 'nullable|string',
-
-            'country' => 'nullable|string|max:100',
-
-            'state' => 'nullable|string|max:100',
-
-            'phone_number' => 'nullable|string|max:20',
-
-            'email_id' => 'nullable|email|max:255',
-
-            'website' => 'nullable|string|max:255',
-
-            'gstin' => 'nullable|string|max:50',
+            'address'       => 'nullable|string',
+            'country'       => 'nullable|string|max:100',
+            'state'         => 'nullable|string|max:100',
+            'phone_number'  => 'nullable|string|max:20',
+            'email_id'      => 'nullable|email|max:255',
+            'website'       => 'nullable|string|max:255',
+            'gstin'         => 'nullable|string|max:50',
         ]);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create Supplier
-        |--------------------------------------------------------------------------
-        */
         $supplier = Supplier::create([
-
-            'name' => $validated['supplier_name'],
-
-            'address' => $validated['address'] ?? null,
-
-            'country' => $validated['country'] ?? null,
-
-            'state' => $validated['state'] ?? null,
-
+            'name'         => $validated['supplier_name'],
+            'address'      => $validated['address'] ?? null,
+            'country'      => $validated['country'] ?? null,
+            'state'        => $validated['state'] ?? null,
             'phone_number' => $validated['phone_number'] ?? null,
-
-            'email' => $validated['email_id'] ?? null,
-
-            'website' => $validated['website'] ?? null,
-
+            'email'        => $validated['email_id'] ?? null,
+            'website'      => $validated['website'] ?? null,
             'gstin_number' => $validated['gstin'] ?? null,
-
-            // New supplier is active by default
-            'status' => 'Active',
+            'status'       => 'Active',
         ]);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Redirect to newly created supplier
-        |--------------------------------------------------------------------------
-        */
         return redirect()
-            ->route('admin.suppliers', [
-                'supplier_id' => $supplier->id
-            ])
-            ->with(
-                'success',
-                "Supplier '{$supplier->name}' added successfully."
-            );
+            ->route('admin.suppliers', ['supplier_id' => $supplier->id])
+            ->with('success', "Supplier '{$supplier->name}' added successfully.");
     }
 
 
@@ -231,22 +186,10 @@ class SupplierManagementController extends Controller
      */
     public function edit($id)
     {
-        /*
-         * Make sure supplier exists.
-         */
         Supplier::findOrFail($id);
 
-
-        /*
-         * No separate edit page is required.
-         *
-         * Redirect back to Supplier Management page
-         * with supplier_id.
-         */
         return redirect()
-            ->route('admin.suppliers', [
-                'supplier_id' => $id
-            ]);
+            ->route('admin.suppliers', ['supplier_id' => $id]);
     }
 
 
@@ -255,127 +198,49 @@ class SupplierManagementController extends Controller
      */
     public function update(Request $request, $id)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Find Supplier
-        |--------------------------------------------------------------------------
-        */
         $supplier = Supplier::findOrFail($id);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Validation
-        |--------------------------------------------------------------------------
-        */
         $validated = $request->validate([
-
             'supplier_name' => 'required|string|max:255',
-
-            'address' => 'nullable|string',
-
-            'country' => 'nullable|string|max:100',
-
-            'state' => 'nullable|string|max:100',
-
-            'phone_number' => 'nullable|string|max:20',
-
-            'email_id' => 'nullable|email|max:255',
-
-            'website' => 'nullable|string|max:255',
-
-            'gstin' => 'nullable|string|max:50',
+            'address'       => 'nullable|string',
+            'country'       => 'nullable|string|max:100',
+            'state'         => 'nullable|string|max:100',
+            'phone_number'  => 'nullable|string|max:20',
+            'email_id'      => 'nullable|email|max:255',
+            'website'       => 'nullable|string|max:255',
+            'gstin'         => 'nullable|string|max:50',
         ]);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Update Supplier
-        |--------------------------------------------------------------------------
-        */
         $supplier->update([
-
-            'name' => $validated['supplier_name'],
-
-            'address' => $validated['address'] ?? null,
-
-            'country' => $validated['country'] ?? null,
-
-            'state' => $validated['state'] ?? null,
-
+            'name'         => $validated['supplier_name'],
+            'address'      => $validated['address'] ?? null,
+            'country'      => $validated['country'] ?? null,
+            'state'        => $validated['state'] ?? null,
             'phone_number' => $validated['phone_number'] ?? null,
-
-            'email' => $validated['email_id'] ?? null,
-
-            'website' => $validated['website'] ?? null,
-
+            'email'        => $validated['email_id'] ?? null,
+            'website'      => $validated['website'] ?? null,
             'gstin_number' => $validated['gstin'] ?? null,
         ]);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Redirect back to selected supplier
-        |--------------------------------------------------------------------------
-        */
         return redirect()
-            ->route('admin.suppliers', [
-                'supplier_id' => $supplier->id
-            ])
-            ->with(
-                'success',
-                "Supplier '{$supplier->name}' updated successfully."
-            );
+            ->route('admin.suppliers', ['supplier_id' => $supplier->id])
+            ->with('success', "Supplier '{$supplier->name}' updated successfully.");
     }
 
 
     /**
      * Activate / Deactivate Supplier.
-     *
-     * We do not delete suppliers because old stock,
-     * invoices and transaction history may depend on them.
      */
     public function toggleStatus($id)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Find Supplier
-        |--------------------------------------------------------------------------
-        */
         $supplier = Supplier::findOrFail($id);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Toggle Status
-        |--------------------------------------------------------------------------
-        */
-        if ($supplier->status === 'Active') {
-
-            $supplier->status = 'Inactive';
-
-        } else {
-
-            $supplier->status = 'Active';
-        }
-
-
+        $supplier->status = ($supplier->status === 'Active') ? 'Inactive' : 'Active';
         $supplier->save();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Redirect
-        |--------------------------------------------------------------------------
-        */
         return redirect()
-            ->route('admin.suppliers', [
-                'supplier_id' => $supplier->id
-            ])
-            ->with(
-                'success',
-                "Supplier '{$supplier->name}' marked {$supplier->status}."
-            );
+            ->route('admin.suppliers', ['supplier_id' => $supplier->id])
+            ->with('success', "Supplier '{$supplier->name}' marked {$supplier->status}.");
     }
 
 
@@ -384,62 +249,24 @@ class SupplierManagementController extends Controller
      */
     public function attachProduct(Request $request, $id)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Find Supplier
-        |--------------------------------------------------------------------------
-        */
         $supplier = Supplier::findOrFail($id);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Validate Product Information
-        |--------------------------------------------------------------------------
-        */
         $validated = $request->validate([
-
             'product_id' => 'required|exists:products,id',
-
-            'price' => 'required|numeric|min:0',
-
-            'discount' => 'nullable|numeric|min:0',
+            'price'      => 'required|numeric|min:0',
+            'discount'   => 'nullable|numeric|min:0',
         ]);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Attach Product
-        |--------------------------------------------------------------------------
-        |
-        | syncWithoutDetaching() prevents existing supplier products
-        | from being removed when adding a new one.
-        |
-        */
         $supplier->products()->syncWithoutDetaching([
-
             $validated['product_id'] => [
-
-                'price' => $validated['price'],
-
+                'price'    => $validated['price'],
                 'discount' => $validated['discount'] ?? 0,
             ]
         ]);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Redirect
-        |--------------------------------------------------------------------------
-        */
         return redirect()
-            ->route('admin.suppliers', [
-                'supplier_id' => $supplier->id
-            ])
-            ->with(
-                'success',
-                'Product added to supplier successfully.'
-            );
+            ->route('admin.suppliers', ['supplier_id' => $supplier->id])
+            ->with('success', 'Product added to supplier successfully.');
     }
 
 
@@ -448,34 +275,12 @@ class SupplierManagementController extends Controller
      */
     public function detachProduct($id, $productId)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Find Supplier
-        |--------------------------------------------------------------------------
-        */
         $supplier = Supplier::findOrFail($id);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Remove Product Relationship
-        |--------------------------------------------------------------------------
-        */
         $supplier->products()->detach($productId);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Redirect
-        |--------------------------------------------------------------------------
-        */
         return redirect()
-            ->route('admin.suppliers', [
-                'supplier_id' => $supplier->id
-            ])
-            ->with(
-                'success',
-                'Product removed from supplier successfully.'
-            );
+            ->route('admin.suppliers', ['supplier_id' => $supplier->id])
+            ->with('success', 'Product removed from supplier successfully.');
     }
 }
