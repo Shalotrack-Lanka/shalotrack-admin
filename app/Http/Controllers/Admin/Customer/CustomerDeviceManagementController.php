@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerDeviceManagementController extends Controller
 {
@@ -240,5 +241,43 @@ class CustomerDeviceManagementController extends Controller
         }
 
         return $request->validate($rules);
+    }
+
+    public function generateReport(Request $request)
+    {
+        
+        // 1. Sweep lapsed subscriptions into expired_devices
+    \Artisan::call('devices:expire-subscriptions');
+
+    // 2. Fetch Data for All 3 Tables
+    $activatedVehicleIds = ActivatedDevice::pluck('vehicle_id');
+    $expiredVehicleIds   = ExpiredDevice::pluck('vehicle_id');
+
+    $activeDevices = ActivatedDevice::orderByDesc('activated_device_id')->get();
+    $expiredDevices = ExpiredDevice::orderByDesc('expired_device_id')->get();
+    $inactiveDevices = VehicleAd::whereNotIn('vehicle_id', $activatedVehicleIds->merge($expiredVehicleIds))
+        ->orderBy('customer_name')
+        ->get();
+
+    $title = 'CUSTOMER DEVICE MANAGEMENT ALL-IN-ONE REPORT';
+
+    // Watermark Logo
+    $logoPath = public_path('images/logo.png');
+    $logoBase64 = '';
+    if (file_exists($logoPath)) {
+        $typeImg = pathinfo($logoPath, PATHINFO_EXTENSION);
+        $dataImg = file_get_contents($logoPath);
+        $logoBase64 = 'data:image/' . $typeImg . ';base64,' . base64_encode($dataImg);
+    }
+
+    $pdf = Pdf::loadView('admin.customer.device_report_pdf', compact(
+        'activeDevices',
+        'expiredDevices',
+        'inactiveDevices',
+        'title',
+        'logoBase64'
+    ))->setPaper('a4', 'landscape'); // Horizontal view for clear tables
+
+    return $pdf->stream('device_report.pdf');
     }
 }

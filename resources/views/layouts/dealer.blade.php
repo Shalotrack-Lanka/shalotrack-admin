@@ -39,13 +39,13 @@
                 Dashboard
             </a>
 
-            <!-- CUSTOMERS & VEHICLES -->
+            <!-- CUSTOMERS -->
             <div x-data="{open:false}">
                 <button
                     @click="open=!open"
                     class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
 
-                    <span>Customers &amp; Vehicles</span>
+                    <span>Customers </span>
                     <svg :class="open ? 'rotate-180' : ''"
                          class="w-4 h-4 transition-transform duration-200"
                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +56,6 @@
 
                 <div x-show="open" class="ml-5 text-sm">
                     <a href="{{ route('dealer.customers.index') }}" class="block py-2 text-white hover:bg-blue-900 rounded-lg transition">Customer List</a>
-                    <a href="#" class="block px-2 py-3 text-white hover:bg-blue-900 rounded-lg transition">Vehicle List</a>
                 </div>
             </div>
 

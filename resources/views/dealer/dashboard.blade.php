@@ -201,6 +201,25 @@
     ============================================================ --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
+       <!-- Total Received Stock Card -->
+<div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition relative overflow-hidden group">
+    <div class="flex justify-between items-start">
+        <div>
+            <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Received Stock</div>
+            <div class="text-4xl font-black text-blue-950 mt-3">{{ $myStockCount ?? 0 }}</div>
+            <div class="text-xs text-emerald-600 font-semibold mt-2 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span>Allocated Devices</span>
+            </div>
+        </div>
+        <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:scale-110 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+            </svg>
+        </div>
+    </div>
+</div>
+
         {{-- Total Customers Card --}}
         <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition relative overflow-hidden group">
             <div class="flex justify-between items-start">
@@ -268,6 +287,65 @@
 
     </div>
 
+        {{-- ============================================================
+            MY ALLOCATED STOCKS / DEVICES TABLE
+        ============================================================ --}}
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div>
+                    <h3 class="font-black text-slate-900 text-lg">My Allocated Stocks</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Devices transferred to your dealer profile by Admin</p>
+                </div>
+                <span class="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                    Total: {{ $allocatedDevices->count() }}
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead class="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-100">
+                        <tr>
+                            <th class="p-4">Device Category</th>
+                            <th class="p-4">IMEI Number</th>
+                            <th class="p-4">SIM Number</th>
+                            <th class="p-4">Status</th>
+                            <th class="p-4">Allocated Date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                        @forelse($allocatedDevices as $device)
+                            <tr class="hover:bg-slate-50/80 transition">
+                                <td class="p-4 font-bold text-slate-900">
+                                    {{ $device->device_category }}
+                                </td>
+                                <td class="p-4 font-mono text-xs text-blue-600 font-bold">
+                                    {{ $device->imei_number }}
+                                </td>
+                                <td class="p-4 font-mono text-xs">
+                                    {{ $device->sim_number ?? 'N/A' }}
+                                </td>
+                                <td class="p-4">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                        {{ $device->status }}
+                                    </span>
+                                </td>
+                                <td class="p-4 text-xs text-slate-500">
+                                    {{ $device->allocated_at ? \Carbon\Carbon::parse($device->allocated_at)->format('d M Y, h:i A') : 'N/A' }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-slate-400 italic">
+                                    No stock devices allocated to your profile yet.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     {{-- ============================================================
          QUICK FEATURES & ANNOUNCEMENTS SECTION (Viva Highlights)
     ============================================================ --}}
@@ -328,24 +406,6 @@
 
     </div>
 
-    {{-- ============================================================
-         CUSTOMER / VEHICLE API INFORMATION
-    ============================================================ --}}
-    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-3xl p-6 shadow-sm">
-        <div class="flex items-start gap-4">
-            <div class="w-11 h-11 bg-blue-950 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-md">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-            </div>
-            <div>
-                <h3 class="font-bold text-blue-950 text-base">Vehicles API Integration Status</h3>
-                <p class="text-xs text-slate-600 leading-relaxed mt-1">
-                    Vehicle Tracking and Live GPS Mapping modules are currently undergoing backend synchronization. Dealer-to-Vehicle allocation APIs will be enabled full telemetry setup.
-                </p>
-            </div>
-        </div>
-    </div>
 
 </div>
 

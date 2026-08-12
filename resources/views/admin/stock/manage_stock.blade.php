@@ -110,7 +110,12 @@
             {{-- ===================== COMPANY AVAILABLE STOCK ===================== --}}
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                     <h3 class="font-bold text-gray-800 text-sm">Company Available Stock</h3>
+                        <a href="{{ route('admin.stock.report', ['type' => 'stock']) }}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition inline-flex items-center gap-1">
+                            Generate Stock Report
+                        </a>
+                    </div>
                 </div>
 
                 <div class="p-5">
@@ -144,7 +149,12 @@
             {{-- ===================== STOCK TRANSFER LEDGER ===================== --}}
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                     <h3 class="font-bold text-gray-800 text-sm">Stock Transfer Ledger</h3>
+                        <a href="{{ route('admin.stock.report', ['type' => 'ledger']) }}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition inline-flex items-center gap-1">
+                            Generate Ledger Report
+                        </a>
+                    </div>
                 </div>
 
                 @foreach($ledgerEntries as $entry)

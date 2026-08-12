@@ -9,6 +9,7 @@ use App\Models\StockTransferLedger;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ManageStockController extends Controller
 {
@@ -84,5 +85,35 @@ class ManageStockController extends Controller
         $ledger->delete();
 
         return redirect()->back()->with('success', 'Ledger record removed.');
+    }
+
+    public function generateReport(Request $request)
+    {
+        $type = $request->query('type', 'stock');
+
+        if ($type === 'stock') {
+            $data = Stock::with('deviceType')->orderBy('device_type_id')->get();
+            $title = 'Company Available Stock Report';
+        } else {
+            $data = StockTransferLedger::with('stock.deviceType')
+                ->orderByDesc('stocked_in_date')
+                ->orderByDesc('id')
+                ->get();
+            $title = 'Stock Transfer Ledger Report';
+        }
+
+        // Watermark Image එක Base64 වලට Convert කිරීම
+        $logoPath = public_path('images/logo.png');
+        $logoBase64 = '';
+        if (file_exists($logoPath)) {
+            $typeImg = pathinfo($logoPath, PATHINFO_EXTENSION);
+            $dataImg = file_get_contents($logoPath);
+            $logoBase64 = 'data:image/' . $typeImg . ';base64,' . base64_encode($dataImg);
+        }
+
+        $pdf = Pdf::loadView('admin.stock.raw_stock_report_pdf', compact('data', 'title', 'type', 'logoBase64'))
+            ->setPaper('a4', $type === 'ledger' ? 'landscape' : 'portrait');
+
+        return $pdf->stream(strtolower(str_replace(' ', '_', $title)) . '.pdf');
     }
 }
