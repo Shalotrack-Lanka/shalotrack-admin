@@ -169,7 +169,7 @@
                         <table class="w-full min-w-[900px] text-left border-collapse table-auto">
                             <thead class="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-600 uppercase tracking-wider whitespace-nowrap sticky top-0 z-10">
                                 <tr>
-                                    <th class="p-3 min-w-[200px]">Device Category / Type</th>
+                                    <th class="p-3 min-w-[200px]">Device Category /Type</th>
                                     <th class="p-3 w-20">Supplier Id</th>
                                     <th class="p-3 min-w-[150px]">Supplier</th>
                                     <th class="p-3 text-right">Stock In</th>
