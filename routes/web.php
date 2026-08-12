@@ -284,14 +284,20 @@ Route::prefix('admin/dealer')->group(function () {
 
     Route::post('/stock-transfer', [StockTransferController::class, 'store'])
        ->name('admin.dealer.stock_transfer.store');
-    
-    // stock transfer automation
-    Route::get('/suppliers/{deviceType}', [StockTransferController::class, 'getSuppliers'])
-        ->name('admin.dealer.suppliers');
 
-    Route::get('/stock-info/{deviceType}/{supplier}',
-    [StockTransferController::class, 'getStockInfo'])
-    ->name('admin.dealer.stock.info');
+    Route::put('/stock-transfer/{ledger}', [StockTransferController::class, 'update'])
+       ->name('admin.dealer.stock_transfer.update');
+
+    Route::delete('/stock-transfer/{ledger}', [StockTransferController::class, 'destroy'])
+       ->name('admin.dealer.stock_transfer.destroy');
+
+    Route::get('/stock-transfer/{ledger}/edit-data', [StockTransferController::class, 'editData'])
+       ->name('admin.dealer.stock_transfer.edit-data');
+
+    // stock transfer automation
+    Route::get('/device-categories/{category}/sim-numbers', [StockTransferController::class, 'getSimNumbers'])
+        ->where('category', '.*')
+        ->name('admin.dealer.sim-numbers');
 
     Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])
     ->name('admin.dealer.assigned-devices');

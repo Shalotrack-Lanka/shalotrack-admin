@@ -16,7 +16,10 @@ class AddDeviceController extends Controller
 {
     public function index()
     {
+        // Once a device is transferred to a dealer (dealer_id set), it no
+        // longer belongs in this "newly setup, not yet transferred" list.
         $devices = SetupShalotrackDevice::with('deviceType')
+            ->whereNull('dealer_id')
             ->latest('shdevice_id')
             ->get();
 
@@ -140,6 +143,7 @@ class AddDeviceController extends Controller
     public function list()
     {
         $devices = SetupShalotrackDevice::with('deviceType')
+            ->whereNull('dealer_id')
             ->latest('shdevice_id')
             ->get([
                 'shdevice_id',

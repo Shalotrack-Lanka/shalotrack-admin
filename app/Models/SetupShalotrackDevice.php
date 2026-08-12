@@ -19,6 +19,7 @@ class SetupShalotrackDevice extends Model
         'dealer_id',
         'device_type_id',
         'allocated_at',
+        'transfer_id',
     ];
 
     protected $casts = [
@@ -34,5 +35,10 @@ class SetupShalotrackDevice extends Model
     public function deviceType()
     {
         return $this->belongsTo(DeviceType::class, 'device_type_id');
+    }
+
+    public function transferLedger()
+    {
+        return $this->belongsTo(DealerTransferLedger::class, 'transfer_id');
     }
 }

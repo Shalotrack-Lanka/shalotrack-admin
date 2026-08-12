@@ -150,21 +150,19 @@
                         <thead class="bg-gray-50 text-gray-500 uppercase">
                             <tr>
                                 <th class="p-2">Date</th>
-                                <th class="p-2">Device Type</th>
+                                <th class="p-2">Device Category / Type</th>
                                 <th class="p-2">Quantity</th>
-                                <th class="p-2">Remarks</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @forelse($transfers as $transfer)
                                 <tr>
                                     <td class="p-2">{{ $transfer->created_at->format('d M Y') }}</td>
-                                    <td class="p-2">{{ $transfer->stock->deviceType->model ?? '-' }}</td>
+                                    <td class="p-2">{{ $transfer->device_category }}</td>
                                     <td class="p-2">{{ $transfer->quantity }}</td>
-                                    <td class="p-2">{{ $transfer->remarks ?? '-' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="p-4 text-center text-gray-400">No stock transfers yet.</td></tr>
+                                <tr><td colspan="3" class="p-4 text-center text-gray-400">No stock transfers yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
