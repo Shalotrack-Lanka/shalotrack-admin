@@ -108,7 +108,7 @@
             </div>
 
             {{-- ===================== COMPANY AVAILABLE STOCK ===================== --}}
-            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
+             <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
                     <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                     <h3 class="font-bold text-gray-800 text-sm">Company Available Stock</h3>
