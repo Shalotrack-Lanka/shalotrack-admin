@@ -102,7 +102,7 @@ class ManageStockController extends Controller
             $title = 'Stock Transfer Ledger Report';
         }
 
-        // Watermark Image එක Base64 වලට Convert කිරීම
+        // convert logo to base64 to embed in PDF
         $logoPath = public_path('images/logo.png');
         $logoBase64 = '';
         if (file_exists($logoPath)) {
