@@ -242,7 +242,7 @@
                         {{ $notVerifiedCustomers }}
                     ],
                     backgroundColor: [
-                        '#10b981',   // Emerald (Verified)
+                        '#10b981',  
                         '#f59e0b'    
                     ],
                     borderWidth: 0,
