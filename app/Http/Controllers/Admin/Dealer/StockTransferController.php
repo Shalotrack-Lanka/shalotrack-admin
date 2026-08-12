@@ -3,49 +3,30 @@
 namespace App\Http\Controllers\Admin\Dealer;
 
 use App\Http\Controllers\Controller;
-use App\Models\StockTransfer;
-use App\Models\Stock;
 use App\Models\Dealer;
+use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\DeviceType;
-use App\Models\Supplier;
+use Illuminate\Validation\ValidationException;
 
 class StockTransferController extends Controller
 {
     public function index()
     {
-        // 1. Stock eke company_available_stock eka 0 ta wada wadi ewa vitharak gannawa
-        // 'with' eken DeviceType eka join karanawa auto model name eka ganna
-        $availableStocks = Stock::with('deviceType')
-                                ->where('company_available_stock', '>', 0)
-                                ->get();
+        // Only categories that currently have at least one un-transferred,
+        // SIM-fitted device are worth offering — nothing to transfer otherwise.
+        $deviceCategories = SetupShalotrackDevice::whereNull('dealer_id')
+            ->whereNotNull('sim_number')
+            ->distinct()
+            ->orderBy('device_category')
+            ->pluck('device_category');
 
-
-        // 2. Database eken Active wela inna Dealers lawa gannawa
         $dealers = Dealer::where('status', 'active')->orderBy('full_name')->get();
 
-        /*
-        | groupBy('device_types.id') instead of ->distinct() — DISTINCT on
-        | select('device_types.*') needs equality on every selected column,
-        | including the json `features` column, which plain `json` doesn't
-        | support in Postgres. Grouping by the primary key gives the same
-        | "one row per device type" result without that problem.
-        */
-        $deviceTypes = DeviceType::select('device_types.*')
-    ->join('stocks', 'stocks.device_type_id', '=', 'device_types.id')
-    ->where('stocks.company_available_stock', '>', 0)
-    ->groupBy('device_types.id')
-    ->orderBy('device_types.device_category')
-    ->get();
+        $transfers = DealerTransferLedger::with('dealer')->latest()->get();
 
-        $suppliers = Supplier::orderBy('name')->get();
-
-        // 3. Kalin transfer karapu history eka
-        $transfers = StockTransfer::with(['stock.deviceType', 'dealer'])->latest()->get();
-
-        // 4. Individual transferred IMEI devices — same data as the
+        // Individual transferred IMEI devices — same data as the
         // standalone Assigned Devices page, embedded here too since this
         // is where an admin naturally wants to see "which exact devices
         // did that bulk number actually turn into."
@@ -54,265 +35,180 @@ class StockTransferController extends Controller
             ->orderByDesc('allocated_at')
             ->get();
 
-            return view(
-                'admin.dealer.stock_transfer',
-                compact(
-                    'deviceTypes',
-                    'suppliers',
-                    'availableStocks',
-                    'dealers',
-                    'transfers',
-                    'allocatedDevices'
-                )
-
-);
+        return view(
+            'admin.dealer.stock_transfer',
+            compact('deviceCategories', 'dealers', 'transfers', 'allocatedDevices')
+        );
     }
 
-        public function store(Request $request)
-        {
-            $validated = $request->validate([
-                'device_type_id' => 'required|exists:device_types,id',
-                'supplier_id'    => 'required|exists:suppliers,id',
-                'dealer_id'      => 'required|exists:dealers,id',
-                'quantity'       => 'required|integer|min:1',
-                'remarks'        => 'nullable|string|max:255',
-            ]);
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'device_category' => 'required|string',
+            'dealer_id'       => 'required|exists:dealers,id',
+            'sim_numbers'     => 'required|array|min:1',
+            'sim_numbers.*'   => 'required|string',
+        ]);
 
-            try {
+        try {
+            DB::transaction(function () use ($validated) {
 
-                DB::transaction(function () use ($validated) {
+                $devices = SetupShalotrackDevice::where('device_category', $validated['device_category'])
+                    ->whereIn('sim_number', $validated['sim_numbers'])
+                    ->whereNull('dealer_id')
+                    ->lockForUpdate()
+                    ->get();
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | 1. Find & lock stock
-                    |--------------------------------------------------------------------------
-                    */
+                if ($devices->count() < count($validated['sim_numbers'])) {
+                    throw new \Exception(
+                        'Some selected SIM numbers are no longer available for transfer. Please refresh and try again.'
+                    );
+                }
 
-                    $stock = Stock::where(
-                            'device_type_id',
-                            $validated['device_type_id']
-                        )
-                        ->where(
-                            'supplier_id',
-                            $validated['supplier_id']
-                        )
-                        ->lockForUpdate()
-                        ->first();
+                $ledger = DealerTransferLedger::create([
+                    'dealer_id'       => $validated['dealer_id'],
+                    'device_category' => $validated['device_category'],
+                    'quantity'        => $devices->count(),
+                ]);
 
-                    if (!$stock) {
-                        throw new \Exception(
-                            'Selected stock record was not found.'
-                        );
-                    }
+                foreach ($devices as $device) {
+                    $device->dealer_id = $validated['dealer_id'];
+                    $device->transfer_id = $ledger->id;
+                    $device->allocated_at = now();
+                    $device->save();
+                }
+            });
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | 2. Check bulk stock quantity
-                    |--------------------------------------------------------------------------
-                    */
+            $dealer = Dealer::findOrFail($validated['dealer_id']);
 
-                    if (
-                        $stock->company_available_stock
-                        < $validated['quantity']
-                    ) {
-                        throw new \Exception(
-                            'Not enough company stock available.'
-                        );
-                    }
+            return back()->with(
+                'success',
+                count($validated['sim_numbers'])
+                . ' ' . $validated['device_category']
+                . ' device(s) successfully transferred to ' . $dealer->full_name . '.'
+            );
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | 3. Find actual physical devices
-                    |--------------------------------------------------------------------------
-                    |
-                    | Example:
-                    |
-                    | Stock Transfer:
-                    | SIM with dialog
-                    |
-                    | device_type_id = 7
-                    |
-                    | We ONLY select:
-                    |
-                    | device_type_id = 7
-                    | dealer_id = NULL
-                    | status = Not Activated
-                    |
-                    | NOTE: intentionally left as 'Not Activated' only for
-                    | now — whether Activated-but-unassigned devices should
-                    | also be transferable is still an open decision, not
-                    | forgotten.
-                    */
+        } catch (\Exception $e) {
+            return back()
+                ->withErrors(['transfer' => $e->getMessage()])
+                ->withInput();
+        }
+    }
 
-                    $devices = SetupShalotrackDevice::where(
-                            'device_type_id',
-                            $validated['device_type_id']
-                        )
+    public function update(Request $request, DealerTransferLedger $ledger)
+    {
+        $validated = $request->validate([
+            'dealer_id'     => 'required|exists:dealers,id',
+            'sim_numbers'   => 'required|array|min:1',
+            'sim_numbers.*' => 'required|string',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $ledger) {
+
+                $currentDevices = SetupShalotrackDevice::where('transfer_id', $ledger->id)
+                    ->lockForUpdate()
+                    ->get();
+
+                $currentSimNumbers = $currentDevices->pluck('sim_number')->all();
+
+                $simsToRemove = array_diff($currentSimNumbers, $validated['sim_numbers']);
+                $simsToAdd = array_diff($validated['sim_numbers'], $currentSimNumbers);
+
+                // Detach devices that were deselected — they go back to the
+                // unassigned pool and reappear in Setup Shalotrack Devices.
+                if (!empty($simsToRemove)) {
+                    SetupShalotrackDevice::where('transfer_id', $ledger->id)
+                        ->whereIn('sim_number', $simsToRemove)
+                        ->update([
+                            'dealer_id'    => null,
+                            'transfer_id'  => null,
+                            'allocated_at' => null,
+                        ]);
+                }
+
+                // Attach newly selected devices — must still be available and
+                // of the same device category as this ledger entry.
+                if (!empty($simsToAdd)) {
+                    $newDevices = SetupShalotrackDevice::where('device_category', $ledger->device_category)
+                        ->whereIn('sim_number', $simsToAdd)
                         ->whereNull('dealer_id')
-                        ->where('status', 'Not Activated')
-                        ->orderBy('shdevice_id')
-                        ->limit($validated['quantity'])
                         ->lockForUpdate()
                         ->get();
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | 4. Check physical device availability
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (
-                        $devices->count()
-                        < $validated['quantity']
-                    ) {
-
+                    if ($newDevices->count() < count($simsToAdd)) {
                         throw new \Exception(
-                            'Only '
-                            . $devices->count()
-                            . ' registered physical device(s) are available for this device type.'
+                            'Some newly selected SIM numbers are no longer available. Please refresh and try again.'
                         );
                     }
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | 5. Update Stock
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $stock->company_available_stock -=
-                        $validated['quantity'];
-
-                    $stock->dealer_transferred +=
-                        $validated['quantity'];
-
-                    $stock->total_available -=
-                        $validated['quantity'];
-
-                    $stock->save();
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | 6. Create Stock Transfer History
-                    |--------------------------------------------------------------------------
-                    */
-
-                    StockTransfer::create([
-                        'stock_id'  => $stock->id,
-                        'dealer_id' => $validated['dealer_id'],
-                        'quantity'  => $validated['quantity'],
-                        'remarks'   => $validated['remarks'] ?? null,
-                    ]);
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | 7. AUTOMATICALLY ASSIGN DEVICES TO DEALER
-                    |--------------------------------------------------------------------------
-                    |
-                    | THIS IS THE IMPORTANT PART.
-                    |
-                    | dealer_id NULL
-                    |
-                    | becomes:
-                    |
-                    | dealer_id = selected dealer
-                    |
-                    | allocated_at is stamped here too — this is the one
-                    | true moment of allocation, not something to infer
-                    | later from updated_at.
-                    */
-
-                    foreach ($devices as $device) {
-
-                        $device->dealer_id =
-                            $validated['dealer_id'];
-
+                    foreach ($newDevices as $device) {
+                        $device->dealer_id = $validated['dealer_id'];
+                        $device->transfer_id = $ledger->id;
                         $device->allocated_at = now();
-
                         $device->save();
                     }
+                }
 
-                });
+                // Devices still selected (unchanged) — make sure their dealer
+                // matches if the dealer itself was changed on this edit.
+                SetupShalotrackDevice::where('transfer_id', $ledger->id)
+                    ->update(['dealer_id' => $validated['dealer_id']]);
 
+                $ledger->dealer_id = $validated['dealer_id'];
+                $ledger->quantity = count($validated['sim_numbers']);
+                $ledger->save();
+            });
 
-                /*
-                |--------------------------------------------------------------------------
-                | 8. Success Message
-                |--------------------------------------------------------------------------
-                */
+            return back()->with('success', 'Transfer record updated successfully.');
 
-                $dealer = Dealer::findOrFail(
-                    $validated['dealer_id']
-                );
-
-                $deviceType = DeviceType::findOrFail(
-                    $validated['device_type_id']
-                );
-
-                $deviceName =
-                    $deviceType->device_category
-                    . ' with '
-                    . $deviceType->model;
-
-                return back()->with(
-                    'success',
-                    $validated['quantity']
-                    . ' '
-                    . $deviceName
-                    . ' device(s) successfully transferred and allocated to '
-                    . $dealer->full_name
-                    . '.'
-                );
-
-            } catch (\Exception $e) {
-
-                return back()
-                    ->withErrors([
-                        'transfer' => $e->getMessage()
-                    ])
-                    ->withInput();
-            }
+        } catch (\Exception $e) {
+            return back()->withErrors(['transfer_edit' => $e->getMessage()]);
         }
-
-    public function getSuppliers($deviceTypeId)
-    {
-        $suppliers = Supplier::select('suppliers.id', 'suppliers.name')
-            ->join('stocks', 'stocks.supplier_id', '=', 'suppliers.id')
-            ->where('stocks.device_type_id', $deviceTypeId)
-            ->where('stocks.company_available_stock', '>', 0)
-            ->distinct()
-            ->orderBy('suppliers.name')
-            ->get();
-
-        return response()->json($suppliers);
     }
 
-    public function getStockInfo($deviceTypeId, $supplierId)
+    public function destroy(DealerTransferLedger $ledger)
     {
-        $stock = Stock::where('device_type_id', $deviceTypeId)
-            ->where('supplier_id', $supplierId)
-            ->first();
+        // Only the history row is removed — the linked devices keep their
+        // dealer assignment (transfer_id is cleared via nullOnDelete), per
+        // business decision: a deleted history record does not undo a
+        // transfer that already happened.
+        $ledger->delete();
 
-        // Physical devices aren't tied to a supplier in setup_shalotrack_devices
-        // (no supplier_id column there), so this count is by device type only —
-        // same as the real constraint checked in store().
-        $physicalAvailable = SetupShalotrackDevice::where('device_type_id', $deviceTypeId)
+        return back()->with('success', 'Transfer history record removed.');
+    }
+
+    public function getSimNumbers($category)
+    {
+        $simNumbers = SetupShalotrackDevice::where('device_category', $category)
             ->whereNull('dealer_id')
-            ->where('status', 'Not Activated')
-            ->count();
+            ->whereNotNull('sim_number')
+            ->orderBy('sim_number')
+            ->pluck('sim_number');
 
-        if (!$stock) {
-            return response()->json([
-                'available' => 0,
-                'physical_available' => $physicalAvailable,
-            ]);
-        }
+        return response()->json($simNumbers);
+    }
+
+    public function editData(DealerTransferLedger $ledger)
+    {
+        $selected = SetupShalotrackDevice::where('transfer_id', $ledger->id)
+            ->orderBy('sim_number')
+            ->pluck('sim_number');
+
+        $available = SetupShalotrackDevice::where('device_category', $ledger->device_category)
+            ->whereNull('dealer_id')
+            ->whereNotNull('sim_number')
+            ->orderBy('sim_number')
+            ->pluck('sim_number');
 
         return response()->json([
-            'available' => $stock->company_available_stock,
-            'physical_available' => $physicalAvailable,
+            'dealer_id'       => $ledger->dealer_id,
+            'device_category' => $ledger->device_category,
+            'selected'        => $selected,
+            // Selected sims must stay in the option list even though
+            // they're not "available" — otherwise the edit form silently
+            // drops them the moment it renders.
+            'sim_numbers'     => $selected->merge($available)->unique()->sort()->values(),
         ]);
     }
-
 }
