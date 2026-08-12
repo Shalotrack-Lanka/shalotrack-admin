@@ -75,7 +75,7 @@ class DealerDashboardController extends Controller
             ->get();
 
         $allocatedDeviceCount = $allocatedDevices->count();
-        $myStockCount        = $allocatedDeviceCount; // Dealer ගේ සියලුම Stock Count එක
+        $myStockCount        = $allocatedDeviceCount; //
 
         /*
         |--------------------------------------------------------------------------
