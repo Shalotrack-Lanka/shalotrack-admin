@@ -115,8 +115,8 @@
                         <tbody class="divide-y divide-slate-100 text-slate-700">
                             @forelse($recentCustomers as $c)
                                 <tr class="hover:bg-slate-50/80 transition-colors duration-200">
-                                    <td class="px-6 py-4 font-mono text-slate-400 text-xs" title="{{ $c->customer_id }}">
-                                        {{ Str::limit($c->customer_id, 8, '...') }}
+                                    <td class="px-6 py-4 font-mono text-slate-500 text-xs font-semibold">
+                                        {{ $c->customer_id }}
                                     </td>
                                     <td class="px-6 py-4 font-bold text-slate-900">{{ $c->full_name ?? 'N/A' }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $c->email ?? 'N/A' }}</td>
