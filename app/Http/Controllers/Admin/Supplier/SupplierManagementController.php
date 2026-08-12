@@ -229,7 +229,7 @@ class SupplierManagementController extends Controller
 
 
     /**
-     * Activate / Deactivate Supplier.
+     * Activate / Deactivate Supplier
      */
     public function toggleStatus($id)
     {
@@ -245,7 +245,7 @@ class SupplierManagementController extends Controller
 
 
     /**
-     * Attach a product to supplier.
+     * Attach a product to supplier
      */
     public function attachProduct(Request $request, $id)
     {
@@ -271,7 +271,7 @@ class SupplierManagementController extends Controller
 
 
     /**
-     * Remove a product from supplier.
+     * Remove a product from supplier
      */
     public function detachProduct($id, $productId)
     {
