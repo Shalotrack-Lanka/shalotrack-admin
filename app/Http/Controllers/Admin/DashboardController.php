@@ -15,12 +15,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // --- Customer Growth: real cumulative count over the last 6 months ---
-        // Uses CustomerAd's own created_at (when first synced into this local
-        // mirror) — the API doesn't currently expose a true original signup
-        // date, so this reflects "known to Admin since," not the customer's
-        // actual registration date on the API side. Close enough for a trend
-        // line, but worth knowing if the exact wording matters later.
+        // 1. Customer Growth Chart Data (මාස 6 ක ලියාපදිංචි වර්ධනය)
         $months = collect(range(5, 0))->map(fn ($i) => now()->subMonths($i));
 
         $customerGrowthLabels = $months->map(fn ($m) => $m->format('M'))->toArray();
@@ -28,30 +23,44 @@ class DashboardController extends Controller
             return CustomerAd::where('created_at', '<=', $m->copy()->endOfMonth())->count();
         })->toArray();
 
+        // 2. Customer Status Counts for Donut Chart
+        $verifiedCustomers    = CustomerAd::where('cus_status', 'verified')->count();
+        $notVerifiedCustomers = CustomerAd::where(function($q) {
+            $q->where('cus_status', 'not_verified')
+              ->orWhereNull('cus_status');
+        })->count();
+
+        // 3. Recent Customers Table Data
+        $recentCustomers = CustomerAd::latest('created_at')
+                            ->take(6)
+                            ->get([
+                                'customer_id',
+                                'full_name',
+                                'email',
+                                'phone_number',
+                                'nic_number',
+                                'address',
+                                'cus_status'
+                            ]);
+
         $data = [
-            'totalDevices'      => SetupShalotrackDevice::count(),
-            'activatedDevices'  => SetupShalotrackDevice::where('status','Activated')->count(),
-            'pendingDevices'    => SetupShalotrackDevice::where('status','Not Activated')->count(),
-            'stoppedDevices'    => SetupShalotrackDevice::where('status','Temporarily Stopped')->count(),
+            'totalDevices'         => SetupShalotrackDevice::count(),
+            'activatedDevices'     => SetupShalotrackDevice::where('status', 'Activated')->count(),
+            'totalSuppliers'       => Supplier::count(),
+            'totalDealers'         => Dealer::count(),
+            'totalSIMs'            => Sim::count(),
+            'totalStocks'          => Stock::count(),
+            'totalCustomers'       => CustomerAd::count(),
 
-            'totalSuppliers'    => Supplier::count(),
-            'totalDealers'      => Dealer::count(),
-            'totalSIMs'         => Sim::count(),
-            'totalStocks'       => Stock::count(),
-            'totalCustomers'    => CustomerAd::count(),
+            'verifiedCustomers'    => $verifiedCustomers,
+            'notVerifiedCustomers' => $notVerifiedCustomers,
 
-            'recentDevices' => SetupShalotrackDevice::latest()
-                                ->take(5)
-                                ->get(),
-
-            'recentCustomers' => CustomerAd::latest()
-                                ->take(5)
-                                ->get(),
+            'recentCustomers'      => $recentCustomers,
 
             'customerGrowthLabels' => $customerGrowthLabels,
             'customerGrowthData'   => $customerGrowthData,
         ];
 
-        return view('admin.dashboard',$data);
+        return view('admin.dashboard', $data);
     }
 }
