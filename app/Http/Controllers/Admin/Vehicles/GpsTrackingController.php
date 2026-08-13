@@ -50,7 +50,7 @@ class GpsTrackingController extends Controller
             Log::warning('Vehicle API suggestion failed, loading from local DB: ' . $e->getMessage());
         }
 
-        // API fail වුණත් Local DB එකෙන් Dropdown Suggestions ලබාගනී
+        // API fail or no vehicles returned, fallback to local DB
         if ($vehicleNumbers->isEmpty()) {
             $dbVehicles = VehicleAd::pluck('vehicle_number');
             $activeVehicles = ActivatedDevice::pluck('vehicle_number');
@@ -275,10 +275,10 @@ class GpsTrackingController extends Controller
         $historyData = $result['historyData'];
     }
 
-    // 1. Trip Data සකස් කිරීම
+    // 1. Trip Data
     $trips = $this->segmentTrips($historyData);
 
-    // 2. Start / End Coordinates සඳහා ලිපිනයන් (Addresses) ලබාගැනීම
+    // 2. Start / End Coordinates 
     $tripsWithAddress = collect($trips)->map(function ($trip) {
         $trip['start_address'] = $this->addressResolver->resolve((float) $trip['start_lat'], (float) $trip['start_lng']);
         $trip['end_address']   = $this->addressResolver->resolve((float) $trip['end_lat'], (float) $trip['end_lng']);
@@ -303,7 +303,7 @@ class GpsTrackingController extends Controller
         'toDate',
         'title',
         'logoBase64'
-    ))->setPaper('a4', 'landscape'); // ලිපින පැහැදිලිව පෙනීමට Landscape දමා ඇත
+    ))->setPaper('a4', 'landscape'); // landscape orientation for better width
 
     return $pdf->stream('vehicle_trips_report_' . now()->format('Y-m-d_His') . '.pdf');
 }
