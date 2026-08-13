@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Admin\Vehicles;
 
 use App\Http\Controllers\Controller;
 use App\Services\AddressResolver;
+use App\Models\VehicleAd;
+use App\Models\ActivatedDevice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Collection;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class GpsTrackingController extends Controller
@@ -21,16 +22,10 @@ class GpsTrackingController extends Controller
 
     public function index(Request $request)
     {
-        // The paginated GPS fetch below is legitimate, bounded work that
-        // can genuinely take a while on a wide date range (up to 50 pages).
-        // Address geocoding used to stack on top of this in the same
-        // request and could blow well past any reasonable limit — that's
-        // gone now (see resolveAddress()), so this margin only has to
-        // cover the fetch loop itself.
-        set_time_limit(120);
+        set_time_limit(180);
 
         $search    = trim((string) $request->input('search'));
-        $fromDate  = $request->input('from_date'); // plain date, e.g. 2026-08-07 — used for repopulating the form
+        $fromDate  = $request->input('from_date');
         $toDate    = $request->input('to_date');
 
         $vehicle = null;
@@ -38,11 +33,10 @@ class GpsTrackingController extends Controller
         $historyData = collect();
         $errorMessage = null;
 
-        // Vehicle numbers for the search box's autocomplete dropdown —
-        // reuses the existing vehicles-sync endpoint, no new API call type.
+        // 1. Vehicle Search Dropdown Suggestions (API + Local DB Fallback)
         $vehicleNumbers = collect();
         try {
-            $vehiclesResponse = Http::timeout(10)
+            $vehiclesResponse = Http::timeout(5)
                 ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
                 ->acceptJson()
                 ->get(config('services.shalotrack_api.base_url') . '/api/internal/vehicles-sync');
@@ -50,19 +44,23 @@ class GpsTrackingController extends Controller
             if ($vehiclesResponse->successful()) {
                 $vehicleNumbers = collect($vehiclesResponse->json('data') ?? [])
                     ->pluck('vehicleNumber')
-                    ->filter()
-                    ->values();
+                    ->filter();
             }
         } catch (\Throwable $e) {
-            Log::error('Vehicle list fetch for autocomplete failed', ['error' => $e->getMessage()]);
-            // Non-fatal — search still works without the dropdown suggestions.
+            Log::warning('Vehicle API suggestion failed, loading from local DB: ' . $e->getMessage());
         }
 
+        // API fail or no vehicles returned, fallback to local DB
+        if ($vehicleNumbers->isEmpty()) {
+            $dbVehicles = VehicleAd::pluck('vehicle_number');
+            $activeVehicles = ActivatedDevice::pluck('vehicle_number');
+            $vehicleNumbers = $dbVehicles->merge($activeVehicles)->filter()->unique()->values();
+        } else {
+            $vehicleNumbers = $vehicleNumbers->values();
+        }
+
+        // 2. Fetch Tracking Data on Search
         if ($search !== '') {
-            // Auto-detect: a 15-digit number is an IMEI, anything else is
-            // treated as a Vehicle Number. No more raw UUID search — both
-            // IMEI and Vehicle Number are resolved SERVER-SIDE on the API,
-            // since that's the only place the real Vehicles table lives.
             $isImei = (bool) preg_match('/^\d{15}$/', $search);
 
             $result = $this->fetchTrackingData(
@@ -85,14 +83,6 @@ class GpsTrackingController extends Controller
         ));
     }
 
-    /**
-     * Lightweight AJAX endpoint — resolves exactly ONE coordinate per call.
-     * Called from the blade view, one at a time, after the page has already
-     * rendered. This is what replaces eager geocoding inside index(): moving
-     * the work out of the page request means no single request can ever do
-     * more than one Nominatim lookup, so nothing can accumulate toward a
-     * 60-second execution limit no matter how many trips a search returns.
-     */
     public function resolveAddress(Request $request)
     {
         $validated = $request->validate([
@@ -108,11 +98,6 @@ class GpsTrackingController extends Controller
         ]);
     }
 
-    /**
-     * Filter is day-based, not datetime-local — the form only collects a
-     * date (e.g. 2026-08-07). These expand that into the full-day boundary
-     * the API's DateTime From/To params actually need.
-     */
     private function toDayStart(?string $date): ?string
     {
         return $date ? $date . 'T00:00:00' : null;
@@ -123,11 +108,6 @@ class GpsTrackingController extends Controller
         return $date ? $date . 'T23:59:59' : null;
     }
 
-    /**
-     * Pages through /api/internal/gps-tracking-sync until every point in
-     * the requested range has been retrieved (API supports real pagination
-     * via Page/PageSize, capped at 500 server-side).
-     */
     private function fetchTrackingData(?string $vehicleNumber, ?string $imei, ?string $fromDate, ?string $toDate): array
     {
         $vehicle = null;
@@ -160,11 +140,6 @@ class GpsTrackingController extends Controller
 
             if (! $response->successful()) {
                 if (! $gotAnySuccessfulPage) {
-                    Log::error('GPS tracking fetch failed', [
-                        'status' => $response->status(),
-                        'body'   => $response->body(),
-                        'page'   => $page,
-                    ]);
                     $errorMessage = $response->status() === 404
                         ? ($response->json('message') ?? 'Vehicle or device not found.')
                         : 'Could not load tracking data (status ' . $response->status() . '). Please try again.';
@@ -184,7 +159,7 @@ class GpsTrackingController extends Controller
 
             $page++;
 
-        } while ($pagePoints->count() >= $pageSize && $page <= 50);
+        } while ($pagePoints->count() >= $pageSize && $page <= 20);
 
         return compact('vehicle', 'currentLocation', 'historyData', 'errorMessage');
     }
@@ -247,19 +222,8 @@ class GpsTrackingController extends Controller
 
         $startTime = \Carbon\Carbon::parse($start['eventTime']);
         $endTime = \Carbon\Carbon::parse($end['eventTime']);
-
-        // Carbon 3 changed diffInMinutes() to return a precise float by
-        // default (e.g. 30.85), unlike Carbon 2 which truncated to an int.
-        // Casting explicitly here so duration is always a whole number of
-        // minutes regardless of which Carbon version is running.
         $durationMin = (int) round($startTime->diffInMinutes($endTime));
 
-        // NOTE: no start_address/end_address computed here anymore — that
-        // used to call the AddressResolver eagerly for every trip, which is
-        // exactly what caused the 60-second timeout on any search with
-        // several never-before-cached locations. Addresses are now resolved
-        // client-side, one at a time, after the page has already rendered
-        // (see resolveAddress() above and the blade's JS).
         return [
             'start_time'    => $startTime,
             'end_time'      => $endTime,
@@ -282,33 +246,65 @@ class GpsTrackingController extends Controller
         return $earthRadiusKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
-    public function exportPdf(Request $request)
-    {
-        set_time_limit(120);
+    /**
+     * Generate & Download PDF Report safely without memory crashing
+     */
+   public function exportPdf(Request $request)
+{
+    ini_set('memory_limit', '512M');
+    set_time_limit(300);
 
-        $search    = trim((string) $request->input('search'));
-        $fromDate  = $request->input('from_date');
-        $toDate    = $request->input('to_date');
+    $search    = trim((string) $request->input('search'));
+    $fromDate  = $request->input('from_date');
+    $toDate    = $request->input('to_date');
 
-        $vehicle = null;
-        $historyData = collect();
+    $vehicle = null;
+    $historyData = collect();
 
-        if ($search !== '') {
-            $isImei = (bool) preg_match('/^\d{15}$/', $search);
+    if ($search !== '') {
+        $isImei = (bool) preg_match('/^\d{15}$/', $search);
 
-            $result = $this->fetchTrackingData(
-                $isImei ? null : $search,
-                $isImei ? $search : null,
-                $this->toDayStart($fromDate),
-                $this->toDayEnd($toDate)
-            );
+        $result = $this->fetchTrackingData(
+            $isImei ? null : $search,
+            $isImei ? $search : null,
+            $this->toDayStart($fromDate),
+            $this->toDayEnd($toDate)
+        );
 
-            $vehicle     = $result['vehicle'];
-            $historyData = $result['historyData'];
-        }
-
-        $pdf = Pdf::loadView('admin.vehicles.reports.gps_tracking_pdf', compact('vehicle', 'historyData', 'fromDate', 'toDate'));
-
-        return $pdf->download('gps_tracking_' . now()->format('Y-m-d_His') . '.pdf');
+        $vehicle     = $result['vehicle'];
+        $historyData = $result['historyData'];
     }
+
+    // 1. Trip Data
+    $trips = $this->segmentTrips($historyData);
+
+    // 2. Start / End Coordinates 
+    $tripsWithAddress = collect($trips)->map(function ($trip) {
+        $trip['start_address'] = $this->addressResolver->resolve((float) $trip['start_lat'], (float) $trip['start_lng']);
+        $trip['end_address']   = $this->addressResolver->resolve((float) $trip['end_lat'], (float) $trip['end_lng']);
+        return $trip;
+    });
+
+    // 3. Logo Base64
+    $logoPath = public_path('images/logo.png');
+    $logoBase64 = '';
+    if (file_exists($logoPath)) {
+        $typeImg = pathinfo($logoPath, PATHINFO_EXTENSION);
+        $dataImg = file_get_contents($logoPath);
+        $logoBase64 = 'data:image/' . $typeImg . ';base64,' . base64_encode($dataImg);
+    }
+
+    $title = 'VEHICLE TRIP & ROUTE HISTORY REPORT';
+
+    $pdf = Pdf::loadView('admin.vehicles.reports.gps_tracking_pdf', compact(
+        'vehicle',
+        'tripsWithAddress',
+        'fromDate',
+        'toDate',
+        'title',
+        'logoBase64'
+    ))->setPaper('a4', 'landscape'); // landscape orientation for better width
+
+    return $pdf->stream('vehicle_trips_report_' . now()->format('Y-m-d_His') . '.pdf');
+}
 }
