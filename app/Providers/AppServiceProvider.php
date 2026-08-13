@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +26,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        // Behind the SSL-terminating proxy, requests can still be seen as
+        // http:// internally, causing route()/form action URLs to render
+        // as http:// and trip the browser's insecure-form-submit warning.
+        // Force https scheme outside local dev so generated URLs always match.
+        if (! $this->app->environment('local', 'testing')) {
+            URL::forceScheme('https');
+        }
     }
 }
