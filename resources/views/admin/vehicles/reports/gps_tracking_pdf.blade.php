@@ -2,119 +2,268 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <title>{{ $title }}</title>
     <style>
-        body { font-family: 'Helvetica', Arial, sans-serif; font-size: 11px; color: #333; }
+        @page { margin: 25px; }
+        body { font-family: 'Helvetica', Arial, sans-serif; font-size: 10px; color: #333; margin: 0; padding: 0; }
 
         .watermark {
-            position: fixed; top: 300px; left: 50%; width: 440px; margin-left: -220px;
-            opacity: 0.18; z-index: -1; text-align: center;
+            position: fixed; top: 25%; left: 10%; width: 80%;
+            opacity: 0.08; z-index: -1000; text-align: center;
         }
-        .watermark .wordmark {
-            margin-top: 6px; font-family: Arial, Helvetica, sans-serif;
-            font-weight: 900; font-size: 2.4rem; letter-spacing: 3px;
-        }
-        .watermark .wordmark .shalo { color: #1B2E5E; }
-        .watermark .wordmark .track { color: #F07A1A; }
-        .watermark .tagline { margin-top: 8px; font-size: 0.9rem; letter-spacing: 6px; color: #1B2E5E; }
-        .watermark .subtitle { margin-top: 6px; font-size: 0.6rem; letter-spacing: 2px; color: #888; }
+        .watermark img { width: 450px; height: auto; }
+        .watermark-text { font-size: 48px; font-weight: bold; color: #1a365d; letter-spacing: 4px; }
 
-        .header { border-bottom: 2px solid #17a2b8; padding-bottom: 10px; margin-bottom: 16px; }
-        .header h1 { font-size: 16px; margin: 0 0 4px 0; color: #17a2b8; }
-        .header .meta { font-size: 10px; color: #777; }
+        .header { border-bottom: 2px solid #17a2b8; padding-bottom: 8px; margin-bottom: 12px; }
+        .header table { width: 100%; }
+        .title { font-size: 15px; font-weight: bold; color: #17a2b8; text-transform: uppercase; }
+        .meta { font-size: 9px; color: #666; text-align: right; }
 
-        .summary { margin-bottom: 16px; }
-        .summary td { padding: 4px 12px 4px 0; font-size: 11px; }
-        .summary .label { color: #888; font-size: 9px; text-transform: uppercase; }
+        .summary { margin-bottom: 15px; width: 100%; border-collapse: collapse; background-color: #f8fafc; border: 1px solid #e2e8f0; }
+        .summary td { padding: 6px 10px; font-size: 9.5px; }
+        .summary .label { color: #64748b; font-size: 8px; text-transform: uppercase; font-weight: bold; }
 
-        table.data { width: 100%; border-collapse: collapse; }
+        table.data { width: 100%; border-collapse: collapse; margin-top: 10px; }
         table.data thead th {
-            background-color: #f5f5f5; text-align: left; padding: 6px 8px;
-            font-size: 10px; text-transform: uppercase; border-bottom: 1px solid #ccc;
+            background-color: #f1f5f9; text-align: left; padding: 6px 8px;
+            font-size: 8.5px; text-transform: uppercase; border-bottom: 1.5px solid #cbd5e1; color: #1e293b;
         }
-        table.data tbody td { padding: 5px 8px; border-bottom: 1px solid #eee; }
-        .footer { margin-top: 20px; font-size: 9px; color: #999; text-align: right; }
+        table.data tbody td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 9px; vertical-align: middle; }
+        
+        .badge-green { color: #15803d; font-weight: bold; }
+        .badge-red { color: #b91c1c; font-weight: bold; }
+        .footer { margin-top: 15px; font-size: 8px; color: #94a3b8; text-align: right; }
     </style>
 </head>
 <body>
 
+    <!-- Watermark -->
     <div class="watermark">
-        <svg width="140" viewBox="0 0 220 200" xmlns="http://www.w3.org/2000/svg">
-            <g transform="translate(110, 90) scale(0.9)">
-                <path d="M-58,30 Q-72,-30 -30,-72 Q0,-95 30,-72 Q58,-50 62,-20" fill="none" stroke="#F07A1A" stroke-width="14" stroke-linecap="round"/>
-                <path d="M-10,50 Q10,70 35,50 Q55,28 62,-20" fill="none" stroke="#F07A1A" stroke-width="12" stroke-linecap="round"/>
-                <ellipse cx="0" cy="-28" rx="52" ry="58" fill="#1B2E5E"/>
-                <path d="M-18,24 Q0,68 18,24" fill="#1B2E5E"/>
-                <path d="M-16,-60 Q-30,-35 -8,-12 Q12,10 -4,32" fill="none" stroke="white" stroke-width="10" stroke-linecap="round"/>
-                <path d="M28,-72 Q38,-68 34,-58" fill="none" stroke="#F07A1A" stroke-width="4" stroke-linecap="round"/>
-                <path d="M36,-80 Q52,-72 46,-56" fill="none" stroke="#F07A1A" stroke-width="4" stroke-linecap="round"/>
-                <path d="M44,-88 Q65,-76 58,-55" fill="none" stroke="#F07A1A" stroke-width="4" stroke-linecap="round"/>
-                <g transform="translate(0, 18)">
-                    <rect x="-22" y="-8" width="44" height="16" rx="4" fill="#1B2E5E" stroke="white" stroke-width="1.2"/>
-                    <path d="M-14,-8 Q-10,-18 10,-18 Q16,-18 20,-8" fill="#1B2E5E" stroke="white" stroke-width="1.2"/>
-                    <path d="M-10,-8 Q-7,-15 9,-15 Q14,-15 18,-8" fill="white" opacity="0.25"/>
-                    <circle cx="-12" cy="8" r="4.5" fill="white"/>
-                    <circle cx="12" cy="8" r="4.5" fill="white"/>
-                    <circle cx="-12" cy="8" r="2" fill="#1B2E5E"/>
-                    <circle cx="12" cy="8" r="2" fill="#1B2E5E"/>
-                    <line x1="-4" y1="13" x2="-4" y2="22" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="4" y1="13" x2="4" y2="22" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                </g>
-            </g>
-        </svg>
-        <div class="wordmark"><span class="shalo">SHALO</span><span class="track">TRACK</span></div>
-        <div class="tagline">ALWAYS CONNECTED</div>
-        <div class="subtitle">GPS TRACKING &nbsp;|&nbsp; VEHICLE SECURITY &nbsp;|&nbsp; FLEET MANAGEMENT</div>
+        @if(!empty($logoBase64))
+            <img src="{{ $logoBase64 }}" alt="Watermark Logo">
+        @else
+            <div class="watermark-text">SHALOTRACK</div>
+            <div style="font-size: 13px; letter-spacing: 5px; color: #475569; margin-top: 4px;">ALWAYS CONNECTED</div>
+        @endif
     </div>
 
+    <!-- Header -->
     <div class="header">
-        <h1>ShaloTrack — GPS Tracking Report</h1>
-        <div class="meta">
-            Generated on {{ now()->format('d M Y, h:i A') }}
-            @if($fromDate || $toDate)
-                &nbsp;|&nbsp; Range: {{ $fromDate ?? 'Start' }} to {{ $toDate ?? 'Now' }}
-            @endif
-            &nbsp;|&nbsp; {{ $historyData->count() }} points
-        </div>
+        <table>
+            <tr>
+                <td>
+                    <div class="title">{{ $title }}</div>
+                    <div style="color: #64748b; font-size: 8.5px; margin-top: 2px;">ShaloTrack Vehicle Tracking History</div>
+                </td>
+                <td class="meta">
+                    Generated: {{ now()->format('d M Y, h:i A') }}<br>
+                    @if($fromDate || $toDate)
+                        Range: {{ $fromDate ?? 'Start' }} to {{ $toDate ?? 'Now' }}
+                    @endif
+                </td>
+            </tr>
+        </table>
     </div>
 
+    <!-- Vehicle Summary -->
     @if($vehicle)
         <table class="summary">
             <tr>
-                <td><div class="label">Vehicle</div>{{ $vehicle['vehicleNumber'] ?? '-' }}</td>
-                <td><div class="label">Make / Model</div>{{ $vehicle['make'] ?? '' }} {{ $vehicle['model'] ?? '' }}</td>
-                <td><div class="label">Customer</div>{{ $vehicle['customerName'] ?? '-' }}</td>
-                <td><div class="label">GPS Device (IMEI)</div>{{ $vehicle['imei'] ?? 'None' }}</td>
+                <td><div class="label">Vehicle No</div><strong>{{ $vehicle['vehicleNumber'] ?? '-' }}</strong></td>
+                <td><div class="label">Make & Model</div>{{ $vehicle['make'] ?? '' }} {{ $vehicle['model'] ?? '' }}</td>
+                <td><div class="label">Customer Name</div>{{ $vehicle['customerName'] ?? '-' }}</td>
+                <td><div class="label">GPS Device IMEI</div><strong>{{ $vehicle['imei'] ?? 'None' }}</strong></td>
+                <td><div class="label">Total Trips</div><strong>{{ count($tripsWithAddress) }} Trips</strong></td>
             </tr>
         </table>
     @endif
 
+    <!-- Trip Details Table -->
     <table class="data">
         <thead>
             <tr>
-                <th style="width: 22%;">Date & Time</th>
-                <th style="width: 19%;">Latitude</th>
-                <th style="width: 19%;">Longitude</th>
-                <th style="width: 15%;">Speed (km/h)</th>
-                <th style="width: 12%;">Heading</th>
-                <th style="width: 13%;">Satellites</th>
+                <th style="width: 4%;">#</th>
+                <th style="width: 14%;">Date & Trip Time</th>
+                <th style="width: 32%;">Start Location (Address)</th>
+                <th style="width: 32%;">End Location (Address)</th>
+                <th style="width: 9%; text-align: center;">Duration</th>
+                <th style="width: 9%; text-align: right;">Distance</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($historyData as $point)
+            @forelse($tripsWithAddress as $index => $trip)
                 <tr>
-                    <td>{{ \Carbon\Carbon::parse($point['eventTime'])->format('Y-m-d H:i:s') }}</td>
-                    <td>{{ $point['latitude'] }}</td>
-                    <td>{{ $point['longitude'] }}</td>
-                    <td>{{ $point['speed'] }}</td>
-                    <td>{{ $point['heading'] }}&deg;</td>
-                    <td>{{ $point['satellites'] }}</td>
+                    <td>{{ $index + 1 }}</td>
+                    <td>
+                        <strong>{{ $trip['start_time']->format('d M Y') }}</strong><br>
+                        <span style="color: #64748b; font-size: 8.5px;">
+                            {{ $trip['start_time']->format('h:i A') }} - {{ $trip['end_time']->format('h:i A') }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge-green">● START:</span><br>
+                        {{ $trip['start_address'] ?? 'Coordinates: ' . $trip['start_lat'] . ', ' . $trip['start_lng'] }}
+                    </td>
+                    <td>
+                        <span class="badge-red">● END:</span><br>
+                        {{ $trip['end_address'] ?? 'Coordinates: ' . $trip['end_lat'] . ', ' . $trip['end_lng'] }}
+                    </td>
+                    <td style="text-align: center;">
+                        @if($trip['duration_min'] >= 60)
+                            {{ intdiv($trip['duration_min'], 60) }}h {{ $trip['duration_min'] % 60 }}m
+                        @else
+                            {{ $trip['duration_min'] }}m
+                        @endif
+                    </td>
+                    <td style="text-align: right; font-weight: bold; color: #0284c7;">
+                        {{ $trip['distance_km'] }} km
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="6" style="text-align: center; color: #999;">No tracking data found.</td></tr>
+                <tr>
+                    <td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">
+                        No distinct trips recorded for this vehicle in the selected date range.
+                    </td>
+                </tr>
             @endforelse
         </tbody>
     </table>
-    <div class="footer">ShaloTrack Admin Portal — Auto-generated report</div>
+
+    <div class="footer">ShaloTrack GPS Management System — Confidential Report</div>
+
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ $title }}</title>
+    <style>
+        @page { margin: 25px; }
+        body { font-family: 'Helvetica', Arial, sans-serif; font-size: 10px; color: #333; margin: 0; padding: 0; }
+
+        .watermark {
+            position: fixed; top: 25%; left: 10%; width: 80%;
+            opacity: 0.08; z-index: -1000; text-align: center;
+        }
+        .watermark img { width: 450px; height: auto; }
+        .watermark-text { font-size: 48px; font-weight: bold; color: #1a365d; letter-spacing: 4px; }
+
+        .header { border-bottom: 2px solid #17a2b8; padding-bottom: 8px; margin-bottom: 12px; }
+        .header table { width: 100%; }
+        .title { font-size: 15px; font-weight: bold; color: #17a2b8; text-transform: uppercase; }
+        .meta { font-size: 9px; color: #666; text-align: right; }
+
+        .summary { margin-bottom: 15px; width: 100%; border-collapse: collapse; background-color: #f8fafc; border: 1px solid #e2e8f0; }
+        .summary td { padding: 6px 10px; font-size: 9.5px; }
+        .summary .label { color: #64748b; font-size: 8px; text-transform: uppercase; font-weight: bold; }
+
+        table.data { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table.data thead th {
+            background-color: #f1f5f9; text-align: left; padding: 6px 8px;
+            font-size: 8.5px; text-transform: uppercase; border-bottom: 1.5px solid #cbd5e1; color: #1e293b;
+        }
+        table.data tbody td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 9px; vertical-align: middle; }
+        
+        .badge-green { color: #15803d; font-weight: bold; }
+        .badge-red { color: #b91c1c; font-weight: bold; }
+        .footer { margin-top: 15px; font-size: 8px; color: #94a3b8; text-align: right; }
+    </style>
+</head>
+<body>
+
+    <!-- Watermark -->
+    <div class="watermark">
+        @if(!empty($logoBase64))
+            <img src="{{ $logoBase64 }}" alt="Watermark Logo">
+        @else
+            <div class="watermark-text">SHALOTRACK</div>
+            <div style="font-size: 13px; letter-spacing: 5px; color: #475569; margin-top: 4px;">ALWAYS CONNECTED</div>
+        @endif
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <table>
+            <tr>
+                <td>
+                    <div class="title">{{ $title }}</div>
+                    <div style="color: #64748b; font-size: 8.5px; margin-top: 2px;">ShaloTrack Vehicle Tracking History</div>
+                </td>
+                <td class="meta">
+                    Generated: {{ now()->format('d M Y, h:i A') }}<br>
+                    @if($fromDate || $toDate)
+                        Range: {{ $fromDate ?? 'Start' }} to {{ $toDate ?? 'Now' }}
+                    @endif
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Vehicle Summary -->
+    @if($vehicle)
+        <table class="summary">
+            <tr>
+                <td><div class="label">Vehicle No</div><strong>{{ $vehicle['vehicleNumber'] ?? '-' }}</strong></td>
+                <td><div class="label">Make & Model</div>{{ $vehicle['make'] ?? '' }} {{ $vehicle['model'] ?? '' }}</td>
+                <td><div class="label">Customer Name</div>{{ $vehicle['customerName'] ?? '-' }}</td>
+                <td><div class="label">GPS Device IMEI</div><strong>{{ $vehicle['imei'] ?? 'None' }}</strong></td>
+                <td><div class="label">Total Trips</div><strong>{{ count($tripsWithAddress) }} Trips</strong></td>
+            </tr>
+        </table>
+    @endif
+
+    <!-- Trip Details Table -->
+    <table class="data">
+        <thead>
+            <tr>
+                <th style="width: 4%;">#</th>
+                <th style="width: 14%;">Date & Trip Time</th>
+                <th style="width: 32%;">Start Location (Address)</th>
+                <th style="width: 32%;">End Location (Address)</th>
+                <th style="width: 9%; text-align: center;">Duration</th>
+                <th style="width: 9%; text-align: right;">Distance</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($tripsWithAddress as $index => $trip)
+                <tr>
+                    <td>{{ $index + 1 }}</td>
+                    <td>
+                        <strong>{{ $trip['start_time']->format('d M Y') }}</strong><br>
+                        <span style="color: #64748b; font-size: 8.5px;">
+                            {{ $trip['start_time']->format('h:i A') }} - {{ $trip['end_time']->format('h:i A') }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge-green">● START:</span><br>
+                        {{ $trip['start_address'] ?? 'Coordinates: ' . $trip['start_lat'] . ', ' . $trip['start_lng'] }}
+                    </td>
+                    <td>
+                        <span class="badge-red">● END:</span><br>
+                        {{ $trip['end_address'] ?? 'Coordinates: ' . $trip['end_lat'] . ', ' . $trip['end_lng'] }}
+                    </td>
+                    <td style="text-align: center;">
+                        @if($trip['duration_min'] >= 60)
+                            {{ intdiv($trip['duration_min'], 60) }}h {{ $trip['duration_min'] % 60 }}m
+                        @else
+                            {{ $trip['duration_min'] }}m
+                        @endif
+                    </td>
+                    <td style="text-align: right; font-weight: bold; color: #0284c7;">
+                        {{ $trip['distance_km'] }} km
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">
+                        No distinct trips recorded for this vehicle in the selected date range.
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <div class="footer">ShaloTrack GPS Management System — Confidential Report</div>
 
 </body>
 </html>
