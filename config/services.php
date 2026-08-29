@@ -46,4 +46,8 @@ return [
         ],
     ],
 
+    'gateway' => [
+    'command_url' => env('GATEWAY_COMMAND_URL', 'http://gateway.shalotrack.internal:8001'),
+],
+
 ];

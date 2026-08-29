@@ -26,6 +26,42 @@
         <div>
             <h1 class="text-2xl font-black text-blue-950">Customer List</h1>
             <p class="text-xs text-slate-500 mt-0.5">Manage and view all your requested customer ad details.</p>
+            <!-- Search & Filter Bar -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                    <form action="{{ route('dealer.customers.index') }}" method="GET" class="flex flex-col md:flex-row gap-3 items-center justify-between">
+                        
+                        <div class="relative w-full md:w-1/2">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+                            <input type="text" 
+                                name="search" 
+                                value="{{ $search ?? '' }}" 
+                                placeholder="Search by Customer Name, Contact, NIC, or IMEI..." 
+                                class="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 font-medium">
+                        </div>
+
+                        <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                            @if(!empty($search))
+                                <a href="{{ route('dealer.customers.index') }}" 
+                                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">
+                                    Clear Search
+                                </a>
+                            @endif
+
+                            <button type="submit" 
+                                    class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition inline-flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                Search
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
         </div>
         <span class="bg-blue-50 text-blue-950 border border-blue-200 py-1 px-3 rounded-full text-xs font-black">
             Total: {{ $customerAds->count() }} Customers
