@@ -201,24 +201,28 @@
     ============================================================ --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
-       <!-- Total Received Stock Card -->
-<div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition relative overflow-hidden group">
-    <div class="flex justify-between items-start">
-        <div>
-            <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Received Stock</div>
-            <div class="text-4xl font-black text-blue-950 mt-3">{{ $myStockCount ?? 0 }}</div>
-            <div class="text-xs text-emerald-600 font-semibold mt-2 flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <span>Allocated Devices</span>
+                <!-- Total Received Stock Card -->
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition relative overflow-hidden group">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Received Stock</div>
+
+                    <!-- shows totalDevicesCount -->
+                    <div class="text-4xl font-black text-blue-950 mt-3">{{ $myStockCount ?? 0 }}</div>
+                    
+                    <div class="text-xs text-emerald-600 font-semibold mt-2 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>Total Customer Devices</span>
+                    </div>
+                </div>
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:scale-110 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    </svg>
+                </div>
             </div>
         </div>
-        <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:scale-110 transition">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-            </svg>
-        </div>
-    </div>
-</div>
+
 
         {{-- Total Customers Card --}}
         <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition relative overflow-hidden group">

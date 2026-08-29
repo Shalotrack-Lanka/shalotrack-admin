@@ -16,128 +16,93 @@ class DealerDashboardController extends Controller
      * Display the Dealer Dashboard with metrics, stock, allocated devices, and commissions.
      */
     public function index()
-    {
-        /*
-        |--------------------------------------------------------------------------
-        | 1. Authenticated User & Dealer Lookup
-        |--------------------------------------------------------------------------
-        */
-        $user = auth()->user();
-        $dealer = $user->dealer;
+{
+    $user = auth()->user();
+    $dealer = $user->dealer;
 
-        /*
-        |--------------------------------------------------------------------------
-        | 2. If Dealer Account Is Not Linked
-        |--------------------------------------------------------------------------
-        */
-        if (!$dealer) {
-            return view('dealer.dashboard', [
-                'dealer'                  => null,
-                'allocatedDevices'        => collect(),
-                'allocatedDeviceCount'    => 0,
-                'myStockCount'            => 0,
-                'readyForActivationCount' => 0,
-                'transfers'               => collect(),
-                'totalStockReceived'      => 0,
-                'latestStockReceived'     => 0,
-                'recentActivity'          => collect(),
-                'totalCustomersCount'     => 0,
-                'totalDevicesCount'       => 0,
-                'totalCommission'         => 0,
-                'ratePerDevice'           => 1000,
-            ]);
-        }
-
-        $dealerId = $dealer->id;
-
-        /*
-        |--------------------------------------------------------------------------
-        | 3. Customer Ads & Commission Calculations
-        |--------------------------------------------------------------------------
-        */
-        $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)->get();
-
-        $totalCustomersCount = $customerAds->count();
-        $totalDevicesCount   = $customerAds->sum('no_of_devices');
-
-        // Tier Logic: 10 or more devices = LKR 1500 per device, otherwise LKR 1000
-        $ratePerDevice   = ($totalDevicesCount >= 10) ? 1500 : 1000;
-        $totalCommission = $totalDevicesCount * $ratePerDevice;
-
-        /*
-        |--------------------------------------------------------------------------
-        | 4. Physical Devices Allocated To Dealer (From setup_shalotrack_devices)
-        |--------------------------------------------------------------------------
-        */
-        $allocatedDevices = SetupShalotrackDevice::with('deviceType')
-            ->where('dealer_id', $dealerId)
-            ->orderByDesc('shdevice_id')
-            ->get();
-
-        $allocatedDeviceCount = $allocatedDevices->count();
-        $myStockCount        = $allocatedDeviceCount; //
-
-        /*
-        |--------------------------------------------------------------------------
-        | 5. Ready For Activation Count
-        |--------------------------------------------------------------------------
-        */
-        $readyForActivationCount = $allocatedDevices
-            ->filter(function ($device) {
-                return strtolower(trim((string) $device->status)) === 'not activated';
-            })
-            ->count();
-
-        /*
-        |--------------------------------------------------------------------------
-        | 6. Stock Transfers & History
-        |--------------------------------------------------------------------------
-        */
-        $transfers = DealerTransferLedger::where('dealer_id', $dealerId)
-            ->latest()
-            ->get();
-
-        $totalStockReceived = $transfers->sum('quantity');
-
-        $latestTransfer = $transfers->first();
-        $latestStockReceived = $latestTransfer ? $latestTransfer->quantity : 0;
-
-        /*
-        |--------------------------------------------------------------------------
-        | 7. Recent Activities Log
-        |--------------------------------------------------------------------------
-        */
-        $recentActivity = $transfers
-            ->take(5)
-            ->map(function ($transfer) {
-                return [
-                    'date' => $transfer->created_at,
-                    'text' => 'Received ' . $transfer->quantity . ' × ' . $transfer->device_category,
-                ];
-            })
-            ->values();
-
-        /*
-        |--------------------------------------------------------------------------
-        | 8. Return View With Compact Data
-        |--------------------------------------------------------------------------
-        */
-        return view('dealer.dashboard', compact(
-            'dealer',
-            'allocatedDevices',
-            'allocatedDeviceCount',
-            'myStockCount',
-            'readyForActivationCount',
-            'transfers',
-            'totalStockReceived',
-            'latestStockReceived',
-            'recentActivity',
-            'totalCustomersCount',
-            'totalDevicesCount',
-            'totalCommission',
-            'ratePerDevice'
-        ));
+    if (!$dealer) {
+        return view('dealer.dashboard', [
+            'dealer'                  => null,
+            'allocatedDevices'        => collect(),
+            'allocatedDeviceCount'    => 0,
+            'myStockCount'            => 0,
+            'readyForActivationCount' => 0,
+            'transfers'               => collect(),
+            'totalStockReceived'      => 0,
+            'latestStockReceived'     => 0,
+            'recentActivity'          => collect(),
+            'totalCustomersCount'     => 0,
+            'totalDevicesCount'       => 0,
+            'totalCommission'         => 0,
+            'ratePerDevice'           => 1000,
+        ]);
     }
+
+    $dealerId = $dealer->id;
+
+    /*
+    |--------------------------------------------------------------------------
+    | 1. Physical Devices Allocated To Dealer (From setup_shalotrack_devices)
+    |--------------------------------------------------------------------------
+    */
+    $allocatedDevices = SetupShalotrackDevice::with('deviceType')
+        ->where('dealer_id', $dealerId)
+        ->orderByDesc('shdevice_id')
+        ->get();
+
+    $allocatedDeviceCount = $allocatedDevices->count(); // Allocated Devices Count
+
+    /*
+    |--------------------------------------------------------------------------
+    | 2. Customer Ads & Devices Count
+    |--------------------------------------------------------------------------
+    */
+    $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)->get();
+
+    $totalCustomersCount = $customerAds->count();
+    $totalDevicesCount   = $customerAds->sum('no_of_devices'); // Customer List Devices Count
+
+    /*
+    |--------------------------------------------------------------------------
+    | 3. Total Received Stock (Equalizing Allocated Devices & Customer Devices)
+    |--------------------------------------------------------------------------
+    | My Allocated Devices ගණන සහ Customer List එකේ Devices ගණන
+    | එක සමානව Card එකට සහ Tables දෙකටම පෙන්නුම් කරයි.
+    */
+    $myStockCount = $allocatedDeviceCount; 
+
+    /*
+    |--------------------------------------------------------------------------
+    | 4. Commission Calculations & Ready Status
+    |--------------------------------------------------------------------------
+    */
+    $ratePerDevice   = ($totalDevicesCount >= 10) ? 1500 : 1000;
+    $totalCommission = $totalDevicesCount * $ratePerDevice;
+
+    $readyForActivationCount = $allocatedDevices
+        ->filter(fn($device) => strtolower(trim((string) $device->status)) === 'not activated')
+        ->count();
+
+    $transfers = DealerTransferLedger::where('dealer_id', $dealerId)->latest()->get();
+    $totalStockReceived = $transfers->sum('quantity');
+
+    return view('dealer.dashboard', compact(
+        'dealer',
+        'allocatedDevices',
+        'allocatedDeviceCount',
+        'myStockCount',
+        'readyForActivationCount',
+        'transfers',
+        'totalStockReceived',
+        'totalCustomersCount',
+        'totalDevicesCount',
+        'totalCommission',
+        'ratePerDevice'
+    ));
+}
+    
+
+
 
     /**
      * Store or Update Customer Ad along with IMEI Numbers.
@@ -221,16 +186,35 @@ class DealerDashboardController extends Controller
     /**
      * Display the Customer List for the logged-in Dealer.
      */
-    public function customerList()
-    {
-        $dealerId = auth()->user()->dealer->id ?? null;
+    /**
+ * Display the Customer List with Search functionality for the logged-in Dealer.
+ */
+public function customerList(Request $request)
+{
+    $dealerId = auth()->user()->dealer->id ?? null;
 
-        $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)
-            ->latest()
-            ->get();
-
-        return view('dealer.customer_list', compact('customerAds'));
+    if (!$dealerId) {
+        return back()->withErrors(['dealer' => 'Dealer account not found!']);
     }
+
+    $search = trim((string) $request->input('search', ''));
+
+    $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)
+        ->when($search !== '', function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('contact', 'ilike', "%{$search}%")
+                  ->orWhere('nic_or_id', 'ilike', "%{$search}%")
+                  ->orWhere('address', 'ilike', "%{$search}%")
+                  // JSON column එකක් ලෙස IMEI List එකේ තියෙනවා නම් ඒ තුළ search කිරීම
+                  ->orWhereRaw('imei_numbers::text ILIKE ?', ["%{$search}%"]);
+            });
+        })
+        ->latest()
+        ->get();
+
+    return view('dealer.customer_list', compact('customerAds', 'search'));
+}
 
     /**
      * Delete a Customer Ad record.

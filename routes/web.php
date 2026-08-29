@@ -56,6 +56,7 @@ use App\Http\Controllers\Admin\AdminPanel\AddDeviceTypeController;
 
 use App\Http\Controllers\Admin\Vehicles\VehicleDetailsController;
 use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
+use App\Http\Controllers\Admin\Vehicles\DeviceCommandController;
 
 
 
@@ -374,7 +375,19 @@ Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
     Route::get('/gps-tracking/resolve-address', [GpsTrackingController::class, 'resolveAddress'])
     ->name('gps.resolve-address');
 
-Route::get('/gps/export', [GpsTrackingController::class, 'exportPdf'])->name('gps.export');
+    Route::get('/gps/export', [GpsTrackingController::class, 'exportPdf'])->name('gps.export');
+
+    Route::get('/device-commands', 
+        [DeviceCommandController::class, 'index'])
+        ->name('device-commands');
+
+    Route::post('/device-commands/send', 
+        [DeviceCommandController::class, 'sendCommand'])
+        ->name('device-commands.send');
+
+    Route::get('/device-commands/status/{imei}', 
+        [DeviceCommandController::class, 'deviceStatus'])
+        ->name('device-commands.status');
 });
 
 /*
