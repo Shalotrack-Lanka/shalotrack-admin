@@ -202,7 +202,7 @@
 <script>
     var CSRF_TOKEN   = '{{ csrf_token() }}';
     var SEND_URL     = '{{ route("admin.vehicles.device-commands.send") }}';
-    var HISTORY_BASE = '{{ url("admin/vehicles/device-commands/history") }}';
+    var HISTORY_BASE = '/admin/vehicles/device-commands/history';
 
     function openCommandPanel(imei, vehicleNumber) {
         document.getElementById('modal-imei').value = imei;
