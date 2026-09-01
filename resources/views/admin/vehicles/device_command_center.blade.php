@@ -210,11 +210,11 @@
                             <option value="sos_query">sos_query — SOS numbers</option>
                             <option value="fence_query">fence_query — Geofence settings</option>
                         </optgroup>
-                        <optgroup label="Control">
+                        <!--<optgroup label="Control">
                             <option value="relay_on">relay_on — Restore engine relay ✅</option>
                             <option value="reset">reset — Reboot device</option>
                             <option value="sos_delete">sos_delete — Clear SOS numbers</option>
-                        </optgroup>
+                        </optgroup>-->
                         <optgroup label="Configuration">
                             <option value="timer">timer — Set upload interval</option>
                             <option value="speed_alarm">speed_alarm — Overspeed alarm</option>
