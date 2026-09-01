@@ -11,22 +11,26 @@ use Illuminate\Support\Facades\Log;
 class DeviceCommandController extends Controller
 {
     private string $gatewayUrl;
+    private string $apiBaseUrl;
+    private string $apiSyncKey;
 
     public function __construct()
     {
-        $this->gatewayUrl = config('services.gateway.command_url', 'http://gateway.shalotrack.internal:8001');
+        $this->gatewayUrl  = config('services.gateway.command_url', 'http://gateway.shalotrack.internal:8001');
+        $this->apiBaseUrl  = config('services.shalotrack_api.base_url', 'https://api.shalotrack.com');
+        $this->apiSyncKey  = config('services.shalotrack_api.sync_key', '');
     }
 
     public function index()
     {
         $connectedDevices = collect();
-        $gatewayOnline = false;
+        $gatewayOnline    = false;
 
         try {
             $response = Http::timeout(3)->get("{$this->gatewayUrl}/devices");
             if ($response->successful()) {
                 $connectedDevices = collect($response->json('connected_devices') ?? []);
-                $gatewayOnline = true;
+                $gatewayOnline    = true;
             }
         } catch (\Throwable $e) {
             Log::warning('Gateway /devices unreachable: ' . $e->getMessage());
@@ -99,37 +103,13 @@ class DeviceCommandController extends Controller
         }
     }
 
-            public function commandHistory(Request $request, string $vehicleId)
-        {
-            try {
-                $response = Http::timeout(5)
-                    ->withHeaders([
-                        'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
-                    ])
-                    ->get(config('services.shalotrack_api.base_url') . '/api/internal/command-history', [
-                        'vehicleId' => $vehicleId,
-                        'limit'     => $request->input('limit', 20),
-                    ]);
-
-                if ($response->successful()) {
-                    return response()->json($response->json('data', []));
-                }
-
-                return response()->json(['history' => [], 'count' => 0]);
-
-            } catch (\Throwable $e) {
-                Log::warning('Command history fetch failed: ' . $e->getMessage());
-                return response()->json(['history' => [], 'count' => 0]);
-            }
-        }
-
     public function deviceStatus(string $imei)
     {
         try {
             $response = Http::timeout(3)->get("{$this->gatewayUrl}/devices");
             if ($response->successful()) {
                 $devices = collect($response->json('connected_devices') ?? []);
-                $device = $devices->firstWhere('imei', $imei);
+                $device  = $devices->firstWhere('imei', $imei);
                 return response()->json([
                     'online'    => $device !== null,
                     'last_seen' => $device['last_seen'] ?? null,
@@ -141,6 +121,33 @@ class DeviceCommandController extends Controller
         }
 
         return response()->json(['online' => false, 'last_seen' => null]);
+    }
+
+    /**
+     * Fetch command history for a vehicle from the C# API internal endpoint.
+     * Uses X-Admin-Sync-Key — no Firebase JWT needed.
+     */
+    public function commandHistory(Request $request, string $vehicleId)
+    {
+        try {
+            $response = Http::timeout(5)
+                ->withHeaders(['X-Admin-Sync-Key' => $this->apiSyncKey])
+                ->get("{$this->apiBaseUrl}/api/internal/command-history", [
+                    'vehicleId' => $vehicleId,
+                    'limit'     => $request->input('limit', 20),
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json('data', []);
+                return response()->json($data);
+            }
+
+            return response()->json(['history' => [], 'count' => 0]);
+
+        } catch (\Throwable $e) {
+            Log::warning('Command history fetch failed: ' . $e->getMessage());
+            return response()->json(['history' => [], 'count' => 0]);
+        }
     }
 
     private function allowedCommands(): array
