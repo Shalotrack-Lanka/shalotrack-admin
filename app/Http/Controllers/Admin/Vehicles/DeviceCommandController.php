@@ -99,6 +99,30 @@ class DeviceCommandController extends Controller
         }
     }
 
+            public function commandHistory(Request $request, string $vehicleId)
+        {
+            try {
+                $response = Http::timeout(5)
+                    ->withHeaders([
+                        'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
+                    ])
+                    ->get(config('services.shalotrack_api.base_url') . '/api/internal/command-history', [
+                        'vehicleId' => $vehicleId,
+                        'limit'     => $request->input('limit', 20),
+                    ]);
+
+                if ($response->successful()) {
+                    return response()->json($response->json('data', []));
+                }
+
+                return response()->json(['history' => [], 'count' => 0]);
+
+            } catch (\Throwable $e) {
+                Log::warning('Command history fetch failed: ' . $e->getMessage());
+                return response()->json(['history' => [], 'count' => 0]);
+            }
+        }
+
     public function deviceStatus(string $imei)
     {
         try {
