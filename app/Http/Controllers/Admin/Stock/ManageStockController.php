@@ -7,9 +7,12 @@ use App\Models\DeviceType;
 use App\Models\Stock;
 use App\Models\StockTransferLedger;
 use App\Models\Supplier;
+use App\Imports\StockImport;
+use App\Exports\StockImportTemplateExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ManageStockController extends Controller
 {
@@ -115,5 +118,43 @@ class ManageStockController extends Controller
             ->setPaper('a4', $type === 'ledger' ? 'landscape' : 'portrait');
 
         return $pdf->stream(strtolower(str_replace(' ', '_', $title)) . '.pdf');
+    }
+
+    /**
+     * Serves a blank .xlsx with the exact columns StockImport expects,
+     * plus one worked example row.
+     */
+    public function downloadImportTemplate()
+    {
+        return Excel::download(
+            new StockImportTemplateExport(),
+            'stock_import_template.xlsx'
+        );
+    }
+
+    /**
+     * Bulk version of store() — one row per stock-in entry, each creating
+     * its own StockTransferLedger record exactly like a single submission
+     * would. A row for a device type/supplier that doesn't exist is
+     * skipped and reported, not fatal to the rest of the file.
+     */
+    public function importStock(Request $request)
+    {
+        $request->validate([
+            'excel_file' => 'required|file|mimes:xlsx,csv|max:10240',
+        ]);
+
+        $import = new StockImport();
+
+        Excel::import($import, $request->file('excel_file'));
+
+        return redirect()
+            ->back()
+            ->with([
+                'import_success_count' => count($import->created),
+                'import_total_stock_in' => $import->totalStockIn,
+                'import_failures'      => $import->failures(),
+                'import_errors'        => $import->errors(),
+            ]);
     }
 }
