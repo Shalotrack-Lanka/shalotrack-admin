@@ -303,6 +303,10 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])
     ->name('admin.dealer.assigned-devices');
 
+    Route::delete('/unassign-device/{id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
+
+    Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
+
     Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
     Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
     Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');

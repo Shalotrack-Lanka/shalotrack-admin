@@ -77,7 +77,7 @@
                         <th class="px-4 py-3">Customer Name</th>
                         <th class="px-4 py-3">Contact No</th>
                         <th class="px-4 py-3">NIC / ID</th>
-                        <th class="px-4 py-3 text-center">Devices</th>
+                        <th class="px-4 py-3 text-center">Devices (pending)</th>
                         <th class="px-4 py-3">IMEI List</th>
                         <th class="px-4 py-3">Address</th>
                         <th class="px-4 py-3">Date Added</th>
