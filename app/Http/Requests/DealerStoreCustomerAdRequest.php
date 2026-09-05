@@ -14,26 +14,21 @@ class DealerStoreCustomerAdRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'contact' => ['required', 'digits:10'], // Contact number must be exactly 10 digits
-            'nic_or_id' => ['nullable', 'string', 'max:20'],
-            'no_of_devices' => ['required', 'integer', 'min:1', 'max:50'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'imei_numbers' => ['required', 'array'],
-            'imei_numbers.*' => ['required', 'digits:15', 'distinct'], // Each IMEI number must be exactly 15 digits and unique
+            'name'          => 'required|string|max:255',
+            'contact'       => 'required|string|size:10|unique:dealer_customer_ads,contact',
+            'nic_or_id'     => 'nullable|string|max:20|unique:dealer_customer_ads,nic_or_id',
+            'has_device'    => 'nullable|boolean',
+            'no_of_devices' => 'nullable|integer|min:0',
+            'address'       => 'nullable|string|max:500',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required' => 'Customer name is required.',
-            'contact.required' => 'Contact number is required.',
-            'contact.digits' => 'Contact number must be exactly 10 digits.',
-            'no_of_devices.required' => 'Please enter the number of devices.',
-            'imei_numbers.*.required' => 'All IMEI numbers are required.',
-            'imei_numbers.*.digits' => 'Each IMEI number must be exactly 15 digits.',
-            'imei_numbers.*.distinct' => 'Duplicate IMEI numbers entered in the form.',
+            'contact.unique'   => 'This Contact Number is already registered under another customer!',
+            'nic_or_id.unique' => 'This NIC / ID is already registered under another customer!',
+            'contact.size'     => 'Contact Number must be exactly 10 digits.',
         ];
     }
 }

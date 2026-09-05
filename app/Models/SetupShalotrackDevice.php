@@ -41,4 +41,9 @@ class SetupShalotrackDevice extends Model
     {
         return $this->belongsTo(DealerTransferLedger::class, 'transfer_id');
     }
+
+        public function assignedCustomer()
+    {
+        return $this->belongsTo(DealerCustomerAd::class, 'assigned_customer_id', 'id');
+    }
 }
