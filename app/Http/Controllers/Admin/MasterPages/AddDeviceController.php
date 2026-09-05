@@ -7,10 +7,13 @@ use App\Models\SetupShalotrackDevice;
 use App\Models\DeviceType;
 use App\Models\Sim;
 use App\Models\Stock;
+use App\Imports\DevicesImport;
+use App\Exports\DeviceImportTemplateExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AddDeviceController extends Controller
 {
@@ -157,6 +160,52 @@ class AddDeviceController extends Controller
             ]);
 
         return response()->json($devices);
+    }
+
+    /**
+     * Serves a blank .xlsx with the exact column headers DevicesImport
+     * expects, plus one worked example row so the format is obvious
+     * without needing separate documentation.
+     */
+    public function downloadImportTemplate()
+    {
+        return Excel::download(
+            new DeviceImportTemplateExport(),
+            'device_import_template.xlsx'
+        );
+    }
+
+    /**
+     * Bulk version of store() above — same rules, same stock consumption,
+     * same SIM validation/consumption, same API push per device. The only
+     * difference is one row's failure (bad IMEI, no stock left for that
+     * device type, etc.) doesn't abort the rest of the file; it's
+     * collected and reported back instead.
+     */
+    public function importDevices(Request $request)
+    {
+        $request->validate([
+            'excel_file' => 'required|file|mimes:xlsx,csv|max:10240',
+        ]);
+
+        $import = new DevicesImport();
+
+        Excel::import($import, $request->file('excel_file'));
+
+        // Same push-to-API step store() already does for a single device,
+        // just looped — bulk import shouldn't silently skip the sync step
+        // just because it's now happening for many devices at once.
+        foreach ($import->created as $device) {
+            $this->pushDeviceToApi($device);
+        }
+
+        return redirect()
+            ->route('admin.add-device')
+            ->with([
+                'import_success_count' => count($import->created),
+                'import_failures'      => $import->failures(),
+                'import_errors'        => $import->errors(),
+            ]);
     }
 
     private function pushDeviceToApi(\App\Models\SetupShalotrackDevice $device): void

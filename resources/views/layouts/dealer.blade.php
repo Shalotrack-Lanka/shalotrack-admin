@@ -148,7 +148,8 @@
                     </div>
                 </div>
 
-                {{-- User Profile Dropdown --}}
+                {{-- User Profile Dropdown (SAFE AUTH CHECK ADDED) --}}
+                @auth
                 <div x-data="{open:false}" class="relative">
 
                     <button
@@ -196,6 +197,9 @@
                     </div>
 
                 </div>
+                @else
+                <a href="{{ route('login') }}" class="text-sm font-bold text-blue-600 hover:underline">Login</a>
+                @endauth
 
             </div>
 

@@ -21,6 +21,50 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
+            @if(session('import_success_count') !== null)
+                <div class="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs font-medium">
+                    {{ session('import_success_count') }} device type(s) imported successfully.
+                </div>
+            @endif
+
+            @if(session('import_failures') && count(session('import_failures')) > 0)
+                <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-medium">
+                    <p class="font-bold mb-2">{{ count(session('import_failures')) }} row(s) skipped:</p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        @foreach(session('import_failures') as $failure)
+                            <li>Row {{ $failure->row() }}: {{ implode(', ', $failure->errors()) }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <!-- BULK IMPORT -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-6">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                    <span class="font-bold text-gray-800 text-sm">Bulk Import Device Types (Excel)</span>
+                    <a href="{{ route('admin.device-types.import-template') }}"
+                       class="text-xs font-bold text-blue-600 hover:underline">
+                        Download Template
+                    </a>
+                </div>
+                <div class="p-5 text-xs font-semibold text-gray-700">
+                    <p class="text-gray-400 font-normal mb-3">
+                        Columns: <span class="font-mono">device_category, model, protocol, features</span>.
+                        Model must be exactly Basic, Plus, or Customize. Features is optional — comma-separated
+                        feature names that must already exist (add them via Add Feature first).
+                    </p>
+                    <form action="{{ route('admin.device-types.import') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-3">
+                        @csrf
+                        <input type="file" name="excel_file" accept=".xlsx,.csv" required
+                               class="text-xs border border-gray-300 rounded-lg p-2 flex-1">
+                        <button type="submit"
+                                class="bg-[#0B1B3F] hover:bg-blue-900 text-white px-5 py-2 rounded-lg font-bold shadow-sm transition whitespace-nowrap">
+                            Upload &amp; Import
+                        </button>
+                    </form>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
 
                 <!-- LIST: Existing Device Types -->

@@ -125,9 +125,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/add-device', [AddDeviceController::class, 'store'])->name('admin.device.store');
         Route::get('/add-device/list', [AddDeviceController::class, 'list'])->name('admin.device.list');
 
+        //excel
+        Route::get('/devices/import-template', [AddDeviceController::class, 'downloadImportTemplate'])
+       ->name('admin.device.import-template');
+
+        Route::post('/devices/import', [AddDeviceController::class, 'importDevices'])
+        ->name('admin.device.import');
+
         Route::get('/add-sim',
             [AddSimController::class, 'index'])
             ->name('admin.add-sim');
+
+            Route::get('/sim/import-template', [AddSimController::class, 'downloadImportTemplate'])->name('admin.stock.sim.import-template');
+            Route::post('/sim/import', [AddSimController::class, 'importSims'])->name('admin.stock.sim.import');
 
         Route::post('/add-sim', [AddSimController::class, 'store'])->name('admin.stock.sim.store');
 
@@ -189,8 +199,10 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/add-device-types/add-features', [AddDeviceTypeController::class, 'storeFeature'])->name('admin.features.store');
 
-        });
-
+        // Device Types
+Route::get('/device-types/import-template', [AddDeviceTypeController::class, 'downloadImportTemplate'])->name('admin.device-types.import-template');
+Route::post('/device-types/import', [AddDeviceTypeController::class, 'importDeviceTypes'])->name('admin.device-types.import');
+    });
 
 
     /*
@@ -459,6 +471,11 @@ Route::prefix('admin/stock')->middleware('auth')->group(function () {
     Route::delete('/ledger/{ledger}', [ManageStockController::class, 'destroyLedger'])->name('admin.stock.ledger.destroy');
 
     Route::get('/report', [ManageStockController::class, 'generateReport'])->name('admin.stock.report');
+
+    // Stock
+Route::get('/stock/import-template', [ManageStockController::class, 'downloadImportTemplate'])->name('admin.stock.import-template');
+Route::post('/stock/import', [ManageStockController::class, 'importStock'])->name('admin.stock.import');
+
 
     // 2. Current Stock Route
     //Route::get('/current-stock', [CurrentStockController::class, 'index'])->name('admin.current-stock');

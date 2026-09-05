@@ -21,6 +21,49 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
+            @if(session('import_success_count') !== null)
+                <div class="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs font-bold">
+                    {{ session('import_success_count') }} SIM(s) imported successfully.
+                </div>
+            @endif
+
+            @if(session('import_failures') && count(session('import_failures')) > 0)
+                <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg shadow-xs">
+                    <p class="font-bold mb-2 text-xs uppercase tracking-wider">{{ count(session('import_failures')) }} row(s) skipped:</p>
+                    <ul class="list-disc pl-5 space-y-1 text-[11px] font-semibold">
+                        @foreach(session('import_failures') as $failure)
+                            <li>Row {{ $failure->row() }}: {{ implode(', ', $failure->errors()) }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <!-- BULK IMPORT -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-6">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                    <span class="font-bold text-gray-800 text-sm">Bulk Import SIMs (Excel)</span>
+                    <a href="{{ route('admin.stock.sim.import-template') }}"
+                       class="text-xs font-bold text-blue-600 hover:underline">
+                        Download Template
+                    </a>
+                </div>
+                <div class="p-5 text-xs font-semibold text-gray-700">
+                    <p class="text-gray-400 font-normal mb-3">
+                        Columns: <span class="font-mono">sim_type, sim_number, imsi, iccid, sim_status, activation_required</span>.
+                        sim_number, imsi, and iccid must each be unique. activation_required accepts yes/no (optional, defaults to no).
+                    </p>
+                    <form action="{{ route('admin.stock.sim.import') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-3">
+                        @csrf
+                        <input type="file" name="excel_file" accept=".xlsx,.csv" required
+                               class="text-xs border border-gray-300 rounded-lg p-2 flex-1">
+                        <button type="submit"
+                                class="bg-[#17a2b8] hover:bg-[#138496] text-white px-5 py-2 rounded-lg font-bold shadow-sm transition whitespace-nowrap">
+                            Upload &amp; Import
+                        </button>
+                    </form>
+                </div>
+            </div>
+
                 <div class="lg:col-span-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                     <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">Add New SIM </div>
                     <div class="p-5 text-xs font-semibold text-gray-700 space-y-4">
@@ -115,13 +158,6 @@
                                     </svg>
                                     Generate Report
                                 </a>
-                            <button type="button" onclick="window.location.reload()"
-                                    class="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-100 flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5 refresh-icon transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Refresh
-                            </button>
                         </div>
                     </div>
                     <div class="p-5">
@@ -149,9 +185,9 @@
                                                     @csrf
                                                     @method('PATCH')
                                                     <div class="relative inline-block w-36">
-                                                        <select name="sim_status" 
+                                                        <select name="sim_status"
                                                                 onfocus="this.oldValue = this.value;"
-                                                                onchange="if(confirm('Do you want to change SIM status to Active for {{ $sim->sim_number }}?')) { this.form.submit(); } else { this.value = this.oldValue; }" 
+                                                                onchange="if(confirm('Do you want to change SIM status to Active for {{ $sim->sim_number }}?')) { this.form.submit(); } else { this.value = this.oldValue; }"
                                                                 class="appearance-none w-full bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold rounded-full px-3 py-1.5 pr-8 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer shadow-sm transition-colors hover:bg-red-100 text-center">
                                                             <option value="Not Activated" {{ ($sim->sim_status == 'Not Activated' || is_null($sim->sim_status)) ? 'selected' : '' }} class="font-bold text-red-600">Not Activated</option>
                                                             <option value="Activated" class="font-bold text-green-600">Activated</option>
@@ -255,7 +291,6 @@
                     </div>
                 </div>
 
-            </div>
         </main>
     </div>
 </div>

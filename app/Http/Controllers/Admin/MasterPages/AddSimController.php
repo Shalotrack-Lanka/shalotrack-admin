@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Admin\MasterPages;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sim;
+use App\Imports\SimsImport;
+use App\Exports\SimImportTemplateExport;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AddSimController extends Controller
 {
@@ -76,5 +79,42 @@ class AddSimController extends Controller
         $pdf = Pdf::loadView('admin.master_pages.reports.activated_sims_pdf', compact('sims'));
 
         return $pdf->download('activated_sims_' . now()->format('Y-m-d_His') . '.pdf');
+    }
+
+    /**
+     * Serves a blank .xlsx with the exact columns SimsImport expects,
+     * plus one worked example row. sim_number/imsi/iccid columns are
+     * forced to Text format so they don't get corrupted into scientific
+     * notation the way the device IMEI template originally did.
+     */
+    public function downloadImportTemplate()
+    {
+        return Excel::download(
+            new SimImportTemplateExport(),
+            'sim_import_template.xlsx'
+        );
+    }
+
+    /**
+     * Bulk version of store() — same uniqueness rules on sim_number,
+     * imsi, and iccid. A duplicate or malformed row is skipped and
+     * reported, not fatal to the rest of the file.
+     */
+    public function importSims(Request $request)
+    {
+        $request->validate([
+            'excel_file' => 'required|file|mimes:xlsx,csv|max:10240',
+        ]);
+
+        $import = new SimsImport();
+
+        Excel::import($import, $request->file('excel_file'));
+
+        return redirect()
+            ->back()
+            ->with([
+                'import_success_count' => count($import->created),
+                'import_failures'      => $import->failures(),
+            ]);
     }
 }

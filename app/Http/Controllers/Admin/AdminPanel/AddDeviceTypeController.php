@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Admin\AdminPanel;
 use App\Http\Controllers\Controller;
 use App\Models\DeviceType;
 use App\Models\Feature;
+use App\Imports\DeviceTypesImport;
+use App\Exports\DeviceTypeImportTemplateExport;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AddDeviceTypeController extends Controller
 {
@@ -83,5 +86,41 @@ class AddDeviceTypeController extends Controller
         Feature::create($validated);
 
         return redirect()->back()->with('success', 'Feature added successfully!');
+    }
+
+    /**
+     * Serves a blank .xlsx with the exact columns DeviceTypesImport
+     * expects, plus one worked example row.
+     */
+    public function downloadImportTemplate()
+    {
+        return Excel::download(
+            new DeviceTypeImportTemplateExport(),
+            'device_type_import_template.xlsx'
+        );
+    }
+
+    /**
+     * Bulk version of store() — same category+model uniqueness rule, same
+     * model:in:Basic,Plus,Customize restriction, same features handling.
+     * One bad row (duplicate combo, unknown feature name) is skipped and
+     * reported, not fatal to the rest of the file.
+     */
+    public function importDeviceTypes(Request $request)
+    {
+        $request->validate([
+            'excel_file' => 'required|file|mimes:xlsx,csv|max:10240',
+        ]);
+
+        $import = new DeviceTypesImport();
+
+        Excel::import($import, $request->file('excel_file'));
+
+        return redirect()
+            ->back()
+            ->with([
+                'import_success_count' => count($import->created),
+                'import_failures'      => $import->failures(),
+            ]);
     }
 }
