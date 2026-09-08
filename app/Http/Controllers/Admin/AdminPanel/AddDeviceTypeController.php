@@ -104,7 +104,7 @@ class AddDeviceTypeController extends Controller
      * Bulk version of store() — same category+model uniqueness rule, same
      * model:in:Basic,Plus,Customize restriction, same features handling.
      * One bad row (duplicate combo, unknown feature name) is skipped and
-     * reported, not fatal to the rest of the file.
+     * reported, not fatal to the rest of the file
      */
     public function importDeviceTypes(Request $request)
     {
