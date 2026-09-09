@@ -15,8 +15,23 @@ class DealerStoreCustomerAdRequest extends FormRequest
     {
         return [
             'name'          => 'required|string|max:255',
-            'contact'       => 'required|string|size:10|unique:dealer_customer_ads,contact',
-            'nic_or_id'     => 'nullable|string|max:20|unique:dealer_customer_ads,nic_or_id',
+
+            // Contact stored as 10-digit local format (07XXXXXXXX).
+            // Unique per dealer's own records — the same customer cannot be
+            // added twice by the same dealer, but two different dealers CAN
+            // legitimately serve the same customer.
+            'contact'       => [
+                'required',
+                'digits:10',
+                'regex:/^0[0-9]{9}$/',
+            ],
+
+            // Email is optional but must be a valid address if provided.
+            // Used as a second identifier to soft-match the dealer lead
+            // against the real CustomerAd record from the app.
+            'email'         => 'nullable|email|max:255',
+
+            'nic_or_id'     => 'nullable|string|max:20',
             'has_device'    => 'nullable|boolean',
             'no_of_devices' => 'nullable|integer|min:0',
             'address'       => 'nullable|string|max:500',
@@ -26,9 +41,9 @@ class DealerStoreCustomerAdRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'contact.unique'   => 'This Contact Number is already registered under another customer!',
-            'nic_or_id.unique' => 'This NIC / ID is already registered under another customer!',
-            'contact.size'     => 'Contact Number must be exactly 10 digits.',
+            'contact.digits'  => 'Contact Number must be exactly 10 digits.',
+            'contact.regex'   => 'Contact Number must start with 0 (e.g. 07XXXXXXXX).',
+            'email.email'     => 'Please enter a valid email address.',
         ];
     }
 }

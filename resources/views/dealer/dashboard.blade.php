@@ -127,6 +127,14 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                        <input type="email" name="email" value="{{ old('email') }}"
+                               placeholder="customer@email.com (optional but recommended)"
+                               class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 text-xs py-2 px-3">
+                        <p class="text-[10px] text-slate-400 mt-1">Used to verify if this customer has registered on the ShaloTrack app.</p>
+                    </div>
+
                     <div class="p-2.5 bg-blue-50/60 border border-blue-100 rounded-xl flex items-center gap-2.5">
                         <input type="checkbox" 
                                id="has_device_checkbox" 

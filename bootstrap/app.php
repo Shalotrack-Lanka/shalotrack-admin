@@ -21,6 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
        // $middleware->append(\App\Http\Middleware\TraceRequestMiddleware::class);
 
+        // Runs on every authenticated web request.
+        // Forces logout immediately if the logged-in user's Admin.status
+        // has been set to INACTIVE by an admin since their session started.
+        // This closes the window where a deactivated dealer/supplier could
+        // remain browsing because the login check only fires at login time.
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnforceAdminStatus::class);
+
         // Register the custom Firebase middleware alias
         $middleware->alias([
             'auth.firebase' => \App\Http\Middleware\VerifyFirebaseToken::class,

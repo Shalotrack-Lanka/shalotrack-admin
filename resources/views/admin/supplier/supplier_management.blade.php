@@ -148,7 +148,14 @@
 
                                     <div class="flex flex-wrap gap-1.5">
 
-                                        {{-- Edit / View --}}
+                                        {{-- Full Profile --}}
+                                        <a href="{{ route('admin.supplier.profile.show', $supplier->id) }}"
+                                           class="px-3 py-1 rounded-lg bg-cyan-600 text-white
+                                                  text-[11px] font-bold hover:bg-cyan-700">
+                                            View Profile
+                                        </a>
+
+                                        {{-- Edit / View (inline panel) --}}
                                         <a href="{{ route('admin.suppliers', ['supplier_id' => $supplier->id]) }}"
                                            class="px-3 py-1 rounded-lg bg-gray-800 text-white
                                                   text-[11px] font-bold hover:bg-gray-900">
@@ -331,6 +338,10 @@
                                         <td class="p-3">{{ $supplier->products_count }}</td>
                                         <td class="p-3">
                                             <div class="flex flex-wrap gap-1.5">
+                                                <a href="{{ route('admin.supplier.profile.show', $supplier->id) }}"
+                                                   class="px-3 py-1 rounded-lg bg-cyan-600 text-white text-[11px] font-bold hover:bg-cyan-700">
+                                                    View Profile
+                                                </a>
                                                 <a href="{{ route('admin.suppliers', ['supplier_id' => $supplier->id]) }}"
                                                    class="px-3 py-1 rounded-lg bg-gray-800 text-white text-[11px] font-bold hover:bg-gray-900">
                                                     Edit / View

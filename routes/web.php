@@ -254,6 +254,10 @@ Route::prefix('admin/supplier')->group(function () {
         Route::patch('/{id}/toggle-status', [SupplierManagementController::class, 'toggleStatus'])
        ->name('admin.suppliers.toggle-status');
 
+        // Admin-facing: dedicated full profile page for a specific supplier.
+        Route::get('/{id}/profile', [SupplierProfileController::class, 'showForAdmin'])
+            ->name('admin.supplier.profile.show');
+
        Route::post('/supplier-management-invoice',
       [SupplierInvoiceController::class, 'store'])
        ->name('admin.supplier-invoice.store');
@@ -328,6 +332,7 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
     Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
     Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
+    Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
     Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
 
     // pdf report generation
