@@ -54,9 +54,27 @@
     {{-- Customer cards --}}
     @forelse($customerAds as $customer)
         @php
-            $app      = $customer->appAccount;      // CustomerAd|null
-            $vehicles = $customer->appVehicles;     // Collection<VehicleAd>
-            $isLive   = $app !== null;
+            $app = null;
+
+            // 1. Email එක තිබේ නම් exact email එකෙන්ම සොයන්න (Priority 1)
+            if (!empty($customer->email)) {
+                $app = \App\Models\CustomerAd::whereRaw('LOWER(email) = ?', [strtolower(trim($customer->email))])->first();
+            }
+
+            // 2. Email එකෙන් හමු නොවූයේ නම් පමණක් Phone number එකෙන් සොයන්න (Priority 2)
+            if (!$app && !empty($customer->contact)) {
+                $digitsOnly = preg_replace('/[^0-9]/', '', $customer->contact);
+                $shortPhone = strlen($digitsOnly) >= 9 ? substr($digitsOnly, -9) : $digitsOnly;
+
+                $app = \App\Models\CustomerAd::where('phone_number', 'LIKE', '%' . $shortPhone)->first();
+            }
+
+            // 3. හමුවූ CustomerAd එකේ customer_id එකෙන් VehicleAd records ලබා ගැනීම
+            $vehicles = $app 
+                ? \App\Models\VehicleAd::where('customer_id', $app->customer_id)->get() 
+                : collect();
+
+            $isLive = $app !== null;
         @endphp
 
         <div class="bg-white rounded-2xl border {{ $isLive ? 'border-emerald-200' : 'border-slate-200' }} shadow-sm overflow-hidden">
