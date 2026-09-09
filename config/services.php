@@ -22,7 +22,9 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
-
+    'google' => [
+    'maps_api_key' => env('GOOGLE_MAPS_API_KEY'),
+],
 
     'shalotrack_api' => [
         // FIX: was reading SHALOTRACK_API_URL, but the actual env var set in
