@@ -415,6 +415,7 @@ Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
     Route::get('/device-commands/history/{vehicleId}', 
     [DeviceCommandController::class, 'commandHistory'])
     ->name('device-commands.history');
+
 });
 
 /*
@@ -559,6 +560,8 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     Route::post('/device-commands/send', [DeviceCommandController::class, 'sendCommand'])->name('device-commands.send');
     Route::get('/device-commands/status/{imei}', [DeviceCommandController::class, 'deviceStatus'])->name('device-commands.status');
     Route::get('/device-commands/history/{vehicleId}', [DeviceCommandController::class, 'commandHistory'])->name('device-commands.history');
+
+    Route::get('/gps-tracking', [GpsTrackingController::class, 'dealerIndex'])->name('gps-tracking');
 });
 
 

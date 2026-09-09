@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Admin\Vehicles;
 use App\Http\Controllers\Controller;
 use App\Services\AddressResolver;
 use App\Models\VehicleAd;
+use App\Models\DealerCustomerAd;
+use App\Models\CustomerAd;
 use App\Models\ActivatedDevice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -33,7 +36,7 @@ class GpsTrackingController extends Controller
         $historyData = collect();
         $errorMessage = null;
 
-        // 1. Vehicle Search Dropdown Suggestions (API + Local DB Fallback)
+        // 1. Vehicle Search Dropdown Suggestions
         $vehicleNumbers = collect();
         try {
             $vehiclesResponse = Http::timeout(5)
@@ -50,7 +53,6 @@ class GpsTrackingController extends Controller
             Log::warning('Vehicle API suggestion failed, loading from local DB: ' . $e->getMessage());
         }
 
-        // API fail or no vehicles returned, fallback to local DB
         if ($vehicleNumbers->isEmpty()) {
             $dbVehicles = VehicleAd::pluck('vehicle_number');
             $activeVehicles = ActivatedDevice::pluck('vehicle_number');
@@ -81,6 +83,114 @@ class GpsTrackingController extends Controller
         return view('admin.vehicles.gps_tracking', compact(
             'search', 'fromDate', 'toDate', 'vehicle', 'currentLocation', 'historyData', 'trips', 'errorMessage', 'vehicleNumbers'
         ));
+    }
+
+    /**
+     * Dealer-specific GPS Tracking View
+     * Leverages the exact same fetchTrackingData mechanism used in Admin View
+     */
+    public function dealerIndex(Request $request)
+    {
+        $user = auth()->user();
+        $dealer = $user->dealer ?? (\App\Models\Dealer::find($user->dealer_id) ?? null);
+
+        if (!$dealer) {
+            return redirect()->back()->with('error', 'Dealer profile not found.');
+        }
+
+        // 1. Dealer Customer Leads
+        $dealerLeads = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
+
+        $emails = $dealerLeads->pluck('email')->filter()->map(fn($e) => strtolower(trim($e)))->toArray();
+        $phones = $dealerLeads->pluck('contact')->filter()->map(function($p) {
+            $digits = preg_replace('/[^0-9]/', '', $p);
+            return strlen($digits) >= 9 ? substr($digits, -9) : $digits;
+        })->toArray();
+
+        // 2. Customer Account IDs
+        $customerIds = CustomerAd::query()
+            ->where(function ($q) use ($emails, $phones) {
+                if (!empty($emails)) {
+                    $q->whereIn(DB::raw('LOWER(email)'), $emails);
+                }
+                foreach ($phones as $phone) {
+                    $q->orWhere('phone_number', 'LIKE', '%' . $phone);
+                }
+            })
+            ->pluck('customer_id')
+            ->toArray();
+
+        // 3. Vehicles with GPS belonging to this Dealer
+        $vehicles = VehicleAd::whereIn('customer_id', $customerIds)
+            ->whereNotNull('imei')
+            ->where('imei', '!=', '')
+            ->orderBy('vehicle_number')
+            ->get();
+
+        $selectedVehicleId = $request->input('vehicle_id');
+        $selectedVehicle   = null;
+
+        if ($selectedVehicleId) {
+            $selectedVehicle = $vehicles->firstWhere('vehicle_id', $selectedVehicleId);
+        }
+
+        if (!$selectedVehicle && $vehicles->isNotEmpty()) {
+            $selectedVehicle = $vehicles->first();
+        }
+
+        // 4. Fetch Exact Location via C# Sync API (Same as Admin)
+        $locationData = [
+            'latitude'    => null,
+            'longitude'   => null,
+            'speed'       => 0,
+            'heading'     => 0,
+            'timestamp'   => null,
+            'is_online'   => false,
+        ];
+        $resolvedAddress = 'Location data unavailable';
+
+        if ($selectedVehicle) {
+            // C# API endpoint call via fetchTrackingData
+            $trackingResult = $this->fetchTrackingData(
+                $selectedVehicle->vehicle_number,
+                $selectedVehicle->imei,
+                null,
+                null
+            );
+
+            $currentLoc = $trackingResult['currentLocation'] ?? null;
+
+            if ($currentLoc && !empty($currentLoc['latitude']) && !empty($currentLoc['longitude'])) {
+                $locationData['latitude']  = (float) $currentLoc['latitude'];
+                $locationData['longitude'] = (float) $currentLoc['longitude'];
+                $locationData['speed']     = $currentLoc['speed'] ?? 0;
+                $locationData['heading']   = $currentLoc['heading'] ?? 0;
+                $locationData['timestamp'] = $currentLoc['updatedAt'] ?? $currentLoc['timestamp'] ?? null;
+                $locationData['is_online'] = true;
+
+                // Resolve real address
+                $resolvedAddress = $this->addressResolver->resolve(
+                    $locationData['latitude'],
+                    $locationData['longitude']
+                );
+            } else {
+                // If API returns no current location, fallback to VehicleAd model coordinates if available
+                if (!empty($selectedVehicle->latitude) && !empty($selectedVehicle->longitude)) {
+                    $locationData['latitude']  = (float) $selectedVehicle->latitude;
+                    $locationData['longitude'] = (float) $selectedVehicle->longitude;
+                    $locationData['is_online'] = true;
+
+                    $resolvedAddress = $this->addressResolver->resolve(
+                        $locationData['latitude'],
+                        $locationData['longitude']
+                    );
+                } else {
+                    $resolvedAddress = "No active GPS signal or location updated for this vehicle.";
+                }
+            }
+        }
+
+        return view('dealer.gps_tracking', compact('vehicles', 'selectedVehicle', 'locationData', 'resolvedAddress'));
     }
 
     public function resolveAddress(Request $request)
@@ -246,65 +356,59 @@ class GpsTrackingController extends Controller
         return $earthRadiusKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
-    /**
-     * Generate & Download PDF Report safely without memory crashing
-     */
-   public function exportPdf(Request $request)
-{
-    ini_set('memory_limit', '512M');
-    set_time_limit(300);
+    public function exportPdf(Request $request)
+    {
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
 
-    $search    = trim((string) $request->input('search'));
-    $fromDate  = $request->input('from_date');
-    $toDate    = $request->input('to_date');
+        $search    = trim((string) $request->input('search'));
+        $fromDate  = $request->input('from_date');
+        $toDate    = $request->input('to_date');
 
-    $vehicle = null;
-    $historyData = collect();
+        $vehicle = null;
+        $historyData = collect();
 
-    if ($search !== '') {
-        $isImei = (bool) preg_match('/^\d{15}$/', $search);
+        if ($search !== '') {
+            $isImei = (bool) preg_match('/^\d{15}$/', $search);
 
-        $result = $this->fetchTrackingData(
-            $isImei ? null : $search,
-            $isImei ? $search : null,
-            $this->toDayStart($fromDate),
-            $this->toDayEnd($toDate)
-        );
+            $result = $this->fetchTrackingData(
+                $isImei ? null : $search,
+                $isImei ? $search : null,
+                $this->toDayStart($fromDate),
+                $this->toDayEnd($toDate)
+            );
 
-        $vehicle     = $result['vehicle'];
-        $historyData = $result['historyData'];
+            $vehicle     = $result['vehicle'];
+            $historyData = $result['historyData'];
+        }
+
+        $trips = $this->segmentTrips($historyData);
+
+        $tripsWithAddress = collect($trips)->map(function ($trip) {
+            $trip['start_address'] = $this->addressResolver->resolve((float) $trip['start_lat'], (float) $trip['start_lng']);
+            $trip['end_address']   = $this->addressResolver->resolve((float) $trip['end_lat'], (float) $trip['end_lng']);
+            return $trip;
+        });
+
+        $logoPath = public_path('images/logo.png');
+        $logoBase64 = '';
+        if (file_exists($logoPath)) {
+            $typeImg = pathinfo($logoPath, PATHINFO_EXTENSION);
+            $dataImg = file_get_contents($logoPath);
+            $logoBase64 = 'data:image/' . $typeImg . ';base64,' . base64_encode($dataImg);
+        }
+
+        $title = 'VEHICLE TRIP & ROUTE HISTORY REPORT';
+
+        $pdf = Pdf::loadView('admin.vehicles.reports.gps_tracking_pdf', compact(
+            'vehicle',
+            'tripsWithAddress',
+            'fromDate',
+            'toDate',
+            'title',
+            'logoBase64'
+        ))->setPaper('a4', 'landscape');
+
+        return $pdf->stream('vehicle_trips_report_' . now()->format('Y-m-d_His') . '.pdf');
     }
-
-    // 1. Trip Data
-    $trips = $this->segmentTrips($historyData);
-
-    // 2. Start / End Coordinates 
-    $tripsWithAddress = collect($trips)->map(function ($trip) {
-        $trip['start_address'] = $this->addressResolver->resolve((float) $trip['start_lat'], (float) $trip['start_lng']);
-        $trip['end_address']   = $this->addressResolver->resolve((float) $trip['end_lat'], (float) $trip['end_lng']);
-        return $trip;
-    });
-
-    // 3. Logo Base64
-    $logoPath = public_path('images/logo.png');
-    $logoBase64 = '';
-    if (file_exists($logoPath)) {
-        $typeImg = pathinfo($logoPath, PATHINFO_EXTENSION);
-        $dataImg = file_get_contents($logoPath);
-        $logoBase64 = 'data:image/' . $typeImg . ';base64,' . base64_encode($dataImg);
-    }
-
-    $title = 'VEHICLE TRIP & ROUTE HISTORY REPORT';
-
-    $pdf = Pdf::loadView('admin.vehicles.reports.gps_tracking_pdf', compact(
-        'vehicle',
-        'tripsWithAddress',
-        'fromDate',
-        'toDate',
-        'title',
-        'logoBase64'
-    ))->setPaper('a4', 'landscape'); // landscape orientation for better width
-
-    return $pdf->stream('vehicle_trips_report_' . now()->format('Y-m-d_His') . '.pdf');
-}
 }
