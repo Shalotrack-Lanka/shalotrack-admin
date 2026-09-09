@@ -6,12 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class CustomerAd extends Model
 {
-    // The migration created this table with a hyphenated, mixed-case name —
-    // unlike every other table in this project. Eloquent's default guess
-    // (customer_ads) would be wrong, so this must be explicit.
+    // The migration created this table with a hyphenated, mixed-case name.
     protected $table = 'Customer-ad';
 
-    // Primary key is a UUID (customer_id), not an auto-incrementing id.
     protected $primaryKey = 'customer_id';
     public $incrementing = false;
     protected $keyType = 'string';
@@ -31,8 +28,42 @@ class CustomerAd extends Model
     ];
 
     protected $casts = [
-        'vehicle_count'            => 'integer',
-        'source_account_status'    => 'integer',
-        'last_synced_at'           => 'datetime',
+        'vehicle_count'         => 'integer',
+        'source_account_status' => 'integer',
+        'last_synced_at'        => 'datetime',
     ];
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Relationships
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Vehicles belonging to this customer (synced from API via VehicleAd).
+     */
+    public function vehicles()
+    {
+        return $this->hasMany(VehicleAd::class, 'customer_id', 'customer_id');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Phone normalisation helper
+    //
+    // The API stores phone in E.164: +94771234567
+    // Normalise to 9-digit subscriber number: 771234567
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function getNormalisedPhoneAttribute(): string
+    {
+        $digits = preg_replace('/\D/', '', $this->phone_number ?? '');
+
+        if (str_starts_with($digits, '94') && strlen($digits) === 11) {
+            return substr($digits, 2);
+        }
+
+        if (str_starts_with($digits, '0') && strlen($digits) === 10) {
+            return substr($digits, 1);
+        }
+
+        return $digits;
+    }
 }

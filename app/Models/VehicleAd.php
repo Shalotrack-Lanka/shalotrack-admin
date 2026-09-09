@@ -1,6 +1,5 @@
 <?php
 
-//use namespace App\Models;
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -36,4 +35,9 @@ class VehicleAd extends Model
         'has_gps_device' => 'boolean',
         'last_synced_at' => 'datetime',
     ];
+
+    public function customer()
+    {
+        return $this->belongsTo(CustomerAd::class, 'customer_id', 'customer_id');
+    }
 }
