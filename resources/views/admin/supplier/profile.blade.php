@@ -53,11 +53,13 @@
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Phone</label>
                 <input type="text" name="phone_number" value="{{ old('phone_number', $supplier->phone_number) }}"
+                       placeholder="+94 77 123 4567"
                        class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-950/10 focus:border-blue-950 outline-none">
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Website</label>
-                <input type="text" name="website" value="{{ old('website', $supplier->website) }}"
+                <input type="url" name="website" value="{{ old('website', $supplier->website) }}"
+                       placeholder="https://example.com"
                        class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-950/10 focus:border-blue-950 outline-none">
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -82,12 +84,25 @@
                 <input type="text" name="gstin_number" value="{{ old('gstin_number', $supplier->gstin_number) }}"
                        class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-950/10 focus:border-blue-950 outline-none">
             </div>
+
+            {{--
+                STATUS FIELD INTENTIONALLY REMOVED.
+                A supplier cannot activate or deactivate their own account.
+                Only an admin can do that via Supplier Management → Toggle Status.
+                Displaying this as a read-only badge keeps things transparent
+                without handing the supplier control over it.
+            --}}
             <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Status</label>
-                <select name="status" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-950/10 focus:border-blue-950 outline-none bg-white">
-                    <option value="Active" {{ old('status', $supplier->status) === 'Active' ? 'selected' : '' }}>Active</option>
-                    <option value="Inactive" {{ old('status', $supplier->status) === 'Inactive' ? 'selected' : '' }}>Inactive</option>
-                </select>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Account Status</label>
+                <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl border
+                    {{ $supplier->status === 'Active'
+                        ? 'bg-green-50 border-green-200 text-green-700'
+                        : 'bg-red-50 border-red-200 text-red-700' }}">
+                    <span class="inline-block w-2 h-2 rounded-full
+                        {{ $supplier->status === 'Active' ? 'bg-green-500' : 'bg-red-400' }}"></span>
+                    <span class="text-sm font-semibold">{{ $supplier->status }}</span>
+                    <span class="text-xs ml-auto text-slate-400">Managed by administrator</span>
+                </div>
             </div>
         </div>
     </div>
@@ -108,6 +123,7 @@
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">New Password</label>
                     <input type="password" name="new_password"
                            class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-950/10 focus:border-blue-950 outline-none">
+                    <p class="text-xs text-slate-400 mt-1">Minimum 8 characters.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Confirm New Password</label>

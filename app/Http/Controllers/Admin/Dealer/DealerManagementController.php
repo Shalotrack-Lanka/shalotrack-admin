@@ -14,6 +14,23 @@ use Illuminate\Support\Str;
 
 class DealerManagementController extends Controller
 {
+    // -------------------------------------------------------------------------
+    // Valid values that the form select elements can submit.
+    // Keeping these as constants on the controller means the blade, the
+    // validation, and any future edit form all share one authoritative list —
+    // no drift between what the form shows and what the backend accepts.
+    // -------------------------------------------------------------------------
+
+    private const VALID_DEALER_STATUSES = [
+        'lbc', 'distributor', 'retailer', 'dsa', 'ba', 'csa', 'lt_point',
+    ];
+
+    private const VALID_REGIONS = [
+        'central', 'colombo', 'eastern', 'gampaha',
+        'north_central', 'north_western', 'northern',
+        'sabaragamuwa', 'southern', 'uva', 'western',
+    ];
+
     public function index()
     {
         $dealers = Dealer::where('status', 'active')->latest()->get();
@@ -25,50 +42,76 @@ class DealerManagementController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'full_name'        => 'required|string|max:255',
-            'address'          => 'nullable|string',
-            'qualification'    => 'nullable|string|max:255',
+            // ── Step 1: Basic info ────────────────────────────────────────────
+            'full_name'     => 'required|string|max:255',
+            'address'       => 'nullable|string|max:500',
+            'qualification' => 'nullable|string|max:255',
 
-            'dealer_status'    => 'required|string',
-            'region'           => 'required|string',
-            'country'          => 'nullable|string',
-            'pin_code'         => 'nullable|string|max:20',
+            // dealer_status and region are selects — lock them to exactly
+            // what the form offers so a crafted POST can't inject garbage.
+            'dealer_status' => ['required', 'string', 'in:' . implode(',', self::VALID_DEALER_STATUSES)],
+            'region'        => ['required', 'string', 'in:' . implode(',', self::VALID_REGIONS)],
 
-            'contact_email'    => 'nullable|email|unique:dealers,contact_email',
-            'tax_pan'          => 'nullable|string',
-            'cst_no'           => 'nullable|string',
-            'vat_tin'          => 'nullable|string',
-            'gst_pan'          => 'nullable|string',
+            // Only Sri Lanka currently, but kept nullable for future expansion.
+            'country'       => 'nullable|string|max:100',
+            'pin_code'      => 'nullable|digits_between:4,10',
 
-            'security_deposit' => 'nullable|numeric|min:0',
-            'deposit_date'     => 'nullable|date',
-            'network'          => 'nullable|string',
-            'login_id'         => 'nullable|string',
-            'password'         => 'nullable|string|min:6',
+            // ── Step 2: Business / financial ─────────────────────────────────
+            'contact_email' => 'nullable|email|max:255|unique:dealers,contact_email',
+            'tax_pan'       => 'nullable|string|max:50',
+            'cst_no'        => 'nullable|string|max:50',
+            'vat_tin'       => 'nullable|string|max:50',
+            'gst_pan'       => 'nullable|string|max:50',
 
-            'payment_modes'    => 'nullable|array',
+            'security_deposit' => 'nullable|numeric|min:0|max:99999999.99',
+            'deposit_date'     => 'nullable|date|before_or_equal:today',
+            'network'          => 'nullable|string|max:100',
 
-            'profile_photo'    => 'nullable|image|max:2048',
-            'copy_of_ma'       => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
-            'passport_front'   => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
-            'passport_last'    => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
+            // login_id is a human-readable reference field stored on the
+            // dealers row itself — it is NOT the system-login username
+            // (that gets auto-generated in Admin::create below).
+            'login_id'     => 'nullable|string|max:100',
+
+            // min:8 for any password we create or store — min:6 was too weak
+            // for a portal login. This field is optional; if omitted, a
+            // random 10-char password is generated automatically.
+            'password'     => 'nullable|string|min:8|max:72',
+
+            // ── Step 3: Payments & documents ─────────────────────────────────
+            'payment_modes' => 'nullable|array',
+
+            // profile_photo: images only, max 2 MB
+            'profile_photo'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            // Document uploads: images or PDF, max 4 MB each
+            'copy_of_ma'     => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
+            'passport_front' => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
+            'passport_last'  => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
+        ], [
+            'dealer_status.in' => 'Please select a valid dealer type.',
+            'region.in'        => 'Please select a valid region.',
+            'pin_code.digits_between' => 'Pin code must be 4–10 digits.',
+            'password.min'     => 'Password must be at least 8 characters.',
+            'deposit_date.before_or_equal' => 'Deposit date cannot be in the future.',
+            'security_deposit.max' => 'Security deposit value seems unrealistically large — please check.',
         ]);
 
+        // Store file uploads; overwrite the field value with its storage path.
         foreach (['profile_photo', 'copy_of_ma', 'passport_front', 'passport_last'] as $field) {
             if ($request->hasFile($field)) {
                 $validated[$field] = $request->file($field)->store('dealers', 'public');
             }
         }
 
+        // Capture the plain-text password BEFORE hashing — it is needed
+        // later for the system Admin account and for the one-time display
+        // in the success flash. Once hashed, the plain text is gone.
         $dealerFormPassword = $validated['password'] ?? null;
 
-        // This is the dealer's OWN login_id/password field on the Dealer form
-        // itself (Step 2) — separate DB column, hashed here only if filled in.
         if (!empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         }
 
-        $validated['status'] = 'active';
+        $validated['status']     = 'active';
         $validated['created_by'] = auth()->user()->name ?? 'System';
 
         $generatedUsername = null;
@@ -76,9 +119,11 @@ class DealerManagementController extends Controller
 
         DB::transaction(function () use ($validated, $dealerFormPassword, &$generatedUsername, &$generatedPassword) {
             $dealer = Dealer::create($validated);
-            $dealer->refresh(); // re-fetch from DB — needed if the dealer's
+            $dealer->refresh();
 
-            // --- Auto-create the real system login (Admins table) ---
+            // Auto-generate the system portal login for this dealer.
+            // If the admin supplied a password on the form, reuse it;
+            // otherwise generate a secure random one.
             $generatedUsername = $this->generateUniqueUsername($dealer->full_name);
             $generatedPassword = $dealerFormPassword ?: Str::password(10, symbols: false);
 
@@ -101,14 +146,14 @@ class DealerManagementController extends Controller
     }
 
     /**
-     * Turns "Ranil Kumara" into "ranil_kumara", and if that's already
-     * taken, "ranil_kumara2", "ranil_kumara3", etc.
+     * Turns "Ranil Kumara" into "ranil_kumara". If that username already
+     * exists, appends an incrementing suffix: "ranil_kumara2", "ranil_kumara3".
      */
     private function generateUniqueUsername(string $fullName): string
     {
-        $base = Str::of($fullName)->lower()->trim()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_');
+        $base     = Str::of($fullName)->lower()->trim()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_');
         $username = (string) $base;
-        $suffix = 1;
+        $suffix   = 1;
 
         while (Admin::where('username', $username)->exists()) {
             $suffix++;
@@ -119,9 +164,9 @@ class DealerManagementController extends Controller
     }
 
     public function dealerCustomers()
-{
-    $customerAds = DealerCustomerAd::with('dealer')->latest()->get();
+    {
+        $customerAds = DealerCustomerAd::with('dealer')->latest()->get();
 
-    return view('admin.dealer.dealer_customers', compact('customerAds'));
-}
+        return view('admin.dealer.dealer_customers', compact('customerAds'));
+    }
 }

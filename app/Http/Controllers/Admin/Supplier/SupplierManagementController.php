@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Admin\Supplier;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use App\Models\Product;
-use App\Models\StockTransferLedger; // Stock වෙනුවට StockTransferLedger Model එක යොදා ගන්න
+use App\Models\StockTransferLedger;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SupplierManagementController extends Controller
 {
@@ -15,7 +16,6 @@ class SupplierManagementController extends Controller
      */
     public function index(Request $request)
     {
-        // Search values from URL
         $search = trim((string) $request->query('search', ''));
         $status = $request->query('status', '');
 
@@ -23,8 +23,7 @@ class SupplierManagementController extends Controller
         |--------------------------------------------------------------------------
         | 1. ALL SUPPLIERS
         |--------------------------------------------------------------------------
-        | This list is NOT affected by search.
-        | It will always contain all suppliers.
+        | Not affected by search — always shows every supplier in the sidebar.
         */
         $allSuppliers = Supplier::query()
             ->withCount('products')
@@ -32,115 +31,71 @@ class SupplierManagementController extends Controller
             ->orderBy('name')
             ->get();
 
-
         /*
         |--------------------------------------------------------------------------
         | 2. SEARCH RESULTS
         |--------------------------------------------------------------------------
-        | Only search/filter this list.
         */
         $searchResults = collect();
 
         if ($search !== '' || $status !== '') {
-
             $searchResults = Supplier::query()
                 ->withCount('products')
-
-                // Search by supplier details
                 ->when($search !== '', function ($query) use ($search) {
-
                     $query->where(function ($q) use ($search) {
-
-                        // PostgreSQL / Supabase uses ILIKE
-                        // for case-insensitive searching.
+                        // PostgreSQL / Supabase: ILIKE for case-insensitive matching.
                         $q->where('name', 'ilike', "%{$search}%")
                             ->orWhere('email', 'ilike', "%{$search}%")
                             ->orWhere('phone_number', 'ilike', "%{$search}%")
                             ->orWhere('country', 'ilike', "%{$search}%");
                     });
                 })
-
-                // Filter by status
                 ->when(
                     in_array($status, ['Active', 'Inactive'], true),
                     function ($query) use ($status) {
                         $query->where('status', $status);
                     }
                 )
-
                 ->orderByRaw("status = 'Active' DESC")
                 ->orderBy('name')
                 ->get();
         }
 
-
         /*
         |--------------------------------------------------------------------------
         | 3. SELECTED SUPPLIER
         |--------------------------------------------------------------------------
-        | Used when Admin clicks Edit / View.
         */
-        $selectedSupplier = null;
-        $selectedProducts = collect();
+        $selectedSupplier  = null;
+        $selectedProducts  = collect();
         $availableProducts = collect();
-        $stockHistory = collect();
-
+        $stockHistory      = collect();
 
         if ($request->filled('supplier_id')) {
-
-            // Get selected supplier and attached products
             $selectedSupplier = Supplier::with('products')
                 ->findOrFail($request->supplier_id);
 
             $selectedProducts = $selectedSupplier->products;
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | Available Products
-            |--------------------------------------------------------------------------
-            */
             $attachedIds = $selectedProducts->pluck('id');
 
             $availableProducts = Product::whereNotIn('id', $attachedIds)
                 ->orderBy('product_name')
                 ->get();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | Supplier Stock / Supply History
-            |--------------------------------------------------------------------------
-            | FIX: Querying StockTransferLedger instead of Stock table
-            | because supplier_id exists in stock_transfer_ledgers.
-            */
             $stockHistory = StockTransferLedger::with('stock.deviceType')
                 ->where('supplier_id', $selectedSupplier->id)
                 ->orderByDesc('created_at')
                 ->get();
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | 4. LOAD SUPPLIER MANAGEMENT VIEW
-        |--------------------------------------------------------------------------
-        */
         return view('admin.supplier.supplier_management', compact(
-
-            // All suppliers
             'allSuppliers',
-
-            // Search results
             'searchResults',
-
-            // Selected supplier information
             'selectedSupplier',
             'selectedProducts',
             'availableProducts',
             'stockHistory',
-
-            // Search values
             'search',
             'status'
         ));
@@ -152,16 +107,7 @@ class SupplierManagementController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'supplier_name' => 'required|string|max:255',
-            'address'       => 'nullable|string',
-            'country'       => 'nullable|string|max:100',
-            'state'         => 'nullable|string|max:100',
-            'phone_number'  => 'nullable|string|max:20',
-            'email_id'      => 'nullable|email|max:255',
-            'website'       => 'nullable|string|max:255',
-            'gstin'         => 'nullable|string|max:50',
-        ]);
+        $validated = $this->validateSupplierInput($request);
 
         $supplier = Supplier::create([
             'name'         => $validated['supplier_name'],
@@ -200,16 +146,9 @@ class SupplierManagementController extends Controller
     {
         $supplier = Supplier::findOrFail($id);
 
-        $validated = $request->validate([
-            'supplier_name' => 'required|string|max:255',
-            'address'       => 'nullable|string',
-            'country'       => 'nullable|string|max:100',
-            'state'         => 'nullable|string|max:100',
-            'phone_number'  => 'nullable|string|max:20',
-            'email_id'      => 'nullable|email|max:255',
-            'website'       => 'nullable|string|max:255',
-            'gstin'         => 'nullable|string|max:50',
-        ]);
+        // Pass the current supplier's ID so the email uniqueness rule
+        // ignores this supplier's own existing email when comparing.
+        $validated = $this->validateSupplierInput($request, $supplier->id);
 
         $supplier->update([
             'name'         => $validated['supplier_name'],
@@ -229,7 +168,7 @@ class SupplierManagementController extends Controller
 
 
     /**
-     * Activate / Deactivate Supplier
+     * Activate / Deactivate Supplier — admin-only action.
      */
     public function toggleStatus($id)
     {
@@ -245,7 +184,7 @@ class SupplierManagementController extends Controller
 
 
     /**
-     * Attach a product to supplier
+     * Attach a product to supplier.
      */
     public function attachProduct(Request $request, $id)
     {
@@ -253,15 +192,15 @@ class SupplierManagementController extends Controller
 
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
-            'price'      => 'required|numeric|min:0',
-            'discount'   => 'nullable|numeric|min:0',
+            'price'      => 'required|numeric|min:0|max:99999999.99',
+            'discount'   => 'nullable|numeric|min:0|max:100',
         ]);
 
         $supplier->products()->syncWithoutDetaching([
             $validated['product_id'] => [
                 'price'    => $validated['price'],
                 'discount' => $validated['discount'] ?? 0,
-            ]
+            ],
         ]);
 
         return redirect()
@@ -271,7 +210,7 @@ class SupplierManagementController extends Controller
 
 
     /**
-     * Remove a product from supplier
+     * Remove a product from supplier.
      */
     public function detachProduct($id, $productId)
     {
@@ -282,5 +221,57 @@ class SupplierManagementController extends Controller
         return redirect()
             ->route('admin.suppliers', ['supplier_id' => $supplier->id])
             ->with('success', 'Product removed from supplier successfully.');
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Shared validation rules for store() and update().
+     *
+     * Previously store() and update() had identical rules copy-pasted —
+     * one source of truth now, with the email uniqueness rule correctly
+     * ignoring the supplier's own record during an update.
+     *
+     * @param  Request   $request
+     * @param  int|null  $ignoreId  Supplier ID to exclude from the email
+     *                              uniqueness check (null on create).
+     */
+    private function validateSupplierInput(Request $request, ?int $ignoreId = null): array
+    {
+        return $request->validate([
+            'supplier_name' => 'required|string|max:255',
+            'address'       => 'nullable|string|max:500',
+            'country'       => 'nullable|string|max:100',
+            'state'         => 'nullable|string|max:100',
+
+            // Phone: optional, but if provided must look like a real phone
+            // number. Accepts international format (+94 77 123 4567),
+            // local Sri Lankan (077 123 4567), and common separators.
+            'phone_number' => [
+                'nullable',
+                'regex:/^[+]?[0-9\s\-\(\)]{7,20}$/',
+            ],
+
+            // Email: optional, valid format, and unique across the suppliers
+            // table — except for the supplier being updated right now.
+            'email_id' => [
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique('suppliers', 'email')->ignore($ignoreId),
+            ],
+
+            // Website: must be a real URL if provided, not just any string.
+            'website' => 'nullable|url|max:255',
+
+            'gstin' => 'nullable|string|max:50',
+        ], [
+            'phone_number.regex' => 'Phone number must contain only digits, spaces, hyphens, parentheses, or a leading +.',
+            'email_id.unique'    => 'This email address is already registered to another supplier.',
+            'website.url'        => 'Website must be a valid URL (e.g. https://example.com).',
+        ]);
     }
 }
