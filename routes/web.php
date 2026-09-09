@@ -335,6 +335,8 @@ Route::prefix('admin/dealer')->group(function () {
     Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
     Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
 
+    Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');    
+
     // pdf report generation
     Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
 
@@ -549,6 +551,15 @@ Route::prefix('admin/report')->middleware(['auth'])->group(function () {
 
 });
 
+
+
+// Dealer Routes Group
+Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function () {
+    Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');
+    Route::post('/device-commands/send', [DeviceCommandController::class, 'sendCommand'])->name('device-commands.send');
+    Route::get('/device-commands/status/{imei}', [DeviceCommandController::class, 'deviceStatus'])->name('device-commands.status');
+    Route::get('/device-commands/history/{vehicleId}', [DeviceCommandController::class, 'commandHistory'])->name('device-commands.history');
+});
 
 
 require __DIR__.'/auth.php';

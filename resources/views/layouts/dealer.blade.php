@@ -57,6 +57,14 @@
                 <div x-show="open" class="ml-5 text-sm">
                     <a href="{{ route('dealer.customers.index') }}" class="block py-2 text-white hover:bg-blue-900 rounded-lg transition">Customer List</a>
                 </div>
+                {{-- Device Command Center Link --}}
+<a href="{{ route('dealer.device-commands') }}"
+   class="flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.device-commands') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100' }}">
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+    </svg>
+    <span>Device Commands</span>
+</a>
             </div>
 
         </nav>
