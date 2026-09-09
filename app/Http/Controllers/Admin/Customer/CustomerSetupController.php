@@ -13,6 +13,8 @@ class CustomerSetupController extends Controller
 {
     public function index()
     {
+        // customers:sync now also syncs vehicles — one command keeps both
+        // Customer-ad and vehicle_ad tables current at the same time.
         Artisan::call('customers:sync');
 
         $activeCustomers   = $this->getActive();
@@ -81,9 +83,6 @@ class CustomerSetupController extends Controller
         return $pdf->stream(strtolower(str_replace(' ', '_', $title)) . '.pdf');
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Private helpers — fetch and enrich in one place so index(), refresh(),
-    // and toggleStatus() all see the same data shape.
     // ─────────────────────────────────────────────────────────────────────────
 
     private function getActive()
