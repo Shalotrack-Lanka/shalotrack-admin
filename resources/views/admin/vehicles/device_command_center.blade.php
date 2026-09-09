@@ -281,8 +281,8 @@
 {{-- ── JavaScript ───────────────────────────────────────────────────────────── --}}
 <script>
     var CSRF_TOKEN   = '{{ csrf_token() }}';
-    var SEND_URL     = '{{ route("device-commands.send") }}';
-    var HISTORY_BASE = '{{ url("/admin/dealer/device-commands/history") }}';
+    var SEND_URL     = '{{ route("dealer.device-commands.send") }}';
+    var HISTORY_BASE = '{{ url("/dealer/device-commands/history") }}';
 
     // ── Command Panel ─────────────────────────────────────────────────────────
 
