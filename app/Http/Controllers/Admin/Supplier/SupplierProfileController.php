@@ -3,12 +3,65 @@
 namespace App\Http\Controllers\Admin\Supplier;
 
 use App\Http\Controllers\Controller;
+use App\Models\Supplier;
+use App\Models\StockTransferLedger;
+use App\Models\SupplierInvoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class SupplierProfileController extends Controller
 {
+    // ─────────────────────────────────────────────────────────────────────────
+    // ADMIN-FACING: view a specific supplier's full profile by ID.
+    // Route: GET /admin/supplier/{id}/profile  →  admin.supplier.profile.show
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function showForAdmin(int $id)
+    {
+        $supplier = Supplier::with('products')->findOrFail($id);
+
+        // Supply / stock history — every batch received from this supplier.
+        $stockHistory = StockTransferLedger::with('stock.deviceType')
+            ->where('supplier_id', $supplier->id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Purchase invoice history.
+        $invoices = SupplierInvoice::where('supplier_id', $supplier->id)
+            ->latest('invoice_date')
+            ->get();
+
+        // Summary stats for the stat cards.
+        $totalStockReceived = $stockHistory->sum('stock_in');
+        $totalInvoiceValue  = $invoices->sum('grand_total');
+        $totalInvoices      = $invoices->count();
+
+        // Last 5 stock-in events for the activity feed.
+        $recentActivity = $stockHistory->take(5)->map(function ($entry) {
+            return [
+                'date' => $entry->created_at,
+                'text' => "Received {$entry->stock_in} units of {$entry->device_category_type}",
+            ];
+        })->values();
+
+        return view('admin.supplier.supplier_profile_admin', compact(
+            'supplier',
+            'stockHistory',
+            'invoices',
+            'totalStockReceived',
+            'totalInvoiceValue',
+            'totalInvoices',
+            'recentActivity'
+        ));
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SUPPLIER-FACING: the logged-in supplier edits their OWN profile.
+    // Route: GET /admin/supplier/profile  →  supplier.profile
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function edit()
     {
         $admin    = auth()->user();
@@ -57,9 +110,7 @@ class SupplierProfileController extends Controller
                 Rule::unique('suppliers', 'email')->ignore($supplier->id),
             ],
 
-            // Website must be a real URL if provided.
-            'website' => 'nullable|url|max:255',
-
+            'website'      => 'nullable|url|max:255',
             'address'      => 'nullable|string|max:500',
             'country'      => 'nullable|string|max:100',
             'state'        => 'nullable|string|max:100',
@@ -88,9 +139,6 @@ class SupplierProfileController extends Controller
         ]);
 
         // ── Password change (optional) ────────────────────────────────────────
-        // Only triggered if the supplier actually typed in the password fields.
-        // Validated in a second pass so the error messages are scoped to those
-        // fields and don't interfere with the company-details section above.
         if ($request->filled('new_password')) {
             $request->validate([
                 'current_password' => 'required|string',
