@@ -147,12 +147,21 @@ class DealerDashboardController extends Controller
     /**
      * Dealer portal: full customer list enriched with real app account data.
      *
+     * Triggers customers:sync (which also syncs vehicles) before enriching
+     * so the dealer always sees data that is at most one sync cycle old,
+     * not whatever happened to be in the mirror tables from the last
+     * scheduled run.
+     *
      * Each DealerCustomerAd gets two extra attributes attached:
      *   ->appAccount   CustomerAd|null  — the matched real app user
      *   ->appVehicles  Collection       — that user's vehicles from VehicleAd
      */
     public function customerList(Request $request)
     {
+        // Sync both customers and vehicles before rendering so the dealer
+        // sees current app data, not stale mirror-table data.
+        \Illuminate\Support\Facades\Artisan::call('customers:sync');
+
         $dealerId = auth()->user()->dealer->id ?? null;
 
         if (!$dealerId) {
