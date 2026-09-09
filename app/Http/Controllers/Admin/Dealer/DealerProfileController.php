@@ -12,9 +12,6 @@ use Illuminate\Validation\Rule;
 
 class DealerProfileController extends Controller
 {
-    // Valid values — mirrors DealerManagementController exactly so the
-    // edit form on the profile page is locked to the same set as the
-    // create form, with one source of truth per controller.
     private const VALID_DEALER_STATUSES = [
         'lbc', 'distributor', 'retailer', 'dsa', 'ba', 'csa', 'lt_point',
     ];
@@ -25,11 +22,6 @@ class DealerProfileController extends Controller
         'sabaragamuwa', 'southern', 'uva', 'western',
     ];
 
-    /**
-     * Admin-facing: view a SPECIFIC dealer's full business profile by ID.
-     * Not to be confused with DealerAccountController, which is the
-     * self-service page a logged-in Dealer uses to edit their OWN profile.
-     */
     public function show($id)
     {
         $dealer = Dealer::findOrFail($id);
@@ -56,32 +48,20 @@ class DealerProfileController extends Controller
         ));
     }
 
-    /**
-     * Admin-facing: update a SPECIFIC dealer's profile by ID.
-     * Only edits the fields visible in the dealer profile edit panel —
-     * Step 1 basics + Step 2 business details. Documents are not re-uploaded
-     * from this form (those live on the create form only).
-     */
     public function update(Request $request, int $id)
     {
         $dealer = Dealer::findOrFail($id);
 
         $validated = $request->validate([
-            // ── Step 1: Basic info ────────────────────────────────────────────
-            'full_name'     => 'required|string|max:255',
-            'address'       => 'nullable|string|max:500',
-            'qualification' => 'nullable|string|max:255',
-            'dealer_status' => ['required', 'string', 'in:' . implode(',', self::VALID_DEALER_STATUSES)],
-            'region'        => ['required', 'string', 'in:' . implode(',', self::VALID_REGIONS)],
-            'country'       => 'nullable|string|max:100',
-            'pin_code'      => 'nullable|digits_between:4,10',
-
-            // ── Step 2: Business / financial ─────────────────────────────────
-            // Email unique except for THIS dealer's own row.
-            'contact_email' => [
-                'nullable',
-                'email',
-                'max:255',
+            'full_name'        => 'required|string|max:255',
+            'address'          => 'nullable|string|max:500',
+            'qualification'    => 'nullable|string|max:255',
+            'dealer_status'    => ['required', 'string', 'in:' . implode(',', self::VALID_DEALER_STATUSES)],
+            'region'           => ['required', 'string', 'in:' . implode(',', self::VALID_REGIONS)],
+            'country'          => 'nullable|string|max:100',
+            'pin_code'         => 'nullable|digits_between:4,10',
+            'contact_email'    => [
+                'nullable', 'email', 'max:255',
                 Rule::unique('dealers', 'contact_email')->ignore($dealer->id),
             ],
             'tax_pan'          => 'nullable|string|max:50',
@@ -102,8 +82,6 @@ class DealerProfileController extends Controller
 
         $dealer->update($validated);
 
-        // Keep the linked Admin login's display name and email in sync
-        // so the dealer's portal login reflects their updated name.
         $linkedAdmin = Admin::where('dealer_id', $dealer->id)->first();
         if ($linkedAdmin) {
             $linkedAdmin->full_name = $validated['full_name'];
@@ -116,12 +94,35 @@ class DealerProfileController extends Controller
         return back()->with('success', "Dealer '{$dealer->full_name}' updated successfully.");
     }
 
+    /**
+     * Toggle the dealer's active / archived status.
+     *
+     * This must also mirror the change onto the linked Admin login row
+     * (Admin.status = ACTIVE / INACTIVE), because LoginRequest gates access
+     * using Admin.status. Without this, toggling the Dealer row had zero
+     * effect on whether the dealer could actually log in.
+     *
+     * If the dealer is currently logged in, their session is immediately
+     * invalidated by the EnforceAdminStatus middleware on the next request —
+     * they cannot keep browsing after deactivation.
+     */
     public function toggleStatus(Request $request, $id)
     {
-        $dealer         = Dealer::findOrFail($id);
+        $dealer = Dealer::findOrFail($id);
+
+        // Toggle the dealer business record.
         $dealer->status = $dealer->status === 'active' ? 'archived' : 'active';
         $dealer->save();
 
-        return back()->with('success', 'Dealer status updated to "' . ucfirst($dealer->status) . '".');
+        // Mirror the change on the linked Admin login so the login gate
+        // (LoginRequest: ->where('status', 'ACTIVE')) actually blocks them.
+        $adminStatus = $dealer->status === 'active' ? 'ACTIVE' : 'INACTIVE';
+
+        Admin::where('dealer_id', $dealer->id)
+            ->update(['status' => $adminStatus]);
+
+        $label = $dealer->status === 'active' ? 'activated' : 'deactivated';
+
+        return back()->with('success', "Dealer account {$label}. Portal login is now " . ($dealer->status === 'active' ? 'enabled' : 'blocked') . '.');
     }
 }

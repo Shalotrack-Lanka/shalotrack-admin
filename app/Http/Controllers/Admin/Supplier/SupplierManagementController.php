@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Supplier;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\StockTransferLedger;
@@ -19,23 +20,12 @@ class SupplierManagementController extends Controller
         $search = trim((string) $request->query('search', ''));
         $status = $request->query('status', '');
 
-        /*
-        |--------------------------------------------------------------------------
-        | 1. ALL SUPPLIERS
-        |--------------------------------------------------------------------------
-        | Not affected by search — always shows every supplier in the sidebar.
-        */
         $allSuppliers = Supplier::query()
             ->withCount('products')
             ->orderByRaw("status = 'Active' DESC")
             ->orderBy('name')
             ->get();
 
-        /*
-        |--------------------------------------------------------------------------
-        | 2. SEARCH RESULTS
-        |--------------------------------------------------------------------------
-        */
         $searchResults = collect();
 
         if ($search !== '' || $status !== '') {
@@ -43,7 +33,6 @@ class SupplierManagementController extends Controller
                 ->withCount('products')
                 ->when($search !== '', function ($query) use ($search) {
                     $query->where(function ($q) use ($search) {
-                        // PostgreSQL / Supabase: ILIKE for case-insensitive matching.
                         $q->where('name', 'ilike', "%{$search}%")
                             ->orWhere('email', 'ilike', "%{$search}%")
                             ->orWhere('phone_number', 'ilike', "%{$search}%")
@@ -61,11 +50,6 @@ class SupplierManagementController extends Controller
                 ->get();
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 3. SELECTED SUPPLIER
-        |--------------------------------------------------------------------------
-        */
         $selectedSupplier  = null;
         $selectedProducts  = collect();
         $availableProducts = collect();
@@ -146,8 +130,6 @@ class SupplierManagementController extends Controller
     {
         $supplier = Supplier::findOrFail($id);
 
-        // Pass the current supplier's ID so the email uniqueness rule
-        // ignores this supplier's own existing email when comparing.
         $validated = $this->validateSupplierInput($request, $supplier->id);
 
         $supplier->update([
@@ -169,17 +151,34 @@ class SupplierManagementController extends Controller
 
     /**
      * Activate / Deactivate Supplier — admin-only action.
+     *
+     * Must mirror the status change onto the linked Admin login row so
+     * the login gate (LoginRequest: ->where('status', 'ACTIVE')) actually
+     * blocks or unblocks the supplier's portal access. Changing only the
+     * Supplier row had zero effect on login — the Admin row is the real gate.
+     *
+     * If the supplier is currently logged in, the EnforceAdminStatus middleware
+     * will force-logout them on their very next request.
      */
     public function toggleStatus($id)
     {
         $supplier = Supplier::findOrFail($id);
 
+        // Toggle the supplier business record.
         $supplier->status = ($supplier->status === 'Active') ? 'Inactive' : 'Active';
         $supplier->save();
 
+        // Mirror onto the linked Admin login row.
+        $adminStatus = $supplier->status === 'Active' ? 'ACTIVE' : 'INACTIVE';
+
+        Admin::where('supplier_id', $supplier->id)
+            ->update(['status' => $adminStatus]);
+
+        $label = $supplier->status === 'Active' ? 'activated' : 'deactivated';
+
         return redirect()
             ->route('admin.suppliers', ['supplier_id' => $supplier->id])
-            ->with('success', "Supplier '{$supplier->name}' marked {$supplier->status}.");
+            ->with('success', "Supplier '{$supplier->name}' {$label}. Portal login is now " . ($supplier->status === 'Active' ? 'enabled' : 'blocked') . '.');
     }
 
 
@@ -228,17 +227,6 @@ class SupplierManagementController extends Controller
     // Private helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Shared validation rules for store() and update().
-     *
-     * Previously store() and update() had identical rules copy-pasted —
-     * one source of truth now, with the email uniqueness rule correctly
-     * ignoring the supplier's own record during an update.
-     *
-     * @param  Request   $request
-     * @param  int|null  $ignoreId  Supplier ID to exclude from the email
-     *                              uniqueness check (null on create).
-     */
     private function validateSupplierInput(Request $request, ?int $ignoreId = null): array
     {
         return $request->validate([
@@ -246,28 +234,18 @@ class SupplierManagementController extends Controller
             'address'       => 'nullable|string|max:500',
             'country'       => 'nullable|string|max:100',
             'state'         => 'nullable|string|max:100',
-
-            // Phone: optional, but if provided must look like a real phone
-            // number. Accepts international format (+94 77 123 4567),
-            // local Sri Lankan (077 123 4567), and common separators.
-            'phone_number' => [
+            'phone_number'  => [
                 'nullable',
                 'regex:/^[+]?[0-9\s\-\(\)]{7,20}$/',
             ],
-
-            // Email: optional, valid format, and unique across the suppliers
-            // table — except for the supplier being updated right now.
             'email_id' => [
                 'nullable',
                 'email',
                 'max:255',
                 Rule::unique('suppliers', 'email')->ignore($ignoreId),
             ],
-
-            // Website: must be a real URL if provided, not just any string.
             'website' => 'nullable|url|max:255',
-
-            'gstin' => 'nullable|string|max:50',
+            'gstin'   => 'nullable|string|max:50',
         ], [
             'phone_number.regex' => 'Phone number must contain only digits, spaces, hyphens, parentheses, or a leading +.',
             'email_id.unique'    => 'This email address is already registered to another supplier.',
