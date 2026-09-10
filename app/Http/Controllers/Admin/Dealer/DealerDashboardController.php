@@ -37,7 +37,7 @@ class DealerDashboardController extends Controller
                 'dealer_status' => 'Authorized Dealer'
             ]);
         } else {
-            // 💡 AUTO-CORRECT FIX: Database එකේ නම Email එකක් විදිහට හරි "Dealer Account" විදිහට හරි සේව් වෙලා නම්, ඒක ලොග් වුණු කෙනාගේ ඇත්ත නමට මාරු කරන්න.
+            // AUTO-CORRECT FIX
             if (in_array($dealer->full_name, ['Dealer Account', 'Default Dealer']) || str_contains($dealer->full_name, '@')) {
                 $dealer->full_name = $user->name ?: 'Dealer';
                 $dealer->save();
@@ -80,7 +80,13 @@ class DealerDashboardController extends Controller
             
         $assignedDevicesCount = $assignedDevices->count();
 
-        // 6. Customers and Vehicles
+        // 6. Commission Calculation (1 Assigned Device = 1000 LKR)
+        $earnedCommission = $assignedDevicesCount * 1000;
+
+        // 💡 7. Total Customers (Dealer ගේ Customers ලා පමණක් ගණන් කිරීම)
+        $totalCustomers = $dealerLeads->count();
+
+        // 8. Vehicles Data
         $customerIds = \App\Models\CustomerAd::query()
             ->where(function ($q) use ($emails, $phones) {
                 if (!empty($emails)) {
@@ -93,7 +99,8 @@ class DealerDashboardController extends Controller
             ->pluck('customer_id')
             ->toArray();
 
-        $totalCustomers    = count($customerIds);
+        // (කලින් මෙතන තිබුණ $totalCustomers = count($customerIds); පේළිය අයින් කරන ලදී)
+        
         $vehicles          = \App\Models\VehicleAd::whereIn('customer_id', $customerIds)->get();
         $totalVehicles     = $vehicles->count();
         $activeGpsVehicles = $vehicles->whereNotNull('imei')->where('imei', '!=', '')->count();
@@ -108,7 +115,8 @@ class DealerDashboardController extends Controller
             'allocatedDevices',
             'allocatedDevicesCount',
             'assignedDevices',
-            'assignedDevicesCount'
+            'assignedDevicesCount',
+            'earnedCommission' 
         ));
     }
 
