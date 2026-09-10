@@ -60,14 +60,24 @@ class DealerDashboardController extends Controller
             return strlen($digits) >= 9 ? substr($digits, -9) : $digits;
         })->toArray();
 
-        // 5. Allocated Devices & Assigned Devices Variables
-        $allocatedDevices      = SetupShalotrackDevice::where('dealer_id', $dealer->id)->get();
+        // 5. Allocated Devices (Available Stocks - Filtered to show only unassigned devices)
+        $allocatedDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
+            ->where(function ($q) {
+                $q->whereNull('assigned_customer_id')
+                  ->orWhere('assigned_customer_id', 0);
+            })
+            ->where('status', '!=', 'Assigned to Customer')
+            ->latest()
+            ->get();
+            
         $allocatedDevicesCount = $allocatedDevices->count();
 
+        // Assigned Devices
         $assignedDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->whereNotNull('assigned_customer_id')
             ->where('assigned_customer_id', '>', 0)
             ->get();
+            
         $assignedDevicesCount = $assignedDevices->count();
 
         // 6. Customers and Vehicles
