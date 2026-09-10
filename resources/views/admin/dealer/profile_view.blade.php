@@ -80,12 +80,6 @@
     </div>
 
     {{-- ── Edit panel (Alpine toggle) ──────────────────────────────────────── --}}
-    {{--
-        Opens inline on the same page — no redirect, no separate route to remember.
-        Two-tab layout mirrors the original 3-step create form but Step 3
-        (documents) is excluded here — file re-uploads don't belong on an
-        edit form unless you're building a dedicated doc-management section.
-    --}}
     <div x-show="editOpen"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 -translate-y-2"
@@ -131,7 +125,7 @@
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">Dealer Type <span class="text-red-500">*</span></label>
                         <select name="dealer_status" required
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none bg-white">
-                            @foreach(['lbc' => 'LBC','distributor' => 'Distributor','retailer' => 'Retailer','dsa' => 'DSA','ba' => 'BA','csa' => 'CSA','lt_point' => 'LT Point'] as $val => $label)
+                            @foreach(['lbc' => 'LBC','distributor' => 'Distributor','retailer' => 'Retailer','dsa' => 'DSA','ba' => 'BA','csa' => 'CSA','lt_point' => 'LT Point', 'Authorized Dealer' => 'Authorized Dealer'] as $val => $label)
                                 <option value="{{ $val }}" {{ old('dealer_status', $dealer->dealer_status) === $val ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
@@ -142,7 +136,7 @@
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">Region <span class="text-red-500">*</span></label>
                         <select name="region" required
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none bg-white">
-                            @foreach(['central' => 'Central','colombo' => 'Colombo','eastern' => 'Eastern','gampaha' => 'Gampaha','north_central' => 'North Central','north_western' => 'North Western','northern' => 'Northern','sabaragamuwa' => 'Sabaragamuwa','southern' => 'Southern','uva' => 'Uva','western' => 'Western'] as $val => $label)
+                            @foreach(['central' => 'Central','colombo' => 'Colombo','eastern' => 'Eastern','gampaha' => 'Gampaha','north_central' => 'North Central','north_western' => 'North Western','northern' => 'Northern','sabaragamuwa' => 'Sabaragamuwa','southern' => 'Southern','uva' => 'Uva','western' => 'Western', 'Western' => 'Western'] as $val => $label)
                                 <option value="{{ $val }}" {{ old('region', $dealer->region) === $val ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
@@ -223,6 +217,28 @@
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none">
                     </div>
                 </div>
+                
+                {{-- ── New Password Update Section ───────────────────────────── --}}
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <h4 class="text-sm font-bold text-gray-800 mb-1">Change Password (Optional)</h4>
+                    <p class="text-xs text-gray-500 mb-4">Leave blank if you don't want to change the password.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">New Password</label>
+                            <input type="password" name="password" 
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none" 
+                                   placeholder="Enter new password">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">Confirm New Password</label>
+                            <input type="password" name="password_confirmation" 
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none" 
+                                   placeholder="Re-enter new password">
+                        </div>
+                    </div>
+                </div>
+                {{-- ──────────────────────────────────────────────────────────── --}}
             </div>
 
             <div class="flex gap-3 pt-3 border-t border-gray-100">

@@ -16,13 +16,13 @@ use Illuminate\Support\Str;
 class DealerManagementController extends Controller
 {
     private const VALID_DEALER_STATUSES = [
-        'lbc', 'distributor', 'retailer', 'dsa', 'ba', 'csa', 'lt_point',
+        'lbc', 'distributor', 'retailer', 'dsa', 'ba', 'csa', 'lt_point', 'Authorized Dealer'
     ];
 
     private const VALID_REGIONS = [
         'central', 'colombo', 'eastern', 'gampaha',
         'north_central', 'north_western', 'northern',
-        'sabaragamuwa', 'southern', 'uva', 'western',
+        'sabaragamuwa', 'southern', 'uva', 'western', 'Western', 'Northern', 'Eastern'
     ];
 
     public function index()
@@ -33,44 +33,23 @@ class DealerManagementController extends Controller
         return view('admin.dealer.dealer_management', compact('dealers', 'archivedDealers'));
     }
 
+    /**
+     * Store a newly created dealer in storage and link user/admin profile.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'full_name'      => 'required|string|max:255',
-            'address'        => 'nullable|string|max:500',
-            'qualification'  => 'nullable|string|max:255',
-            'dealer_status'  => ['required', 'string', 'in:' . implode(',', self::VALID_DEALER_STATUSES)],
-            'region'         => ['required', 'string', 'in:' . implode(',', self::VALID_REGIONS)],
-            'country'        => 'nullable|string|max:100',
-            'pin_code'       => 'nullable|digits_between:4,10',
-            'contact_email'  => 'nullable|email|max:255|unique:dealers,contact_email',
-            'tax_pan'        => 'nullable|string|max:50',
-            'cst_no'         => 'nullable|string|max:50',
-            'vat_tin'        => 'nullable|string|max:50',
-            'gst_pan'        => 'nullable|string|max:50',
-            'security_deposit' => 'nullable|numeric|min:0|max:99999999.99',
-            'deposit_date'   => 'nullable|date|before_or_equal:today',
-            'network'        => 'nullable|string|max:100',
-            'login_id'       => 'nullable|string|max:100',
-            'password'       => 'nullable|string|min:8|max:72',
-            'payment_modes'  => 'nullable|array',
-            'profile_photo'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'copy_of_ma'     => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
-            'passport_front' => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
-            'passport_last'  => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
-        ], [
-            'dealer_status.in'             => 'Please select a valid dealer type.',
-            'region.in'                    => 'Please select a valid region.',
-            'pin_code.digits_between'      => 'Pin code must be 4–10 digits.',
-            'password.min'                 => 'Password must be at least 8 characters.',
-            'deposit_date.before_or_equal' => 'Deposit date cannot be in the future.',
+            'full_name'        => 'required|string|max:255',
+            'address'          => 'nullable|string|max:500',
+            'qualification'    => 'nullable|string|max:255',
+            'dealer_status'    => ['required', 'string'],
+            'region'           => ['required', 'string'],
+            'country'          => 'nullable|string|max:100',
+            'pin_code'         => 'nullable|string|max:50',
+            'contact_email'    => 'required|email|max:255|unique:dealers,contact_email',
+            'network'          => 'nullable|string|max:100',
+            'password'         => 'nullable|string|min:8|max:72',
         ]);
-
-        foreach (['profile_photo', 'copy_of_ma', 'passport_front', 'passport_last'] as $field) {
-            if ($request->hasFile($field)) {
-                $validated[$field] = $request->file($field)->store('dealers', 'public');
-            }
-        }
 
         $dealerFormPassword = $validated['password'] ?? null;
 
@@ -91,22 +70,109 @@ class DealerManagementController extends Controller
             $generatedUsername = $this->generateUniqueUsername($dealer->full_name);
             $generatedPassword = $dealerFormPassword ?: Str::password(10, symbols: false);
 
-            Admin::create([
-                'username'  => $generatedUsername,
-                'password'  => Hash::make($generatedPassword),
-                'full_name' => $dealer->full_name,
-                'email'     => $dealer->contact_email,
-                'role'      => 'DEALER',
-                'status'    => 'ACTIVE',
-                'dealer_id' => $dealer->id,
-            ]);
+            if (class_exists(\App\Models\Admin::class)) {
+                Admin::create([
+                    'username'  => $generatedUsername,
+                    'password'  => Hash::make($generatedPassword),
+                    'full_name' => $dealer->full_name,
+                    'email'     => $dealer->contact_email,
+                    'role'      => 'DEALER',
+                    'status'    => 'ACTIVE',
+                    'dealer_id' => $dealer->id,
+                ]);
+            }
+
+            if (class_exists(\App\Models\User::class)) {
+                $user = \App\Models\User::where('email', $dealer->contact_email)->first();
+
+                if (!$user) {
+                    $user = \App\Models\User::create([
+                        'name'      => $dealer->full_name,
+                        'email'     => $dealer->contact_email ?? ($generatedUsername . '@shalotrack.com'),
+                        'password'  => Hash::make($generatedPassword),
+                        'dealer_id' => $dealer->id,
+                    ]);
+                } else {
+                    $user->dealer_id = $dealer->id;
+                    $user->save();
+                }
+            }
         });
 
-        return redirect()->route('admin.dealer-management')->with('success', [
-            'message'  => "Dealer '{$validated['full_name']}' saved successfully.",
-            'username' => $generatedUsername,
-            'password' => $generatedPassword,
+        return redirect()->back()->with('success', "Dealer '{$validated['full_name']}' saved successfully.");
+    }
+
+    public function edit($id)
+    {
+        $dealer = Dealer::findOrFail($id);
+        return view('admin.dealer.edit', compact('dealer'));
+    }
+
+    /**
+     * Update an existing dealer and FORCE change password across all tables
+     */
+    public function update(Request $request, $id)
+    {
+        $dealer = Dealer::findOrFail($id);
+
+        $validated = $request->validate([
+            'full_name'        => 'required|string|max:255',
+            'contact_email'    => 'required|email|max:255|unique:dealers,contact_email,' . $dealer->id,
+            'dealer_status'    => 'nullable|string',
+            'region'           => 'nullable|string',
+            'country'          => 'nullable|string|max:100',
+            'pin_code'         => 'nullable|string|max:50',
+            'address'          => 'nullable|string|max:500',
+            'network'          => 'nullable|string|max:100',
+            
+            // Password change fields
+            'password'         => 'nullable|string|min:8|confirmed', 
         ]);
+
+        // 1. Update basic info
+        $dealer->full_name     = $validated['full_name'];
+        $dealer->contact_email = $validated['contact_email'];
+        if (isset($validated['dealer_status'])) $dealer->dealer_status = $validated['dealer_status'];
+        if (isset($validated['region']))        $dealer->region        = $validated['region'];
+        if (isset($validated['country']))       $dealer->country       = $validated['country'];
+        if (isset($validated['pin_code']))      $dealer->pin_code      = $validated['pin_code'];
+        if (isset($validated['address']))       $dealer->address       = $validated['address'];
+        if (isset($validated['network']))       $dealer->network       = $validated['network'];
+
+        $passwordChanged = false;
+
+        // 2. FORCE Password Update across ALL tables if a new password is typed
+        if ($request->filled('password')) {
+            // Hash the plain-text password typed by the admin
+            $hashedPassword = Hash::make($request->password);
+            
+            // Update Dealers Table
+            $dealer->password = $hashedPassword;
+
+            // DIRECT UPDATE query for Users Table (crucial for Login)
+            if (class_exists(\App\Models\User::class)) {
+                \App\Models\User::where('dealer_id', $dealer->id)
+                    ->orWhere('email', $dealer->contact_email)
+                    ->update(['password' => $hashedPassword]);
+            }
+
+            // DIRECT UPDATE query for Admins Table (if applicable)
+            if (class_exists(\App\Models\Admin::class)) {
+                \App\Models\Admin::where('dealer_id', $dealer->id)
+                    ->orWhere('email', $dealer->contact_email)
+                    ->update(['password' => $hashedPassword]);
+            }
+            
+            $passwordChanged = true;
+        }
+
+        $dealer->save();
+
+        $message = $passwordChanged 
+            ? 'Dealer profile and password updated successfully!' 
+            : 'Dealer profile updated successfully!';
+
+        return redirect()->back()->with('success', $message);
     }
 
     private function generateUniqueUsername(string $fullName): string
@@ -123,16 +189,9 @@ class DealerManagementController extends Controller
         return $username;
     }
 
-    /**
-     * Admin view: all customers added by any dealer, enriched with their
-     * real app accounts and vehicles so admin can see who is actually live
-     * on the platform versus who is just a recorded lead.
-     */
     public function dealerCustomers()
     {
         $customerAds = DealerCustomerAd::with('dealer')->latest()->get();
-
-        // Enrich with matched app accounts and vehicles — 2 queries, never N+1
         $customerAds = CustomerLinkService::enrichLeads($customerAds);
 
         return view('admin.dealer.dealer_customers', compact('customerAds'));

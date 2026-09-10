@@ -10,94 +10,100 @@ use App\Http\Requests\DealerStoreCustomerAdRequest;
 use App\Services\CustomerLinkService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class DealerDashboardController extends Controller
 {
     public function index()
     {
-        $user   = auth()->user();
-        $dealer = $user->dealer;
+        $user = auth()->user();
+        $userEmail = strtolower(trim($user->email));
 
-        if (!$dealer) {
-            return view('dealer.dashboard', [
-                'dealer'                  => null,
-                'allocatedDevices'        => collect(),
-                'assignedDevices'         => collect(),
-                'dealerCustomers'         => collect(),
-                'pendingReminders'        => collect(),
-                'allocatedDeviceCount'    => 0,
-                'myStockCount'            => 0,
-                'readyForActivationCount' => 0,
-                'transfers'               => collect(),
-                'totalStockReceived'      => 0,
-                'totalCustomersCount'     => 0,
-                'totalDevicesCount'       => 0,
-                'totalCommission'         => 0,
-                'ratePerDevice'           => 1000,
-            ]);
+        // 1. Strict Match: User ගේ හරියටම Email එකට ගැලපෙන Dealer Profile එක සොයන්න
+        $dealer = \App\Models\Dealer::whereRaw('LOWER(contact_email) = ?', [$userEmail])->first();
+
+        if (!$dealer && $user->dealer_id) {
+            $dealer = \App\Models\Dealer::find($user->dealer_id);
         }
 
-        $dealerId = $dealer->id;
-
-        $allocatedDevices = SetupShalotrackDevice::with('deviceType')
-            ->where('dealer_id', $dealerId)
-            ->where(function ($q) {
-                $q->whereNull('assigned_customer_id')
-                  ->orWhere('assigned_customer_id', 0);
-            })
-            ->where('status', '!=', 'Assigned to Customer')
-            ->orderByDesc('shdevice_id')
-            ->get();
-
-        $assignedDevices = SetupShalotrackDevice::with(['deviceType', 'assignedCustomer'])
-            ->where('dealer_id', $dealerId)
-            ->whereNotNull('assigned_customer_id')
-            ->where('assigned_customer_id', '>', 0)
-            ->orderByDesc('shdevice_id')
-            ->get();
-
-        $dealerCustomers = DealerCustomerAd::where('dealer_id', $dealerId)
-            ->orderBy('name')
-            ->get();
-
-        $pendingReminders = collect();
-        foreach ($dealerCustomers as $cust) {
-            if ((int) $cust->no_of_devices > 0) {
-                $pendingReminders->push([
-                    'customer_id'   => $cust->id,
-                    'customer_name' => $cust->name,
-                    'shortage'      => (int) $cust->no_of_devices,
-                    'message'       => "Customer {$cust->name} requires {$cust->no_of_devices} more device(s) to complete order.",
-                ]);
+        // 2. අදාළ Profile එකක් නැත්නම්, අලුතින්ම සාදන්න
+        if (!$dealer) {
+            $dealer = \App\Models\Dealer::create([
+                'full_name'     => $user->name ?: 'Dealer Account',
+                'contact_email' => $user->email,
+                'status'        => 'active',
+                'region'        => 'Western',
+                'dealer_status' => 'Authorized Dealer'
+            ]);
+        } else {
+            // 💡 AUTO-CORRECT FIX: Database එකේ නම Email එකක් විදිහට හරි "Dealer Account" විදිහට හරි සේව් වෙලා නම්, ඒක ලොග් වුණු කෙනාගේ ඇත්ත නමට මාරු කරන්න.
+            if (in_array($dealer->full_name, ['Dealer Account', 'Default Dealer']) || str_contains($dealer->full_name, '@')) {
+                $dealer->full_name = $user->name ?: 'Dealer';
+                $dealer->save();
             }
         }
 
-        $allocatedDeviceCount    = $allocatedDevices->count();
-        $totalCustomersCount     = $dealerCustomers->count();
-        $totalDevicesCount       = $dealerCustomers->sum('no_of_devices');
-        $myStockCount            = $allocatedDeviceCount;
-        $assignedDeviceCount     = $assignedDevices->count();
-        $ratePerDevice           = 1000;
-        $totalCommission         = $assignedDeviceCount * $ratePerDevice;
-        $readyForActivationCount = $allocatedDevices
-            ->filter(fn($d) => strtolower(trim((string) $d->status)) === 'not activated')
-            ->count();
+        // 3. User Table එකේ Dealer ID එක Sync කරන්න
+        if ($user->dealer_id !== $dealer->id) {
+            $user->dealer_id = $dealer->id;
+            $user->save();
+        }
 
-        $transfers          = DealerTransferLedger::where('dealer_id', $dealerId)->latest()->get();
-        $totalStockReceived = $transfers->sum('quantity');
+        // 4. Dealer Customer Leads
+        $dealerLeads     = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
+        $dealerCustomers = $dealerLeads;
+
+        $emails = $dealerLeads->pluck('email')->filter()->map(fn($e) => strtolower(trim($e)))->toArray();
+        $phones = $dealerLeads->pluck('contact')->filter()->map(function($p) {
+            $digits = preg_replace('/[^0-9]/', '', $p);
+            return strlen($digits) >= 9 ? substr($digits, -9) : $digits;
+        })->toArray();
+
+        // 5. Allocated Devices & Assigned Devices Variables
+        $allocatedDevices      = SetupShalotrackDevice::where('dealer_id', $dealer->id)->get();
+        $allocatedDevicesCount = $allocatedDevices->count();
+
+        $assignedDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
+            ->whereNotNull('assigned_customer_id')
+            ->where('assigned_customer_id', '>', 0)
+            ->get();
+        $assignedDevicesCount = $assignedDevices->count();
+
+        // 6. Customers and Vehicles
+        $customerIds = \App\Models\CustomerAd::query()
+            ->where(function ($q) use ($emails, $phones) {
+                if (!empty($emails)) {
+                    $q->whereIn(DB::raw('LOWER(email)'), $emails);
+                }
+                foreach ($phones as $phone) {
+                    $q->orWhere('phone_number', 'LIKE', '%' . $phone);
+                }
+            })
+            ->pluck('customer_id')
+            ->toArray();
+
+        $totalCustomers    = count($customerIds);
+        $vehicles          = \App\Models\VehicleAd::whereIn('customer_id', $customerIds)->get();
+        $totalVehicles     = $vehicles->count();
+        $activeGpsVehicles = $vehicles->whereNotNull('imei')->where('imei', '!=', '')->count();
 
         return view('dealer.dashboard', compact(
-            'dealer', 'allocatedDevices', 'assignedDevices', 'dealerCustomers',
-            'pendingReminders', 'allocatedDeviceCount', 'myStockCount',
-            'readyForActivationCount', 'transfers', 'totalStockReceived',
-            'totalCustomersCount', 'totalDevicesCount', 'totalCommission', 'ratePerDevice'
+            'dealer',
+            'dealerLeads',
+            'dealerCustomers',
+            'totalCustomers',
+            'totalVehicles',
+            'activeGpsVehicles',
+            'allocatedDevices',
+            'allocatedDevicesCount',
+            'assignedDevices',
+            'assignedDevicesCount'
         ));
     }
 
     /**
      * Store a new dealer customer lead.
-     * Email added as a second identity anchor for cross-system matching.
      */
     public function storeDealerCustomerAd(DealerStoreCustomerAdRequest $request)
     {
@@ -144,22 +150,8 @@ class DealerDashboardController extends Controller
         return back()->with('success', 'New Customer Added Successfully!');
     }
 
-    /**
-     * Dealer portal: full customer list enriched with real app account data.
-     *
-     * Triggers customers:sync (which also syncs vehicles) before enriching
-     * so the dealer always sees data that is at most one sync cycle old,
-     * not whatever happened to be in the mirror tables from the last
-     * scheduled run.
-     *
-     * Each DealerCustomerAd gets two extra attributes attached:
-     *   ->appAccount   CustomerAd|null  — the matched real app user
-     *   ->appVehicles  Collection       — that user's vehicles from VehicleAd
-     */
     public function customerList(Request $request)
     {
-        // Sync both customers and vehicles before rendering so the dealer
-        // sees current app data, not stale mirror-table data.
         \Illuminate\Support\Facades\Artisan::call('customers:sync');
 
         $dealerId = auth()->user()->dealer->id ?? null;
@@ -184,8 +176,6 @@ class DealerDashboardController extends Controller
             ->latest()
             ->get();
 
-        // Enrich the collection with matched app accounts and vehicles.
-        // Two DB queries total regardless of collection size — never N+1.
         $customerAds = CustomerLinkService::enrichLeads($customerAds);
 
         return view('dealer.customer_list', compact('customerAds', 'search'));
@@ -296,8 +286,6 @@ class DealerDashboardController extends Controller
 
         return $pdf->stream('customers_added_by_dealers_report.pdf');
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
 
     private function sendFirebaseNotification(array $data): void
     {
