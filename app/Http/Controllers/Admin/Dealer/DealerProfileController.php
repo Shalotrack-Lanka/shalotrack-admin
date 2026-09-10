@@ -9,17 +9,21 @@ use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Hash;
 
 class DealerProfileController extends Controller
 {
     private const VALID_DEALER_STATUSES = [
-        'lbc', 'distributor', 'retailer', 'dsa', 'ba', 'csa', 'lt_point',
+        'lbc', 'distributor', 'retailer', 'dsa', 'ba', 'csa', 'lt_point', 'Authorized Dealer'
     ];
 
     private const VALID_REGIONS = [
         'central', 'colombo', 'eastern', 'gampaha',
         'north_central', 'north_western', 'northern',
         'sabaragamuwa', 'southern', 'uva', 'western',
+        'Central', 'Colombo', 'Eastern', 'Gampaha',
+        'North Central', 'North Western', 'Northern',
+        'Sabaragamuwa', 'Southern', 'Uva', 'Western'
     ];
 
     public function show($id)
@@ -59,7 +63,7 @@ class DealerProfileController extends Controller
             'dealer_status'    => ['required', 'string', 'in:' . implode(',', self::VALID_DEALER_STATUSES)],
             'region'           => ['required', 'string', 'in:' . implode(',', self::VALID_REGIONS)],
             'country'          => 'nullable|string|max:100',
-            'pin_code'         => 'nullable|digits_between:4,10',
+            'pin_code'         => 'nullable|string|max:50',
             'contact_email'    => [
                 'nullable', 'email', 'max:255',
                 Rule::unique('dealers', 'contact_email')->ignore($dealer->id),
@@ -72,50 +76,71 @@ class DealerProfileController extends Controller
             'deposit_date'     => 'nullable|date|before_or_equal:today',
             'network'          => 'nullable|string|max:100',
             'login_id'         => 'nullable|string|max:100',
+            
+            // Password fields
+            'password'         => 'nullable|string|min:8|confirmed',
         ], [
             'dealer_status.in'             => 'Please select a valid dealer type.',
             'region.in'                    => 'Please select a valid region.',
-            'pin_code.digits_between'      => 'Pin code must be 4–10 digits.',
             'contact_email.unique'         => 'This email is already registered to another dealer.',
             'deposit_date.before_or_equal' => 'Deposit date cannot be in the future.',
+            'password.min'                 => 'Password must be at least 8 characters.',
+            'password.confirmed'           => 'The password confirmation does not match.',
         ]);
 
+        $passwordInput = $validated['password'] ?? null;
+        unset($validated['password'], $validated['password_confirmation']);
+
+        // 1. Update basic fields
         $dealer->update($validated);
 
+        $passwordChanged = false;
+        $hashedPassword = null;
+
+        // 2. Handle Password Change (Fixed database column error)
+        if ($request->filled('password')) {
+            $hashedPassword = Hash::make($request->password);
+            
+            // Update Dealers Table
+            $dealer->password = $hashedPassword;
+            $dealer->save();
+
+            // Update Users Table ONLY by email (Removed dealer_id check)
+            if (class_exists(\App\Models\User::class)) {
+                \App\Models\User::where('email', $dealer->contact_email)
+                    ->update(['password' => $hashedPassword]);
+            }
+            
+            $passwordChanged = true;
+        }
+
+        // 3. Update linked Admin table
         $linkedAdmin = Admin::where('dealer_id', $dealer->id)->first();
         if ($linkedAdmin) {
             $linkedAdmin->full_name = $validated['full_name'];
             if (!empty($validated['contact_email'])) {
                 $linkedAdmin->email = $validated['contact_email'];
             }
+            if ($passwordChanged) {
+                $linkedAdmin->password = $hashedPassword;
+            }
             $linkedAdmin->save();
+        }
+
+        if ($passwordChanged) {
+            return back()->with('success', "Dealer '{$dealer->full_name}' profile and password updated successfully.");
         }
 
         return back()->with('success', "Dealer '{$dealer->full_name}' updated successfully.");
     }
 
-    /**
-     * Toggle the dealer's active / archived status.
-     *
-     * This must also mirror the change onto the linked Admin login row
-     * (Admin.status = ACTIVE / INACTIVE), because LoginRequest gates access
-     * using Admin.status. Without this, toggling the Dealer row had zero
-     * effect on whether the dealer could actually log in.
-     *
-     * If the dealer is currently logged in, their session is immediately
-     * invalidated by the EnforceAdminStatus middleware on the next request —
-     * they cannot keep browsing after deactivation.
-     */
     public function toggleStatus(Request $request, $id)
     {
         $dealer = Dealer::findOrFail($id);
 
-        // Toggle the dealer business record.
         $dealer->status = $dealer->status === 'active' ? 'archived' : 'active';
         $dealer->save();
 
-        // Mirror the change on the linked Admin login so the login gate
-        // (LoginRequest: ->where('status', 'ACTIVE')) actually blocks them.
         $adminStatus = $dealer->status === 'active' ? 'ACTIVE' : 'INACTIVE';
 
         Admin::where('dealer_id', $dealer->id)
