@@ -33,31 +33,34 @@ class DealerManagementController extends Controller
         return view('admin.dealer.dealer_management', compact('dealers', 'archivedDealers'));
     }
 
+   /**
+     * Store a newly created dealer in storage and link user/admin profile.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'full_name'      => 'required|string|max:255',
-            'address'        => 'nullable|string|max:500',
-            'qualification'  => 'nullable|string|max:255',
-            'dealer_status'  => ['required', 'string', 'in:' . implode(',', self::VALID_DEALER_STATUSES)],
-            'region'         => ['required', 'string', 'in:' . implode(',', self::VALID_REGIONS)],
-            'country'        => 'nullable|string|max:100',
-            'pin_code'       => 'nullable|digits_between:4,10',
-            'contact_email'  => 'nullable|email|max:255|unique:dealers,contact_email',
-            'tax_pan'        => 'nullable|string|max:50',
-            'cst_no'         => 'nullable|string|max:50',
-            'vat_tin'        => 'nullable|string|max:50',
-            'gst_pan'        => 'nullable|string|max:50',
+            'full_name'        => 'required|string|max:255',
+            'address'          => 'nullable|string|max:500',
+            'qualification'    => 'nullable|string|max:255',
+            'dealer_status'    => ['required', 'string', 'in:' . implode(',', self::VALID_DEALER_STATUSES)],
+            'region'           => ['required', 'string', 'in:' . implode(',', self::VALID_REGIONS)],
+            'country'          => 'nullable|string|max:100',
+            'pin_code'         => 'nullable|digits_between:4,10',
+            'contact_email'    => 'nullable|email|max:255|unique:dealers,contact_email',
+            'tax_pan'          => 'nullable|string|max:50',
+            'cst_no'           => 'nullable|string|max:50',
+            'vat_tin'          => 'nullable|string|max:50',
+            'gst_pan'          => 'nullable|string|max:50',
             'security_deposit' => 'nullable|numeric|min:0|max:99999999.99',
-            'deposit_date'   => 'nullable|date|before_or_equal:today',
-            'network'        => 'nullable|string|max:100',
-            'login_id'       => 'nullable|string|max:100',
-            'password'       => 'nullable|string|min:8|max:72',
-            'payment_modes'  => 'nullable|array',
-            'profile_photo'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'copy_of_ma'     => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
-            'passport_front' => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
-            'passport_last'  => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
+            'deposit_date'     => 'nullable|date|before_or_equal:today',
+            'network'          => 'nullable|string|max:100',
+            'login_id'         => 'nullable|string|max:100',
+            'password'         => 'nullable|string|min:8|max:72',
+            'payment_modes'    => 'nullable|array',
+            'profile_photo'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'copy_of_ma'       => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
+            'passport_front'   => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
+            'passport_last'    => 'nullable|mimes:jpg,jpeg,png,pdf|max:4096',
         ], [
             'dealer_status.in'             => 'Please select a valid dealer type.',
             'region.in'                    => 'Please select a valid region.',
@@ -66,6 +69,7 @@ class DealerManagementController extends Controller
             'deposit_date.before_or_equal' => 'Deposit date cannot be in the future.',
         ]);
 
+        // File uploads handling
         foreach (['profile_photo', 'copy_of_ma', 'passport_front', 'passport_last'] as $field) {
             if ($request->hasFile($field)) {
                 $validated[$field] = $request->file($field)->store('dealers', 'public');
@@ -85,25 +89,46 @@ class DealerManagementController extends Controller
         $generatedPassword = null;
 
         DB::transaction(function () use ($validated, $dealerFormPassword, &$generatedUsername, &$generatedPassword) {
+            // 1. Dealer Profile එක Create කිරීම
             $dealer = Dealer::create($validated);
             $dealer->refresh();
 
             $generatedUsername = $this->generateUniqueUsername($dealer->full_name);
             $generatedPassword = $dealerFormPassword ?: Str::password(10, symbols: false);
 
-            Admin::create([
-                'username'  => $generatedUsername,
-                'password'  => Hash::make($generatedPassword),
-                'full_name' => $dealer->full_name,
-                'email'     => $dealer->contact_email,
-                'role'      => 'DEALER',
-                'status'    => 'ACTIVE',
-                'dealer_id' => $dealer->id,
-            ]);
+            // 2. Admin Model එකට Dealer Profile එක Link කිරීම
+            if (class_exists(\App\Models\Admin::class)) {
+                Admin::create([
+                    'username'  => $generatedUsername,
+                    'password'  => Hash::make($generatedPassword),
+                    'full_name' => $dealer->full_name,
+                    'email'     => $dealer->contact_email,
+                    'role'      => 'DEALER',
+                    'status'    => 'ACTIVE',
+                    'dealer_id' => $dealer->id,
+                ]);
+            }
+
+            // 3. User Model එකට Auto Link කිරීම ("Dealer Account Not Linked" Issue එක වැළැක්වීමට)
+            if (class_exists(\App\Models\User::class)) {
+                $user = \App\Models\User::where('email', $dealer->contact_email)->first();
+
+                if (!$user) {
+                    $user = \App\Models\User::create([
+                        'name'      => $dealer->full_name,
+                        'email'     => $dealer->contact_email ?? ($generatedUsername . '@shalotrack.com'),
+                        'password'  => Hash::make($generatedPassword),
+                        'dealer_id' => $dealer->id,
+                    ]);
+                } else {
+                    $user->dealer_id = $dealer->id;
+                    $user->save();
+                }
+            }
         });
 
         return redirect()->route('admin.dealer-management')->with('success', [
-            'message'  => "Dealer '{$validated['full_name']}' saved successfully.",
+            'message'  => "Dealer '{$validated['full_name']}' saved and linked successfully.",
             'username' => $generatedUsername,
             'password' => $generatedPassword,
         ]);
