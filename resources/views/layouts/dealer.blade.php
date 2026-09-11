@@ -11,10 +11,20 @@
 </head>
 <body class="bg-white">
 
-<div class="flex h-screen">
+<!-- x-data added to manage sidebar state -->
+<div x-data="{ sidebarOpen: false }" class="flex h-screen overflow-hidden">
+
+    <!-- Mobile Overlay Backdrop -->
+    <div x-show="sidebarOpen"
+         x-transition.opacity
+         style="display: none;"
+         class="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden"
+         @click="sidebarOpen = false"></div>
 
     <!-- Sidebar -->
-    <aside class="w-72 h-screen bg-[#0B1B3F] text-white fixed left-0 top-0 overflow-y-auto z-30">
+    <!-- Responsive classes added: absolute on mobile, static on large screens -->
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+           class="w-72 bg-[#0B1B3F] text-white fixed inset-y-0 left-0 z-30 overflow-y-auto transition-transform duration-300 transform lg:translate-x-0 lg:static lg:inset-auto">
 
         <div class="p-5 border-b border-blue-800 flex flex-col items-center text-center">
 
@@ -58,22 +68,22 @@
                     <a href="{{ route('dealer.customers.index') }}" class="block py-2 text-white hover:bg-blue-900 rounded-lg transition">Customer List</a>
                 </div>
                 {{-- Device Command Center Link --}}
-<a href="{{ route('dealer.device-commands') }}"
-   class="flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.device-commands') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100' }}">
-    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-    </svg>
-    <span>Device Commands</span>
-</a>
+                <a href="{{ route('dealer.device-commands') }}"
+                   class="flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.device-commands') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100' }}">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <span>Device Commands</span>
+                </a>
 
-<a href="{{ route('dealer.gps-tracking') }}"
-   class="flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.gps-tracking') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100' }}">
-    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-    </svg>
-    <span>GPS Tracking</span>
-</a>
+                <a href="{{ route('dealer.gps-tracking') }}"
+                   class="flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.gps-tracking') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100' }}">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <span>GPS Tracking</span>
+                </a>
             </div>
 
         </nav>
@@ -81,13 +91,23 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 ml-72 bg-white min-h-screen">
+    <!-- Removed ml-72 and added flex column layout for proper scrolling -->
+    <div class="flex-1 flex flex-col min-h-screen bg-gray-50 overflow-hidden">
 
-        <header class="bg-white shadow-md px-6 py-4 flex items-center justify-between sticky top-0 z-40">
+        <header class="bg-white shadow-sm px-6 py-4 flex items-center justify-between z-10">
 
-            <h2 class="text-2xl font-bold text-slate-800">
-                @yield('title')
-            </h2>
+            <div class="flex items-center gap-4">
+                <!-- Hamburger Menu Button for Mobile -->
+                <button @click="sidebarOpen = true" class="text-slate-600 focus:outline-none lg:hidden">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+                    </svg>
+                </button>
+
+                <h2 class="text-2xl font-bold text-slate-800">
+                    @yield('title')
+                </h2>
+            </div>
 
             <!-- Header Right Section (Notification Bell + Profile Dropdown) -->
             <div class="flex items-center gap-4">
@@ -178,7 +198,7 @@
                             {{ strtoupper(substr(Auth::user()->full_name ?? 'D', 0, 1)) }}
                         </div>
 
-                        <span class="font-medium text-gray-700">{{ Auth::user()->full_name ?? 'Dealer' }}</span>
+                        <span class="font-medium text-gray-700 hidden sm:inline-block">{{ Auth::user()->full_name ?? 'Dealer' }}</span>
 
                         <svg :class="open ? 'rotate-180' : ''"
                              class="w-4 h-4 text-gray-500 transition-transform duration-200"
@@ -190,6 +210,7 @@
 
                     <div x-show="open"
                          x-transition
+                         style="display: none;"
                          class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
 
                         <div class="px-4 py-3 border-b border-gray-100">
@@ -222,7 +243,7 @@
 
         </header>
 
-        <main class="p-6">
+        <main class="flex-1 overflow-x-hidden overflow-y-auto p-6">
             @yield('content')
         </main>
 
