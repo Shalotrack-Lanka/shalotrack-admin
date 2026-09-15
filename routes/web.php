@@ -335,7 +335,9 @@ Route::prefix('admin/dealer')->group(function () {
     Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
     Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
 
-    Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');    
+    Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');   
+    
+    Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
 
     // pdf report generation
     Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
