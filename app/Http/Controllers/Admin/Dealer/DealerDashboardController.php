@@ -98,8 +98,6 @@ class DealerDashboardController extends Controller
             })
             ->pluck('customer_id')
             ->toArray();
-
-        // (කලින් මෙතන තිබුණ $totalCustomers = count($customerIds); පේළිය අයින් කරන ලදී)
         
         $vehicles          = \App\Models\VehicleAd::whereIn('customer_id', $customerIds)->get();
         $totalVehicles     = $vehicles->count();
@@ -196,7 +194,60 @@ class DealerDashboardController extends Controller
 
         $customerAds = CustomerLinkService::enrichLeads($customerAds);
 
-        return view('dealer.customer_list', compact('customerAds', 'search'));
+        // Fetch available stock (unassigned devices) to pass to the modal
+        $availableDevices = SetupShalotrackDevice::where('dealer_id', $dealerId)
+            ->where(function ($q) {
+                $q->whereNull('assigned_customer_id')->orWhere('assigned_customer_id', 0);
+            })
+            ->where('status', '!=', 'Assigned to Customer')
+            ->latest()
+            ->get();
+
+        return view('dealer.customer_list', compact('customerAds', 'search', 'availableDevices'));
+    }
+
+    // New Function to handle assigning from the Customer List Modal
+    public function assignNewDeviceFromList(Request $request)
+    {
+        $request->validate([
+            'shdevice_id' => 'required|exists:setup_shalotrack_devices,shdevice_id',
+            'customer_id' => 'required|exists:dealer_customer_ads,id',
+        ]);
+
+        $dealerId = auth()->user()->dealer->id ?? null;
+
+        $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
+            ->where('shdevice_id', $request->shdevice_id)
+            ->firstOrFail();
+
+        if (!empty($device->assigned_customer_id) && $device->assigned_customer_id > 0) {
+            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} is already assigned to another customer!"]);
+        }
+
+        $customer = DealerCustomerAd::where('dealer_id', $dealerId)
+            ->where('id', $request->customer_id)
+            ->firstOrFail();
+
+        // Device eka customer ta link karanawa
+        $device->assigned_customer_id = $customer->id;
+        $device->status               = 'Assigned to Customer';
+        $device->save();
+
+        // Customer ge JSON array ekata IMEI eka add karanawa
+        $currentImeis = $customer->imei_numbers ?? [];
+        if (!is_array($currentImeis)) {
+            $currentImeis = [];
+        }
+        if ($device->imei_number && !in_array($device->imei_number, $currentImeis)) {
+            $currentImeis[] = $device->imei_number;
+        }
+
+        // no_of_devices adu karanne na, eka existing kenekta manually assign karana nisa.
+        $customer->update([
+            'imei_numbers'  => $currentImeis,
+        ]);
+
+        return back()->with('success', "Device IMEI {$device->imei_number} successfully assigned to {$customer->name}!");
     }
 
     public function assignDeviceToCustomer(Request $request)

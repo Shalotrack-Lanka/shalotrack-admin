@@ -3,13 +3,25 @@
 @section('title', 'Customer List')
 
 @section('content')
-<div class="max-w-7xl mx-auto space-y-5">
+<!-- Add x-data to the main container for the assign device modal -->
+<div class="max-w-7xl mx-auto space-y-5" x-data="{ assignModalOpen: false, selectedCustomerId: null, selectedCustomerName: '' }">
 
     @if(session('success'))
         <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
              class="p-3 bg-green-100 border border-green-300 text-green-800 rounded-xl flex justify-between items-center text-xs">
             <span class="font-bold">{{ session('success') }}</span>
             <button @click="show = false" class="text-green-600 font-bold">&times;</button>
+        </div>
+    @endif
+    @if($errors->any())
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 6000)"
+             class="p-3 bg-red-100 border border-red-300 text-red-800 rounded-xl flex justify-between items-center text-xs mb-4">
+            <ul class="list-disc pl-5 font-bold">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button @click="show = false" class="text-red-600 font-bold">&times;</button>
         </div>
     @endif
 
@@ -20,7 +32,7 @@
             <p class="text-xs text-slate-500 mt-0.5">Your registered customer leads and their ShaloTrack app status.</p>
         </div>
         <span class="bg-blue-50 text-blue-950 border border-blue-200 py-1 px-3 rounded-full text-xs font-black">
-            {{ $customerAds->count() }} Customers
+            {{ collect($customerAds ?? [])->count() }} Customers
         </span>
     </div>
 
@@ -52,7 +64,7 @@
     </div>
 
     {{-- Customer cards --}}
-    @forelse($customerAds as $customer)
+    @forelse($customerAds ?? [] as $customer)
         @php
             $app = null;
 
@@ -77,7 +89,7 @@
             $isLive = $app !== null;
         @endphp
 
-        <div class="bg-white rounded-2xl border {{ $isLive ? 'border-emerald-200' : 'border-slate-200' }} shadow-sm overflow-hidden">
+        <div class="bg-white rounded-2xl border {{ $isLive ? 'border-emerald-200' : 'border-slate-200' }} shadow-sm overflow-hidden mb-4">
 
             {{-- Card header --}}
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between
@@ -106,23 +118,28 @@
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap">
+                    
+                    {{-- 🔹 Assign New Device Button 🔹 --}}
+                    <button 
+                        type="button"
+                        @click="assignModalOpen = true; selectedCustomerId = '{{ $customer->id }}'; selectedCustomerName = '{{ addslashes($customer->name) }}'" 
+                        class="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-blue-700 bg-blue-100 border border-blue-200 rounded-lg hover:bg-blue-200 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Assign Device
+                    </button>
+
                     {{-- App status badge --}}
                     @if($isLive)
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300 text-[11px] font-bold">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-300 text-[11px] font-bold">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
                             Active on App
                         </span>
                     @else
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-bold">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-bold">
                             <span class="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block"></span>
                             Not Registered
-                        </span>
-                    @endif
-
-                    {{-- Pending devices badge --}}
-                    @if($customer->no_of_devices > 0)
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 border border-orange-200 text-[11px] font-bold">
-                            {{ $customer->no_of_devices }} device(s) pending
                         </span>
                     @endif
 
@@ -147,7 +164,9 @@
 
                 {{-- Left: Lead info --}}
                 <div class="p-4 space-y-2 text-xs">
-                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Lead Details</div>
+                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                        <span>Lead Details</span>
+                    </div>
 
                     @if(!empty($customer->imei_numbers) && count($customer->imei_numbers) > 0)
                         <div>
@@ -225,6 +244,71 @@
             No customers added yet.
         </div>
     @endforelse
+
+    {{-- 🔹 Assign Device Modal 🔹 --}}
+    <div x-show="assignModalOpen" 
+         x-cloak
+         style="display: none;" 
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+        
+        <div @click.outside="assignModalOpen = false" 
+             x-show="assignModalOpen"
+             x-transition.opacity.duration.300ms
+             class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <h3 class="text-base font-black text-slate-800">
+                    Assign Device to <span x-text="selectedCustomerName" class="text-blue-600"></span>
+                </h3>
+                <button @click="assignModalOpen = false" type="button" class="text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 rounded-full p-1.5 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Modal Body (Form) -->
+            <form action="{{ route('dealer.customers.assign_new_device_from_list') }}" method="POST">
+                @csrf
+                <div class="p-6">
+                    <input type="hidden" name="customer_id" x-bind:value="selectedCustomerId">
+
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Available Stock Devices</label>
+                    
+                    @if(isset($availableDevices) && $availableDevices->count() > 0)
+                        <select name="shdevice_id" required class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none text-sm font-medium text-slate-700 bg-white transition-all">
+                            <option value="" disabled selected>-- Select a device to assign --</option>
+                            @foreach($availableDevices as $device)
+                                <option value="{{ $device->shdevice_id }}">
+                                    {{ $device->device_category ?? 'Unknown Category' }} | IMEI: {{ $device->imei_number }} | SIM: {{ $device->sim_number }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[11px] text-slate-500 mt-3 flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Only unassigned devices are listed here.
+                        </p>
+                    @else
+                        <div class="p-4 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100 flex items-start gap-3">
+                            <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            <p class="font-medium leading-relaxed">You have no available devices in stock. Please contact admin to restock.</p>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                    <button type="button" @click="assignModalOpen = false" class="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition">
+                        Cancel
+                    </button>
+                    @if(isset($availableDevices) && $availableDevices->count() > 0)
+                        <button type="submit" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition">
+                            Confirm Assignment
+                        </button>
+                    @endif
+                </div>
+            </form>
+        </div>
+    </div>
 
 </div>
 @endsection
