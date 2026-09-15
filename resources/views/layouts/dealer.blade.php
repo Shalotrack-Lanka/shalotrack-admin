@@ -11,6 +11,34 @@
 </head>
 <body class="bg-white">
 
+{{-- 🔹 DYNAMIC NOTIFICATION LOGIC 🔹 --}}
+@php
+    $dealerId = null;
+    if (Auth::check()) {
+        $dealerId = Auth::user()->dealer->id ?? Auth::user()->dealer_id ?? null;
+    }
+    
+    $pendingReminders = collect();
+    $totalPendingCount = 0;
+
+    if ($dealerId) {
+        // Pending devices thiyena customers lawa gannawa
+        $pendingCustomers = \App\Models\DealerCustomerAd::where('dealer_id', $dealerId)
+            ->where('no_of_devices', '>', 0)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        foreach($pendingCustomers as $cust) {
+            $pendingReminders->push([
+                'customer_name' => $cust->name,
+                'pending' => $cust->no_of_devices,
+                'message' => "{$cust->name} requires {$cust->no_of_devices} more device(s) to be assigned."
+            ]);
+            $totalPendingCount += $cust->no_of_devices;
+        }
+    }
+@endphp
+
 <!-- x-data added to manage sidebar state -->
 <div x-data="{ sidebarOpen: false }" class="flex h-screen overflow-hidden">
 
@@ -22,7 +50,6 @@
          @click="sidebarOpen = false"></div>
 
     <!-- Sidebar -->
-    <!-- Responsive classes added: absolute on mobile, static on large screens -->
     <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
            class="w-72 bg-[#0B1B3F] text-white fixed inset-y-0 left-0 z-30 overflow-y-auto transition-transform duration-300 transform lg:translate-x-0 lg:static lg:inset-auto">
 
@@ -45,15 +72,15 @@
 
             <!-- DASHBOARD -->
             <a href="{{ route('dealer.dashboard') }}"
-               class="block p-3 rounded text-white hover:bg-blue-900">
+               class="block p-3 rounded text-white hover:bg-blue-900 {{ request()->routeIs('dealer.dashboard') ? 'bg-blue-800' : '' }}">
                 Dashboard
             </a>
 
             <!-- CUSTOMERS -->
-            <div x-data="{open:false}">
+            <div x-data="{open: {{ request()->is('dealer/customers*') ? 'true' : 'false' }} }">
                 <button
                     @click="open=!open"
-                    class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
+                    class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded mt-1">
 
                     <span>Customers </span>
                     <svg :class="open ? 'rotate-180' : ''"
@@ -64,20 +91,22 @@
 
                 </button>
 
-                <div x-show="open" class="ml-5 text-sm">
-                    <a href="{{ route('dealer.customers.index') }}" class="block py-2 text-white hover:bg-blue-900 rounded-lg transition">Customer List</a>
+                <div x-show="open" class="ml-5 text-sm mt-1 space-y-1">
+                    <a href="{{ route('dealer.customers.index') }}" class="block py-2 px-3 text-white hover:bg-blue-800 rounded-lg transition {{ request()->routeIs('dealer.customers.index') ? 'bg-blue-800' : '' }}">Customer List</a>
                 </div>
+                
                 {{-- Device Command Center Link --}}
                 <a href="{{ route('dealer.device-commands') }}"
-                   class="flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.device-commands') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100' }}">
+                   class="flex items-center gap-3 px-4 py-2.5 mt-1 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.device-commands') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:bg-blue-800 hover:text-white' }}">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                     <span>Device Commands</span>
                 </a>
 
+                {{-- GPS Tracking Link --}}
                 <a href="{{ route('dealer.gps-tracking') }}"
-                   class="flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.gps-tracking') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100' }}">
+                   class="flex items-center gap-3 px-4 py-2.5 mt-1 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.gps-tracking') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:bg-blue-800 hover:text-white' }}">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -91,7 +120,6 @@
     </aside>
 
     <!-- Main Content -->
-    <!-- Removed ml-72 and added flex column layout for proper scrolling -->
     <div class="flex-1 flex flex-col min-h-screen bg-gray-50 overflow-hidden">
 
         <header class="bg-white shadow-sm px-6 py-4 flex items-center justify-between z-10">
@@ -123,9 +151,9 @@
                         </svg>
 
                         {{-- Dynamic Red Count Badge --}}
-                        @if(isset($pendingReminders) && $pendingReminders->count() > 0)
+                        @if($totalPendingCount > 0)
                             <span class="absolute -top-1 -right-1 bg-red-500 text-white font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
-                                {{ $pendingReminders->count() }}
+                                {{ $totalPendingCount }}
                             </span>
                         @endif
                     </button>
@@ -140,15 +168,15 @@
                         <div class="bg-[#0B1B3F] px-5 py-3.5 flex items-center justify-between text-white">
                             <div class="flex items-center gap-2">
                                 <span>🔔</span>
-                                <h4 class="font-bold text-sm">Stock Reminders</h4>
+                                <h4 class="font-bold text-sm">Pending Allocations</h4>
                             </div>
                             <span class="px-2.5 py-0.5 bg-blue-900 text-blue-200 rounded-full text-xs font-bold">
-                                {{ isset($pendingReminders) ? $pendingReminders->count() : 0 }} Pending
+                                {{ $totalPendingCount }} Pending
                             </span>
                         </div>
 
                         <div class="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                            @if(isset($pendingReminders) && $pendingReminders->count() > 0)
+                            @if($pendingReminders->count() > 0)
                                 @foreach($pendingReminders as $reminder)
                                     <div class="p-4 hover:bg-amber-50/50 transition flex items-start gap-3">
                                         <div class="p-1.5 bg-amber-100 text-amber-800 rounded-lg font-bold text-xs shrink-0 mt-0.5">
@@ -157,13 +185,13 @@
                                         <div class="space-y-1">
                                             <div class="flex items-center justify-between gap-2">
                                                 <h5 class="text-xs font-black text-amber-900 uppercase tracking-wider">
-                                                    Stock Shortage Alert
+                                                    {{ $reminder['customer_name'] }}
                                                 </h5>
                                                 <span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">
-                                                    Pending: {{ $reminder['shortage'] }}
+                                                    Pending: {{ $reminder['pending'] }}
                                                 </span>
                                             </div>
-                                            <p class="text-xs font-medium text-slate-600 leading-relaxed">
+                                            <p class="text-[11px] font-medium text-slate-600 leading-relaxed mt-1">
                                                 {{ $reminder['message'] }}
                                             </p>
                                         </div>
@@ -172,7 +200,7 @@
                             @else
                                 <div class="p-8 text-center text-slate-400 text-xs font-medium space-y-2">
                                     <span class="text-2xl block">🎉</span>
-                                    <span>No pending stock reminders.</span>
+                                    <span>All devices have been allocated successfully!</span>
                                 </div>
                             @endif
                         </div>
@@ -185,7 +213,7 @@
                     </div>
                 </div>
 
-                {{-- User Profile Dropdown (SAFE AUTH CHECK ADDED) --}}
+                {{-- User Profile Dropdown --}}
                 @auth
                 <div x-data="{open:false}" class="relative">
 

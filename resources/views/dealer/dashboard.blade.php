@@ -394,10 +394,15 @@
                         <select name="customer_id" required class="w-full border-slate-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 text-sm">
                             <option value="">-- Choose Customer --</option>
                             @foreach($dealerCustomers as $cust)
-                                <!-- Since we removed required device logic, any customer can be selected here. But keeping original structure for safety -->
-                                <option value="{{ $cust->id }}">
-                                    {{ $cust->name }}
-                                </option>
+                                @if((int)$cust->no_of_devices > 0)
+                                    <option value="{{ $cust->id }}">
+                                        {{ $cust->name }} (Pending: {{ $cust->no_of_devices }})
+                                    </option>
+                                @else
+                                    <option value="{{ $cust->id }}" disabled class="bg-slate-100 text-slate-400">
+                                        {{ $cust->name }} (Completed - 0 Pending)
+                                    </option>
+                                @endif
                             @endforeach
                         </select>
                     </div>
