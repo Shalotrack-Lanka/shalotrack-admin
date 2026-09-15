@@ -1,4 +1,4 @@
-@extends('layouts.dealer')
+@extends('layouts.admin')
 
 @section('title', 'Device Command Center')
 

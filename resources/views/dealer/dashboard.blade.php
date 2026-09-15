@@ -185,7 +185,6 @@
             <div class="flex justify-between items-start">
                 <div>
                     <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Available Stock</div>
-                    {{-- 💡 FIX: Variable name updated to match Controller --}}
                     <div class="text-4xl font-black text-blue-950 mt-3">{{ $allocatedDevicesCount ?? 0 }}</div>
                 </div>
                 <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:scale-110 transition">
@@ -198,7 +197,6 @@
             <div class="flex justify-between items-start">
                 <div>
                     <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Customers</div>
-                    {{-- 💡 FIX: Variable name updated to match Controller --}}
                     <div class="text-4xl font-black text-blue-950 mt-3">{{ $totalCustomers ?? 0 }}</div>
                 </div>
                 <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:scale-110 transition">
@@ -223,7 +221,6 @@
             <div class="flex justify-between items-start">
                 <div>
                     <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Earned Commission</div>
-                    {{-- 💡 FIX: Variable name updated to match Controller --}}
                     <div class="text-3xl font-black text-emerald-600 mt-2">LKR {{ number_format($earnedCommission ?? 0) }}</div>
                 </div>
                 <div class="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:scale-110 transition">
@@ -306,6 +303,7 @@
                 <table class="w-full text-left border-collapse text-sm">
                     <thead class="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-100">
                         <tr>
+                            <th class="p-4 w-12">No.</th> <!-- Added Column for Number -->
                             <th class="p-4">Customer Name</th>
                             <th class="p-4">IMEI Number</th>
                             <th class="p-4">Device Category</th>
@@ -316,7 +314,22 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
                         @forelse($assignedDevices as $device)
+                            @php
+                                $deviceNumber = '?';
+                                if ($device->assignedCustomer && is_array($device->assignedCustomer->imei_numbers)) {
+                                    $index = array_search($device->imei_number, $device->assignedCustomer->imei_numbers);
+                                    if ($index !== false) {
+                                        $deviceNumber = $index + 1; // Array is 0-indexed, so add 1
+                                    }
+                                }
+                            @endphp
                             <tr class="hover:bg-slate-50/80 transition">
+                                <!-- Print the Device Number in a Red Badge -->
+                                <td class="p-4">
+                                    <span class="flex items-center justify-center w-7 h-7 bg-red-100 text-red-600 font-black text-xs rounded-full">
+                                        {{ $deviceNumber }}
+                                    </span>
+                                </td>
                                 <td class="p-4 font-bold text-emerald-700 flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center">
                                         {{ strtoupper(substr($device->assignedCustomer->name ?? 'C', 0, 1)) }}
@@ -350,7 +363,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="p-8 text-center text-slate-400 italic">No stock devices assigned to customers yet.</td>
+                                <td colspan="7" class="p-8 text-center text-slate-400 italic">No stock devices assigned to customers yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

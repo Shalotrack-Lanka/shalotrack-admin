@@ -242,8 +242,9 @@ class DealerDashboardController extends Controller
             $currentImeis[] = $device->imei_number;
         }
 
-        // no_of_devices adu karanne na, eka existing kenekta manually assign karana nisa.
+        // UPDATE: Dan assign weddi count eka adu wenawa (0 wenakam witharai adu wenne)
         $customer->update([
+            'no_of_devices' => max(0, ((int) $customer->no_of_devices) - 1),
             'imei_numbers'  => $currentImeis,
         ]);
 

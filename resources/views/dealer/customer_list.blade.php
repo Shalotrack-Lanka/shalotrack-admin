@@ -68,12 +68,10 @@
         @php
             $app = null;
 
-            // 1. Email එක තිබේ නම් exact email එකෙන්ම සොයන්න (Priority 1)
             if (!empty($customer->email)) {
                 $app = \App\Models\CustomerAd::whereRaw('LOWER(email) = ?', [strtolower(trim($customer->email))])->first();
             }
 
-            // 2. Email එකෙන් හමු නොවූයේ නම් පමණක් Phone number එකෙන් සොයන්න (Priority 2)
             if (!$app && !empty($customer->contact)) {
                 $digitsOnly = preg_replace('/[^0-9]/', '', $customer->contact);
                 $shortPhone = strlen($digitsOnly) >= 9 ? substr($digitsOnly, -9) : $digitsOnly;
@@ -81,7 +79,6 @@
                 $app = \App\Models\CustomerAd::where('phone_number', 'LIKE', '%' . $shortPhone)->first();
             }
 
-            // 3. හමුවූ CustomerAd එකේ customer_id එකෙන් VehicleAd records ලබා ගැනීම
             $vehicles = $app 
                 ? \App\Models\VehicleAd::where('customer_id', $app->customer_id)->get() 
                 : collect();
@@ -96,7 +93,6 @@
                         px-5 py-4 {{ $isLive ? 'bg-emerald-50/60' : 'bg-slate-50' }} border-b border-slate-100 gap-3">
 
                 <div class="flex items-center gap-3">
-                    {{-- Avatar --}}
                     <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0
                                 {{ $isLive ? 'bg-emerald-600' : 'bg-slate-400' }}">
                         {{ strtoupper(substr($customer->name, 0, 1)) }}
@@ -130,7 +126,6 @@
                         Assign Device
                     </button>
 
-                    {{-- App status badge --}}
                     @if($isLive)
                         <span class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-300 text-[11px] font-bold">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
@@ -143,7 +138,6 @@
                         </span>
                     @endif
 
-                    {{-- Delete --}}
                     <form action="{{ route('dealer.customer-ad.destroy', $customer->id) }}" method="POST"
                           onsubmit="return confirm('Delete {{ addslashes($customer->name) }}?');">
                         @csrf @method('DELETE')
@@ -159,10 +153,8 @@
                 </div>
             </div>
 
-            {{-- Card body: two columns --}}
             <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
 
-                {{-- Left: Lead info --}}
                 <div class="p-4 space-y-2 text-xs">
                     <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
                         <span>Lead Details</span>
@@ -171,9 +163,17 @@
                     @if(!empty($customer->imei_numbers) && count($customer->imei_numbers) > 0)
                         <div>
                             <span class="font-bold text-slate-600">Assigned IMEIs:</span>
-                            <div class="mt-1 flex flex-wrap gap-1">
+                            <div class="mt-2 flex flex-col gap-2">
                                 @foreach($customer->imei_numbers as $imei)
-                                    <span class="font-mono text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded">{{ $imei }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <!-- Number Badge -->
+                                        <span class="flex items-center justify-center w-5 h-5 bg-red-100 text-red-600 font-black text-[10px] rounded-full">
+                                            {{ $loop->iteration }}
+                                        </span>
+                                        <span class="font-mono text-sm bg-slate-100 text-slate-700 px-3 py-1 rounded-lg border border-slate-200">
+                                            {{ $imei }}
+                                        </span>
+                                    </div>
                                 @endforeach
                             </div>
                         </div>
@@ -182,12 +182,11 @@
                     @endif
 
                     @if($customer->address)
-                        <div><span class="font-bold text-slate-600">Address:</span> {{ $customer->address }}</div>
+                        <div class="mt-4"><span class="font-bold text-slate-600">Address:</span> {{ $customer->address }}</div>
                     @endif
                     <div class="text-slate-400 text-[10px]">Added {{ $customer->created_at?->format('d M Y') }}</div>
                 </div>
 
-                {{-- Right: App account + vehicles --}}
                 <div class="p-4 text-xs">
                     @if($isLive)
                         <div class="text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-2">ShaloTrack App Account</div>
