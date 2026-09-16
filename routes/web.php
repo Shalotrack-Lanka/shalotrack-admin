@@ -162,34 +162,35 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/add-sim', [AddSimController::class, 'store'])->name('admin.stock.sim.store');
 
-        Route::get('/cancel-device',
-        [CancelDeviceController::class, 'index'])
-         ->name('admin.cancel-device');
-
-        Route::patch('/cancel-device/{device}',
-        [CancelDeviceController::class, 'update'])
-        ->name('admin.cancel-device.update');
-
-        Route::get('/cancel-sim',
-        [CancelSimController::class, 'index'])
-        ->name('admin.cancel-sim');
-
-        Route::patch('/cancel-sim/{sim}', [CancelSimController::class, 'update'])->name('cancel-sim.update');
-
         Route::patch('/admin/stock/sim/{sim}/update-status',
          [AddSimController::class, 'updateStatus'])
          ->name('admin.stock.sim.update-status');
 
          //report generation
-        Route::get('/cancel-device/not-activated/export',[CancelDeviceController::class, 'exportNotActivated'])->name('admin.cancel-device.export-not-activated');
-        Route::get('/cancel-device/activated/export', [CancelDeviceController::class, 'exportActivated'])->name('admin.cancel-device.export-activated');
         Route::get('/add-sim/not-activated/export', [AddSimController::class, 'exportNotActivated'])->name('admin.sim.export-not-activated');
         Route::get('/add-sim/activated/export', [AddSimController::class, 'exportActivated'])->name('admin.sim.export-activated');
 
     });
 
 
+/*
+    |--------------------------------------------------------------------------
+    | Cancel Requests
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('admin/cancel-requests')->group(function () {
+        
+        // Cancel Device
+        Route::get('/cancel-device', [CancelDeviceController::class, 'index'])->name('admin.cancel-device');
+        Route::patch('/cancel-device/{device}', [CancelDeviceController::class, 'update'])->name('admin.cancel-device.update');
+        Route::get('/cancel-device/not-activated/export', [CancelDeviceController::class, 'exportNotActivated'])->name('admin.cancel-device.export-not-activated');
+        Route::get('/cancel-device/activated/export', [CancelDeviceController::class, 'exportActivated'])->name('admin.cancel-device.export-activated');
 
+        // Cancel Sim
+        Route::get('/cancel-sim', [CancelSimController::class, 'index'])->name('admin.cancel-sim');
+        Route::patch('/cancel-sim/{sim}', [CancelSimController::class, 'update'])->name('admin.cancel-sim.update');
+
+    });
 
 
     /*
