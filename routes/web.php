@@ -301,67 +301,53 @@ Route::prefix('admin/dealer')->group(function () {
 
 Route::prefix('admin/supplier')->group(function () {
 
-        Route::get('/supplier-management',
-        [SupplierManagementController::class,'index'])
-        ->name('admin.suppliers');
+    // Supplier Dashboard
+    Route::get('/dashboard', [SupplierDashboardController::class, 'index'])->name('supplier.dashboard');
 
-         Route::get('/supplier-management-invoice',
-        [SupplierInvoiceController::class,'index'])
-        ->name('admin.supplier-invoice');
+    // Supplier Management
+    Route::get('/supplier-management',[SupplierManagementController::class,'index'])->name('admin.suppliers');
+    Route::post('/supplier-management',[SupplierManagementController::class, 'store'])->name('admin.suppliers.store');
+    Route::get('/{id}/edit',[SupplierManagementController::class, 'edit'])->name('admin.suppliers.edit');
+    Route::put('/{id}',[SupplierManagementController::class, 'update'])->name('admin.suppliers.update');
+    Route::post('/{id}/attach-product',[SupplierManagementController::class, 'attachProduct'])->name('admin.suppliers.attach-product');
+    Route::delete('/{id}/detach-product/{productId}',[SupplierManagementController::class, 'detachProduct'])->name('admin.suppliers.detach-product');
+    Route::patch('/{id}/toggle-status', [SupplierManagementController::class, 'toggleStatus'])->name('admin.suppliers.toggle-status');
 
-        Route::post('/supplier-management',
-        [SupplierManagementController::class, 'store'])
-        ->name('admin.suppliers.store');
+    //profile routes for supplier
+    Route::get('/profile', [SupplierProfileController::class, 'edit'])->name('supplier.profile');
+    Route::put('/profile', [SupplierProfileController::class, 'update'])->name('supplier.profile.update');
+    // Admin-facing: dedicated full profile page for a specific supplier.
+    Route::get('/{id}/profile', [SupplierProfileController::class, 'showForAdmin'])->name('admin.supplier.profile.show');
 
-        Route::get('/{id}/edit',
-        [SupplierManagementController::class, 'edit'])
-        ->name('admin.suppliers.edit');
-
-        Route::put('/{id}',
-        [SupplierManagementController::class, 'update'])
-        ->name('admin.suppliers.update');
-
-        Route::post('/{id}/attach-product',
-        [SupplierManagementController::class, 'attachProduct'])
-        ->name('admin.suppliers.attach-product');
-
-        Route::delete('/{id}/detach-product/{productId}',
-         [SupplierManagementController::class, 'detachProduct'])
-        ->name('admin.suppliers.detach-product');
-
-        Route::get('/dashboard', [SupplierDashboardController::class, 'index'])
-        ->name('supplier.dashboard');
-
-        //profile routes for supplier
-        Route::get('/profile', [SupplierProfileController::class, 'edit'])
-        ->name('supplier.profile');
-
-        Route::put('/profile', [SupplierProfileController::class, 'update'])
-        ->name('supplier.profile.update');
-
-        Route::patch('/{id}/toggle-status', [SupplierManagementController::class, 'toggleStatus'])
-       ->name('admin.suppliers.toggle-status');
-
-        // Admin-facing: dedicated full profile page for a specific supplier.
-        Route::get('/{id}/profile', [SupplierProfileController::class, 'showForAdmin'])
-            ->name('admin.supplier.profile.show');
-
-       Route::post('/supplier-management-invoice',
-      [SupplierInvoiceController::class, 'store'])
-       ->name('admin.supplier-invoice.store');
-
-       Route::get('/{id}/purchase-data',
-      [SupplierInvoiceController::class, 'getSupplierData'])
-      ->name('admin.suppliers.purchase-data');
-
-      Route::get(
-    '/invoice/{id}/download',
-    [SupplierInvoiceController::class, 'download'])
-    ->name('admin.supplier-invoice.download');
+    // Supplier Invoice Management
+    Route::get('/supplier-management-invoice',[SupplierInvoiceController::class,'index'])->name('admin.supplier-invoice');
+    Route::post('/supplier-management-invoice',[SupplierInvoiceController::class, 'store'])->name('admin.supplier-invoice.store');
+    Route::get('/{id}/purchase-data',[SupplierInvoiceController::class, 'getSupplierData'])->name('admin.suppliers.purchase-data');
+    Route::get('/invoice/{id}/download',[SupplierInvoiceController::class, 'download'])->name('admin.supplier-invoice.download');
 
 });
 
 
+/*
+|--------------------------------------------------------------------------
+| Stock
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/stock')->middleware('auth')->group(function () {
+
+    Route::get('/manage-stock', [ManageStockController::class, 'index'])->name('admin.stock.manage');
+    Route::post('/manage-stock', [ManageStockController::class, 'store'])->name('admin.stock.store');
+    Route::patch('/ledger/{ledger}', [ManageStockController::class, 'updateLedgerDescription'])->name('admin.stock.ledger.update');
+    Route::delete('/ledger/{ledger}', [ManageStockController::class, 'destroyLedger'])->name('admin.stock.ledger.destroy');
+
+    Route::get('/report', [ManageStockController::class, 'generateReport'])->name('admin.stock.report');
+
+    // Stock
+    Route::get('/stock/import-template', [ManageStockController::class, 'downloadImportTemplate'])->name('admin.stock.import-template');
+    Route::post('/stock/import', [ManageStockController::class, 'importStock'])->name('admin.stock.import');
+
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -410,35 +396,6 @@ Route::prefix('admin/activations')->middleware('auth')->group(function () {
 });
 
 
-/*
-|--------------------------------------------------------------------------
-| Stock
-|--------------------------------------------------------------------------
-*/
-
-Route::prefix('admin/stock')->middleware('auth')->group(function () {
-
-    Route::get('/manage-stock', [ManageStockController::class, 'index'])->name('admin.stock.manage');
-    Route::post('/manage-stock', [ManageStockController::class, 'store'])->name('admin.stock.store');
-    Route::patch('/ledger/{ledger}', [ManageStockController::class, 'updateLedgerDescription'])->name('admin.stock.ledger.update');
-    Route::delete('/ledger/{ledger}', [ManageStockController::class, 'destroyLedger'])->name('admin.stock.ledger.destroy');
-
-    Route::get('/report', [ManageStockController::class, 'generateReport'])->name('admin.stock.report');
-
-    // Stock
-Route::get('/stock/import-template', [ManageStockController::class, 'downloadImportTemplate'])->name('admin.stock.import-template');
-Route::post('/stock/import', [ManageStockController::class, 'importStock'])->name('admin.stock.import');
-
-
-    // 2. Current Stock Route
-    //Route::get('/current-stock', [CurrentStockController::class, 'index'])->name('admin.current-stock');
-
-    // 3. Sold Device Report Route
-   // Route::get('/sold-device-report', [SoldDeviceReportController::class, 'index'])->name('admin.sold-device-report');
-
-    // 4. Add Faulty Device Route
-   // Route::get('/add-faulty-device', [AddFaultyDeviceController::class, 'index'])->name('admin.add-faulty-device');
-});
 
 /*
 |--------------------------------------------------------------------------
