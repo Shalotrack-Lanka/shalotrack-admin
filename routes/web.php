@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\MasterPages\FeatureController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupDetailsController;
 use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
+use App\Http\Controllers\Admin\MasterPages\AddDeviceTypeController;
+use App\Http\Controllers\Admin\MasterPages\StockTransferController;
 
 use App\Http\Controllers\Admin\Supplier\SupplierProfileController;
 use App\Http\Controllers\Admin\Supplier\SupplierDashboardController;
@@ -25,7 +27,6 @@ use App\Http\Controllers\Admin\Dealer\DealerProfileController;
 use App\Http\Controllers\Admin\Dealer\DealerAccountController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
-use App\Http\Controllers\Admin\Dealer\StockTransferController;
 use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
 
 // FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
@@ -52,7 +53,6 @@ use App\Http\Controllers\Admin\Stock\CurrentStockController;
 use App\Http\Controllers\Admin\Stock\SoldDeviceReportController;
 use App\Http\Controllers\Admin\Stock\AddFaultyDeviceController;
 
-use App\Http\Controllers\Admin\AdminPanel\AddDeviceTypeController;
 
 use App\Http\Controllers\Admin\Vehicles\VehicleDetailsController;
 use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
@@ -121,9 +121,22 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('admin/master-pages')->group(function () {
 
-        Route::get('/add-device', [AddDeviceController::class, 'index'])->name('admin.add-device');
-        Route::post('/add-device', [AddDeviceController::class, 'store'])->name('admin.device.store');
-        Route::get('/add-device/list', [AddDeviceController::class, 'list'])->name('admin.device.list');
+        Route::get('/setup-device', [AddDeviceController::class, 'index'])->name('admin.setup-device');
+        Route::post('/setup-device', [AddDeviceController::class, 'store'])->name('admin.device.store');
+        Route::get('/setup-device/list', [AddDeviceController::class, 'list'])->name('admin.device.list');
+
+        //add new device type
+        Route::get('/add-device-type', [AddDeviceTypeController::class, 'index'])->name('admin.add-device-type');
+        Route::post('/add-device-type',[AddDeviceTypeController::class, 'store'])->name('admin.device-types.store');
+        Route::post('/add-device-type/add-features', [AddDeviceTypeController::class, 'storeFeature'])->name('admin.features.store');
+        Route::get('/device-types/import-template', [AddDeviceTypeController::class, 'downloadImportTemplate'])->name('admin.device-types.import-template');
+        Route::post('/device-types/import', [AddDeviceTypeController::class, 'importDeviceTypes'])->name('admin.device-types.import');
+
+        //stock transfer 
+        Route::get('/stock-transfer', [StockTransferController::class, 'index'])->name('admin.stock_transfer');
+
+        // Post route ekakuth thiyenawa nam ekath update karanna:
+        Route::post('/stock-transfer', [StockTransferController::class, 'store'])->name('admin.stock_transfer.store');
 
         //excel
         Route::get('/devices/import-template', [AddDeviceController::class, 'downloadImportTemplate'])
@@ -180,29 +193,6 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-
-/*
-|--------------------------------------------------------------------------
-| Admin Panel (System Config)
-|--------------------------------------------------------------------------
-*/
-
-    Route::prefix('admin/admin-panel')->group(function () {
-
-        Route::get('/add-device-types',
-            [AddDeviceTypeController::class, 'index'])
-            ->name('admin.add-device-types');
-
-        Route::post('/add-device-types',
-           [AddDeviceTypeController::class, 'store'])
-            ->name('admin.device-types.store');
-
-        Route::post('/add-device-types/add-features', [AddDeviceTypeController::class, 'storeFeature'])->name('admin.features.store');
-
-        // Device Types
-Route::get('/device-types/import-template', [AddDeviceTypeController::class, 'downloadImportTemplate'])->name('admin.device-types.import-template');
-Route::post('/device-types/import', [AddDeviceTypeController::class, 'importDeviceTypes'])->name('admin.device-types.import');
-    });
 
 
     /*

@@ -136,7 +136,7 @@ class AddDeviceController extends Controller
         $this->pushDeviceToApi($device);
 
         return redirect()
-            ->route('admin.add-device')
+            ->route('admin.setup-device')
             ->with(
                 'success',
                 'Device Setup Completed Successfully!'
@@ -200,7 +200,7 @@ class AddDeviceController extends Controller
         }
 
         return redirect()
-            ->route('admin.add-device')
+            ->route('admin.setup-device')
             ->with([
                 'import_success_count' => count($import->created),
                 'import_failures'      => $import->failures(),
