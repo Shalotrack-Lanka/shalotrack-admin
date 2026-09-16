@@ -134,9 +134,19 @@ Route::middleware(['auth'])->group(function () {
 
         //stock transfer 
         Route::get('/stock-transfer', [StockTransferController::class, 'index'])->name('admin.stock_transfer');
-
-        // Post route ekakuth thiyenawa nam ekath update karanna:
         Route::post('/stock-transfer', [StockTransferController::class, 'store'])->name('admin.stock_transfer.store');
+        
+        Route::put('/stock-transfer/{ledger}', [StockTransferController::class, 'update'])->name('admin.stock_transfer.update');
+        Route::delete('/stock-transfer/{ledger}', [StockTransferController::class, 'destroy'])->name('admin.stock_transfer.destroy');
+        Route::get('/stock-transfer/{ledger}/edit-data', [StockTransferController::class, 'editData'])->name('admin.stock_transfer.edit-data');
+
+        // Report generation for Stock Transfer
+         Route::get('/stock-transfer/report', [StockTransferController::class, 'generateReport'])->name('admin.stock_transfer.report');
+
+        // stock transfer automation
+         Route::get('/device-categories/{category}/sim-numbers', [StockTransferController::class, 'getSimNumbers'])
+        ->where('category', '.*')
+        ->name('admin.stock_transfer.sim-numbers');
 
         //excel
         Route::get('/devices/import-template', [AddDeviceController::class, 'downloadImportTemplate'])
@@ -145,12 +155,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/devices/import', [AddDeviceController::class, 'importDevices'])
         ->name('admin.device.import');
 
-        Route::get('/add-sim',
-            [AddSimController::class, 'index'])
-            ->name('admin.add-sim');
+        Route::get('/add-sim',[AddSimController::class, 'index'])->name('admin.add-sim');
 
-            Route::get('/sim/import-template', [AddSimController::class, 'downloadImportTemplate'])->name('admin.stock.sim.import-template');
-            Route::post('/sim/import', [AddSimController::class, 'importSims'])->name('admin.stock.sim.import');
+        Route::get('/sim/import-template', [AddSimController::class, 'downloadImportTemplate'])->name('admin.stock.sim.import-template');
+        Route::post('/sim/import', [AddSimController::class, 'importSims'])->name('admin.stock.sim.import');
 
         Route::post('/add-sim', [AddSimController::class, 'store'])->name('admin.stock.sim.store');
 
@@ -173,21 +181,10 @@ Route::middleware(['auth'])->group(function () {
          ->name('admin.stock.sim.update-status');
 
          //report generation
-        Route::get('/cancel-device/not-activated/export',
-        [CancelDeviceController::class, 'exportNotActivated'])
-        ->name('admin.cancel-device.export-not-activated');
-  
-        Route::get('/cancel-device/activated/export', 
-        [CancelDeviceController::class, 'exportActivated'])
-        ->name('admin.cancel-device.export-activated');
-
-        Route::get('/add-sim/not-activated/export', 
-        [AddSimController::class, 'exportNotActivated'])
-        ->name('admin.sim.export-not-activated');
-
-        Route::get('/add-sim/activated/export', 
-        [AddSimController::class, 'exportActivated'])
-        ->name('admin.sim.export-activated');
+        Route::get('/cancel-device/not-activated/export',[CancelDeviceController::class, 'exportNotActivated'])->name('admin.cancel-device.export-not-activated');
+        Route::get('/cancel-device/activated/export', [CancelDeviceController::class, 'exportActivated'])->name('admin.cancel-device.export-activated');
+        Route::get('/add-sim/not-activated/export', [AddSimController::class, 'exportNotActivated'])->name('admin.sim.export-not-activated');
+        Route::get('/add-sim/activated/export', [AddSimController::class, 'exportActivated'])->name('admin.sim.export-activated');
 
     });
 
@@ -274,9 +271,6 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/dealer-management', [DealerManagementController::class, 'index'])
    ->name('admin.dealer-management');
 
-    Route::get('/stock-transfer', [StockTransferController::class, 'index'])
-    ->name('admin.dealer.stock-transfer');
-
     Route::get('/manage-replacement',[ManageReplacementController::class,'index'])
         ->name('admin.manage-replacement');
 
@@ -285,26 +279,6 @@ Route::prefix('admin/dealer')->group(function () {
 
     Route::post('/dealer-management', [DealerManagementController::class, 'store'])
         ->name('admin.dealer.store');
-
-    Route::get('/stock-transfer', [StockTransferController::class, 'index'])
-       ->name('admin.dealer.stock_transfer');
-
-    Route::post('/stock-transfer', [StockTransferController::class, 'store'])
-       ->name('admin.dealer.stock_transfer.store');
-
-    Route::put('/stock-transfer/{ledger}', [StockTransferController::class, 'update'])
-       ->name('admin.dealer.stock_transfer.update');
-
-    Route::delete('/stock-transfer/{ledger}', [StockTransferController::class, 'destroy'])
-       ->name('admin.dealer.stock_transfer.destroy');
-
-    Route::get('/stock-transfer/{ledger}/edit-data', [StockTransferController::class, 'editData'])
-       ->name('admin.dealer.stock_transfer.edit-data');
-
-    // stock transfer automation
-    Route::get('/device-categories/{category}/sim-numbers', [StockTransferController::class, 'getSimNumbers'])
-        ->where('category', '.*')
-        ->name('admin.dealer.sim-numbers');
 
     Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])
     ->name('admin.dealer.assigned-devices');

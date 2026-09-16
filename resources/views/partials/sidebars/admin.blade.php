@@ -68,7 +68,7 @@
                 </a>
 
                 <a href="{{ route('admin.stock_transfer') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Device Transfer 
+                    Stock Transfer 
                 </a>
 
              <!--   <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
