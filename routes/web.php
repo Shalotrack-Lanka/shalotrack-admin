@@ -195,6 +195,106 @@ Route::middleware(['auth'])->group(function () {
 
     /*
 |--------------------------------------------------------------------------
+| Customer
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/customer')->middleware('auth')->group(function () {
+
+    // Customer Setup
+    Route::get('/setup', [CustomerSetupController::class, 'index'])->name('admin.customer-setup');
+    Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])->name('admin.customer-setup.refresh');
+    Route::patch('/setup/{customerId}/status', [CustomerSetupController::class, 'toggleStatus'])->name('admin.customer-setup.toggle-status');
+
+    // Customer Device Management
+    Route::get('/device-management', [CustomerDeviceManagementController::class, 'index'])->name('admin.customer-device-management');
+    Route::post('/device-management/{vehicleId}/activate', [CustomerDeviceManagementController::class, 'activate'])->name('admin.customer-device-management.activate');
+    Route::patch('/device-management/{activatedDevice}', [CustomerDeviceManagementController::class, 'update'])->name('admin.customer-device-management.update');
+    Route::post('/device-management/{expiredDevice}/reactivate', [CustomerDeviceManagementController::class, 'reactivate'])->name('admin.customer-device-management.reactivate');
+
+    // Report generation for Customer Setup and Customer Device Management
+    Route::get('/setup/report', [CustomerSetupController::class, 'generateReport'])->name('admin.customer-setup.report');
+    Route::get('customer-device-management/report', [CustomerDeviceManagementController::class, 'generateReport'])->name('admin.customer-device-management.report');
+
+});
+
+
+
+/*
+    |--------------------------------------------------------------------------
+    | Vehicles
+    |--------------------------------------------------------------------------
+    */
+
+Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
+
+    // Vehicle Details
+    Route::get('/details',[VehicleDetailsController::class, 'index'])->name('details');
+
+    // GPS Tracking
+    Route::get('/gps-tracking',[GpsTrackingController::class, 'index'])->name('gps');
+    Route::get('/gps-tracking/resolve-address', [GpsTrackingController::class, 'resolveAddress'])->name('gps.resolve-address');
+    Route::get('/gps/export', [GpsTrackingController::class, 'exportPdf'])->name('gps.export');
+
+    // Device Commands
+    Route::get('/device-commands', [DeviceCommandController::class, 'index'])->name('device-commands');
+    Route::post('/device-commands/send', [DeviceCommandController::class, 'sendCommand'])->name('device-commands.send');
+    Route::get('/device-commands/status/{imei}', [DeviceCommandController::class, 'deviceStatus'])->name('device-commands.status');
+    Route::get('/device-commands/history/{vehicleId}', [DeviceCommandController::class, 'commandHistory'])->name('device-commands.history');
+
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Dealer
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/dealer')->group(function () {
+
+    // Dealer Management
+    Route::get('/dealer-management', [DealerManagementController::class, 'index'])->name('admin.dealer-management');
+    Route::post('/dealer-management', [DealerManagementController::class, 'store'])->name('admin.dealer.store');
+    Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');
+
+    // manage replacement
+    Route::get('/manage-replacement',[ManageReplacementController::class,'index'])->name('admin.manage-replacement');
+
+    // dealer ledger
+    Route::get('/dealer-ledger',[DealerLedgerController::class,'index'])->name('admin.dealer-ledger');
+
+    Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])->name('admin.dealer.assigned-devices');
+
+    // Dealer Dashboard
+    Route::delete('/unassign-device/{id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
+    Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
+    Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
+    Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
+    Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
+    Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
+    // pdf report generation
+    Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
+
+
+    // Dealer Profile
+    Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
+    Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
+    
+    // Admin-facing: dedicated full profile page for a specific dealer.
+    Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
+    Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
+    Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
+
+    // Device Commands
+    Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');
+
+});
+
+
+
+    /*
+|--------------------------------------------------------------------------
 | Supplier
 |--------------------------------------------------------------------------
 */
@@ -261,129 +361,7 @@ Route::prefix('admin/supplier')->group(function () {
 
 });
 
-/*
-|--------------------------------------------------------------------------
-| Dealer
-|--------------------------------------------------------------------------
-*/
 
-Route::prefix('admin/dealer')->group(function () {
-
-    Route::get('/dealer-management', [DealerManagementController::class, 'index'])
-   ->name('admin.dealer-management');
-
-    Route::get('/manage-replacement',[ManageReplacementController::class,'index'])
-        ->name('admin.manage-replacement');
-
-    Route::get('/dealer-ledger',[DealerLedgerController::class,'index'])
-        ->name('admin.dealer-ledger');
-
-    Route::post('/dealer-management', [DealerManagementController::class, 'store'])
-        ->name('admin.dealer.store');
-
-    Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])
-    ->name('admin.dealer.assigned-devices');
-
-    Route::delete('/unassign-device/{id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
-
-    Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
-
-    Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
-    Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
-    Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');
-    Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
-
-
-    Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
-    Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
-    Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
-    Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
-    Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
-
-    Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');   
-    
-    Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
-
-    // pdf report generation
-    Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
-
-    Route::get('/admin/dealer/stock-transfer/report', [StockTransferController::class, 'generateReport'])->name('admin.dealer.stock_transfer.report');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Customer
-|--------------------------------------------------------------------------
-*/
-
-Route::prefix('admin/customer')->middleware('auth')->group(function () {
-
-    Route::get('/setup', [CustomerSetupController::class, 'index'])
-        ->name('admin.customer-setup');
-
-    Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])
-        ->name('admin.customer-setup.refresh');
-
-    Route::patch('/setup/{customerId}/status', [CustomerSetupController::class, 'toggleStatus'])
-        ->name('admin.customer-setup.toggle-status');
-
-    Route::get('/device-management', [CustomerDeviceManagementController::class, 'index'])
-        ->name('admin.customer-device-management');
-
-    Route::post('/device-management/{vehicleId}/activate', [CustomerDeviceManagementController::class, 'activate'])
-        ->name('admin.customer-device-management.activate');
-
-    Route::patch('/device-management/{activatedDevice}', [CustomerDeviceManagementController::class, 'update'])
-        ->name('admin.customer-device-management.update');
-
-    Route::post('/device-management/{expiredDevice}/reactivate', [CustomerDeviceManagementController::class, 'reactivate'])
-        ->name('admin.customer-device-management.reactivate');
-
-    Route::get('/setup/report', [CustomerSetupController::class, 'generateReport'])->name('admin.customer-setup.report');
-
-    Route::get('customer-device-management/report', [CustomerDeviceManagementController::class, 'generateReport'])->name('admin.customer-device-management.report');
-
-});
-
-/*
-    |--------------------------------------------------------------------------
-    | Vehicles
-    |--------------------------------------------------------------------------
-    */
-
-Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
-
-    Route::get('/details',
-     [VehicleDetailsController::class, 'index'])
-     ->name('details');
-
-     Route::get('/gps-tracking',
-     [GpsTrackingController::class, 'index'])
-     ->name('gps');
-
-
-    Route::get('/gps-tracking/resolve-address', [GpsTrackingController::class, 'resolveAddress'])
-    ->name('gps.resolve-address');
-
-    Route::get('/gps/export', [GpsTrackingController::class, 'exportPdf'])->name('gps.export');
-
-    Route::get('/device-commands', 
-        [DeviceCommandController::class, 'index'])
-        ->name('device-commands');
-
-    Route::post('/device-commands/send', 
-        [DeviceCommandController::class, 'sendCommand'])
-        ->name('device-commands.send');
-
-    Route::get('/device-commands/status/{imei}', 
-        [DeviceCommandController::class, 'deviceStatus'])
-        ->name('device-commands.status');
-
-    Route::get('/device-commands/history/{vehicleId}', 
-    [DeviceCommandController::class, 'commandHistory'])
-    ->name('device-commands.history');
-
-});
 
 /*
 |--------------------------------------------------------------------------
