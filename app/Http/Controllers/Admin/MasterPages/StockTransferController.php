@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin\Dealer;
+namespace App\Http\Controllers\Admin\MasterPages;
 
 use App\Http\Controllers\Controller;
 use App\Models\Dealer;
@@ -38,7 +38,7 @@ class StockTransferController extends Controller
             ->get();
 
         return view(
-            'admin.dealer.stock_transfer',
+            'admin.master_pages.stock_transfer',
             compact('deviceCategories', 'dealers', 'transfers', 'allocatedDevices')
         );
     }
@@ -236,7 +236,7 @@ class StockTransferController extends Controller
             $logoBase64 = 'data:image/' . $typeImg . ';base64,' . base64_encode($dataImg);
         }
 
-        $pdf = Pdf::loadView('admin.dealer.stock_transfer_report_pdf', compact(
+        $pdf = Pdf::loadView('admin.master_pages.stock_transfer_report_pdf', compact(
             'transfers',
             'allocatedDevices',
             'title',

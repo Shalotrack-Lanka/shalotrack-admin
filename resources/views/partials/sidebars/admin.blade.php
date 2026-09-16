@@ -55,7 +55,7 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.add-device-types') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.add-device-type') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                      Add Device Types
                 </a>
 
@@ -63,12 +63,12 @@
                     Add SIM
                 </a>
 
-                <a href="{{ route('admin.add-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.setup-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                     Setup Shalotrack Device
                 </a>
 
-                <a href="{{ route('admin.dealer.stock_transfer') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Transfer Setuped Devices
+                <a href="{{ route('admin.stock_transfer') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                    Stock Transfer 
                 </a>
 
              <!--   <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">

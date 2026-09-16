@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin\AdminPanel;
+namespace App\Http\Controllers\Admin\MasterPages;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeviceType;
@@ -18,7 +18,7 @@ class AddDeviceTypeController extends Controller
         $deviceTypes = DeviceType::latest()->get();
         $features = Feature::orderBy('name')->get();
 
-        return view('admin.admin_panel.add_device_type', compact('deviceTypes', 'features'));
+        return view('admin.master_pages.add_device_type', compact('deviceTypes', 'features'));
     }
 
     public function store(Request $request)

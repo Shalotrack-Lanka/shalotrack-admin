@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\MasterPages\FeatureController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupDetailsController;
 use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
+use App\Http\Controllers\Admin\MasterPages\AddDeviceTypeController;
+use App\Http\Controllers\Admin\MasterPages\StockTransferController;
 
 use App\Http\Controllers\Admin\Supplier\SupplierProfileController;
 use App\Http\Controllers\Admin\Supplier\SupplierDashboardController;
@@ -25,7 +27,6 @@ use App\Http\Controllers\Admin\Dealer\DealerProfileController;
 use App\Http\Controllers\Admin\Dealer\DealerAccountController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
-use App\Http\Controllers\Admin\Dealer\StockTransferController;
 use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
 
 // FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
@@ -52,7 +53,6 @@ use App\Http\Controllers\Admin\Stock\CurrentStockController;
 use App\Http\Controllers\Admin\Stock\SoldDeviceReportController;
 use App\Http\Controllers\Admin\Stock\AddFaultyDeviceController;
 
-use App\Http\Controllers\Admin\AdminPanel\AddDeviceTypeController;
 
 use App\Http\Controllers\Admin\Vehicles\VehicleDetailsController;
 use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
@@ -121,9 +121,32 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('admin/master-pages')->group(function () {
 
-        Route::get('/add-device', [AddDeviceController::class, 'index'])->name('admin.add-device');
-        Route::post('/add-device', [AddDeviceController::class, 'store'])->name('admin.device.store');
-        Route::get('/add-device/list', [AddDeviceController::class, 'list'])->name('admin.device.list');
+        Route::get('/setup-device', [AddDeviceController::class, 'index'])->name('admin.setup-device');
+        Route::post('/setup-device', [AddDeviceController::class, 'store'])->name('admin.device.store');
+        Route::get('/setup-device/list', [AddDeviceController::class, 'list'])->name('admin.device.list');
+
+        //add new device type
+        Route::get('/add-device-type', [AddDeviceTypeController::class, 'index'])->name('admin.add-device-type');
+        Route::post('/add-device-type',[AddDeviceTypeController::class, 'store'])->name('admin.device-types.store');
+        Route::post('/add-device-type/add-features', [AddDeviceTypeController::class, 'storeFeature'])->name('admin.features.store');
+        Route::get('/device-types/import-template', [AddDeviceTypeController::class, 'downloadImportTemplate'])->name('admin.device-types.import-template');
+        Route::post('/device-types/import', [AddDeviceTypeController::class, 'importDeviceTypes'])->name('admin.device-types.import');
+
+        //stock transfer 
+        Route::get('/stock-transfer', [StockTransferController::class, 'index'])->name('admin.stock_transfer');
+        Route::post('/stock-transfer', [StockTransferController::class, 'store'])->name('admin.stock_transfer.store');
+        
+        Route::put('/stock-transfer/{ledger}', [StockTransferController::class, 'update'])->name('admin.stock_transfer.update');
+        Route::delete('/stock-transfer/{ledger}', [StockTransferController::class, 'destroy'])->name('admin.stock_transfer.destroy');
+        Route::get('/stock-transfer/{ledger}/edit-data', [StockTransferController::class, 'editData'])->name('admin.stock_transfer.edit-data');
+
+        // Report generation for Stock Transfer
+         Route::get('/stock-transfer/report', [StockTransferController::class, 'generateReport'])->name('admin.stock_transfer.report');
+
+        // stock transfer automation
+         Route::get('/device-categories/{category}/sim-numbers', [StockTransferController::class, 'getSimNumbers'])
+        ->where('category', '.*')
+        ->name('admin.stock_transfer.sim-numbers');
 
         //excel
         Route::get('/devices/import-template', [AddDeviceController::class, 'downloadImportTemplate'])
@@ -132,77 +155,142 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/devices/import', [AddDeviceController::class, 'importDevices'])
         ->name('admin.device.import');
 
-        Route::get('/add-sim',
-            [AddSimController::class, 'index'])
-            ->name('admin.add-sim');
+        Route::get('/add-sim',[AddSimController::class, 'index'])->name('admin.add-sim');
 
-            Route::get('/sim/import-template', [AddSimController::class, 'downloadImportTemplate'])->name('admin.stock.sim.import-template');
-            Route::post('/sim/import', [AddSimController::class, 'importSims'])->name('admin.stock.sim.import');
+        Route::get('/sim/import-template', [AddSimController::class, 'downloadImportTemplate'])->name('admin.stock.sim.import-template');
+        Route::post('/sim/import', [AddSimController::class, 'importSims'])->name('admin.stock.sim.import');
 
         Route::post('/add-sim', [AddSimController::class, 'store'])->name('admin.stock.sim.store');
-
-        Route::get('/cancel-device',
-        [CancelDeviceController::class, 'index'])
-         ->name('admin.cancel-device');
-
-        Route::patch('/cancel-device/{device}',
-        [CancelDeviceController::class, 'update'])
-        ->name('admin.cancel-device.update');
-
-        Route::get('/cancel-sim',
-        [CancelSimController::class, 'index'])
-        ->name('admin.cancel-sim');
-
-        Route::patch('/cancel-sim/{sim}', [CancelSimController::class, 'update'])->name('cancel-sim.update');
 
         Route::patch('/admin/stock/sim/{sim}/update-status',
          [AddSimController::class, 'updateStatus'])
          ->name('admin.stock.sim.update-status');
 
          //report generation
-        Route::get('/cancel-device/not-activated/export',
-        [CancelDeviceController::class, 'exportNotActivated'])
-        ->name('admin.cancel-device.export-not-activated');
-  
-        Route::get('/cancel-device/activated/export', 
-        [CancelDeviceController::class, 'exportActivated'])
-        ->name('admin.cancel-device.export-activated');
-
-        Route::get('/add-sim/not-activated/export', 
-        [AddSimController::class, 'exportNotActivated'])
-        ->name('admin.sim.export-not-activated');
-
-        Route::get('/add-sim/activated/export', 
-        [AddSimController::class, 'exportActivated'])
-        ->name('admin.sim.export-activated');
+        Route::get('/add-sim/not-activated/export', [AddSimController::class, 'exportNotActivated'])->name('admin.sim.export-not-activated');
+        Route::get('/add-sim/activated/export', [AddSimController::class, 'exportActivated'])->name('admin.sim.export-activated');
 
     });
 
+
+/*
+    |--------------------------------------------------------------------------
+    | Cancel Requests
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('admin/cancel-requests')->group(function () {
+        
+        // Cancel Device
+        Route::get('/cancel-device', [CancelDeviceController::class, 'index'])->name('admin.cancel-device');
+        Route::patch('/cancel-device/{device}', [CancelDeviceController::class, 'update'])->name('admin.cancel-device.update');
+        Route::get('/cancel-device/not-activated/export', [CancelDeviceController::class, 'exportNotActivated'])->name('admin.cancel-device.export-not-activated');
+        Route::get('/cancel-device/activated/export', [CancelDeviceController::class, 'exportActivated'])->name('admin.cancel-device.export-activated');
+
+        // Cancel Sim
+        Route::get('/cancel-sim', [CancelSimController::class, 'index'])->name('admin.cancel-sim');
+        Route::patch('/cancel-sim/{sim}', [CancelSimController::class, 'update'])->name('admin.cancel-sim.update');
+
+    });
+
+
+    /*
+|--------------------------------------------------------------------------
+| Customer
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin/customer')->middleware('auth')->group(function () {
+
+    // Customer Setup
+    Route::get('/setup', [CustomerSetupController::class, 'index'])->name('admin.customer-setup');
+    Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])->name('admin.customer-setup.refresh');
+    Route::patch('/setup/{customerId}/status', [CustomerSetupController::class, 'toggleStatus'])->name('admin.customer-setup.toggle-status');
+
+    // Customer Device Management
+    Route::get('/device-management', [CustomerDeviceManagementController::class, 'index'])->name('admin.customer-device-management');
+    Route::post('/device-management/{vehicleId}/activate', [CustomerDeviceManagementController::class, 'activate'])->name('admin.customer-device-management.activate');
+    Route::patch('/device-management/{activatedDevice}', [CustomerDeviceManagementController::class, 'update'])->name('admin.customer-device-management.update');
+    Route::post('/device-management/{expiredDevice}/reactivate', [CustomerDeviceManagementController::class, 'reactivate'])->name('admin.customer-device-management.reactivate');
+
+    // Report generation for Customer Setup and Customer Device Management
+    Route::get('/setup/report', [CustomerSetupController::class, 'generateReport'])->name('admin.customer-setup.report');
+    Route::get('customer-device-management/report', [CustomerDeviceManagementController::class, 'generateReport'])->name('admin.customer-device-management.report');
+
+});
 
 
 
 /*
+    |--------------------------------------------------------------------------
+    | Vehicles
+    |--------------------------------------------------------------------------
+    */
+
+Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
+
+    // Vehicle Details
+    Route::get('/details',[VehicleDetailsController::class, 'index'])->name('details');
+
+    // GPS Tracking
+    Route::get('/gps-tracking',[GpsTrackingController::class, 'index'])->name('gps');
+    Route::get('/gps-tracking/resolve-address', [GpsTrackingController::class, 'resolveAddress'])->name('gps.resolve-address');
+    Route::get('/gps/export', [GpsTrackingController::class, 'exportPdf'])->name('gps.export');
+
+    // Device Commands
+    Route::get('/device-commands', [DeviceCommandController::class, 'index'])->name('device-commands');
+    Route::post('/device-commands/send', [DeviceCommandController::class, 'sendCommand'])->name('device-commands.send');
+    Route::get('/device-commands/status/{imei}', [DeviceCommandController::class, 'deviceStatus'])->name('device-commands.status');
+    Route::get('/device-commands/history/{vehicleId}', [DeviceCommandController::class, 'commandHistory'])->name('device-commands.history');
+
+});
+
+
+/*
 |--------------------------------------------------------------------------
-| Admin Panel (System Config)
+| Dealer
 |--------------------------------------------------------------------------
 */
 
-    Route::prefix('admin/admin-panel')->group(function () {
+Route::prefix('admin/dealer')->group(function () {
 
-        Route::get('/add-device-types',
-            [AddDeviceTypeController::class, 'index'])
-            ->name('admin.add-device-types');
+    // Dealer Management
+    Route::get('/dealer-management', [DealerManagementController::class, 'index'])->name('admin.dealer-management');
+    Route::post('/dealer-management', [DealerManagementController::class, 'store'])->name('admin.dealer.store');
+    Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');
 
-        Route::post('/add-device-types',
-           [AddDeviceTypeController::class, 'store'])
-            ->name('admin.device-types.store');
+    // manage replacement
+    Route::get('/manage-replacement',[ManageReplacementController::class,'index'])->name('admin.manage-replacement');
 
-        Route::post('/add-device-types/add-features', [AddDeviceTypeController::class, 'storeFeature'])->name('admin.features.store');
+    // dealer ledger
+    Route::get('/dealer-ledger',[DealerLedgerController::class,'index'])->name('admin.dealer-ledger');
 
-        // Device Types
-Route::get('/device-types/import-template', [AddDeviceTypeController::class, 'downloadImportTemplate'])->name('admin.device-types.import-template');
-Route::post('/device-types/import', [AddDeviceTypeController::class, 'importDeviceTypes'])->name('admin.device-types.import');
-    });
+    Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])->name('admin.dealer.assigned-devices');
+
+    // Dealer Dashboard
+    Route::delete('/unassign-device/{id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
+    Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
+    Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
+    Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
+    Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
+    Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
+    // pdf report generation
+    Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
+
+
+    // Dealer Profile
+    Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
+    Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
+    
+    // Admin-facing: dedicated full profile page for a specific dealer.
+    Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
+    Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
+    Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
+
+    // Device Commands
+    Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');
+
+});
+
 
 
     /*
@@ -213,210 +301,51 @@ Route::post('/device-types/import', [AddDeviceTypeController::class, 'importDevi
 
 Route::prefix('admin/supplier')->group(function () {
 
-        Route::get('/supplier-management',
-        [SupplierManagementController::class,'index'])
-        ->name('admin.suppliers');
+    // Supplier Dashboard
+    Route::get('/dashboard', [SupplierDashboardController::class, 'index'])->name('supplier.dashboard');
 
-         Route::get('/supplier-management-invoice',
-        [SupplierInvoiceController::class,'index'])
-        ->name('admin.supplier-invoice');
+    // Supplier Management
+    Route::get('/supplier-management',[SupplierManagementController::class,'index'])->name('admin.suppliers');
+    Route::post('/supplier-management',[SupplierManagementController::class, 'store'])->name('admin.suppliers.store');
+    Route::get('/{id}/edit',[SupplierManagementController::class, 'edit'])->name('admin.suppliers.edit');
+    Route::put('/{id}',[SupplierManagementController::class, 'update'])->name('admin.suppliers.update');
+    Route::post('/{id}/attach-product',[SupplierManagementController::class, 'attachProduct'])->name('admin.suppliers.attach-product');
+    Route::delete('/{id}/detach-product/{productId}',[SupplierManagementController::class, 'detachProduct'])->name('admin.suppliers.detach-product');
+    Route::patch('/{id}/toggle-status', [SupplierManagementController::class, 'toggleStatus'])->name('admin.suppliers.toggle-status');
 
-        Route::post('/supplier-management',
-        [SupplierManagementController::class, 'store'])
-        ->name('admin.suppliers.store');
+    //profile routes for supplier
+    Route::get('/profile', [SupplierProfileController::class, 'edit'])->name('supplier.profile');
+    Route::put('/profile', [SupplierProfileController::class, 'update'])->name('supplier.profile.update');
+    // Admin-facing: dedicated full profile page for a specific supplier.
+    Route::get('/{id}/profile', [SupplierProfileController::class, 'showForAdmin'])->name('admin.supplier.profile.show');
 
-        Route::get('/{id}/edit',
-        [SupplierManagementController::class, 'edit'])
-        ->name('admin.suppliers.edit');
-
-        Route::put('/{id}',
-        [SupplierManagementController::class, 'update'])
-        ->name('admin.suppliers.update');
-
-        Route::post('/{id}/attach-product',
-        [SupplierManagementController::class, 'attachProduct'])
-        ->name('admin.suppliers.attach-product');
-
-        Route::delete('/{id}/detach-product/{productId}',
-         [SupplierManagementController::class, 'detachProduct'])
-        ->name('admin.suppliers.detach-product');
-
-        Route::get('/dashboard', [SupplierDashboardController::class, 'index'])
-        ->name('supplier.dashboard');
-
-        //profile routes for supplier
-        Route::get('/profile', [SupplierProfileController::class, 'edit'])
-        ->name('supplier.profile');
-
-        Route::put('/profile', [SupplierProfileController::class, 'update'])
-        ->name('supplier.profile.update');
-
-        Route::patch('/{id}/toggle-status', [SupplierManagementController::class, 'toggleStatus'])
-       ->name('admin.suppliers.toggle-status');
-
-        // Admin-facing: dedicated full profile page for a specific supplier.
-        Route::get('/{id}/profile', [SupplierProfileController::class, 'showForAdmin'])
-            ->name('admin.supplier.profile.show');
-
-       Route::post('/supplier-management-invoice',
-      [SupplierInvoiceController::class, 'store'])
-       ->name('admin.supplier-invoice.store');
-
-       Route::get('/{id}/purchase-data',
-      [SupplierInvoiceController::class, 'getSupplierData'])
-      ->name('admin.suppliers.purchase-data');
-
-      Route::get(
-    '/invoice/{id}/download',
-    [SupplierInvoiceController::class, 'download'])
-    ->name('admin.supplier-invoice.download');
+    // Supplier Invoice Management
+    Route::get('/supplier-management-invoice',[SupplierInvoiceController::class,'index'])->name('admin.supplier-invoice');
+    Route::post('/supplier-management-invoice',[SupplierInvoiceController::class, 'store'])->name('admin.supplier-invoice.store');
+    Route::get('/{id}/purchase-data',[SupplierInvoiceController::class, 'getSupplierData'])->name('admin.suppliers.purchase-data');
+    Route::get('/invoice/{id}/download',[SupplierInvoiceController::class, 'download'])->name('admin.supplier-invoice.download');
 
 });
 
+
 /*
 |--------------------------------------------------------------------------
-| Dealer
+| Stock
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('admin/dealer')->group(function () {
+Route::prefix('admin/stock')->middleware('auth')->group(function () {
 
-    Route::get('/dealer-management', [DealerManagementController::class, 'index'])
-   ->name('admin.dealer-management');
+    Route::get('/manage-stock', [ManageStockController::class, 'index'])->name('admin.stock.manage');
+    Route::post('/manage-stock', [ManageStockController::class, 'store'])->name('admin.stock.store');
+    Route::patch('/ledger/{ledger}', [ManageStockController::class, 'updateLedgerDescription'])->name('admin.stock.ledger.update');
+    Route::delete('/ledger/{ledger}', [ManageStockController::class, 'destroyLedger'])->name('admin.stock.ledger.destroy');
 
-    Route::get('/stock-transfer', [StockTransferController::class, 'index'])
-    ->name('admin.dealer.stock-transfer');
+    Route::get('/report', [ManageStockController::class, 'generateReport'])->name('admin.stock.report');
 
-    Route::get('/manage-replacement',[ManageReplacementController::class,'index'])
-        ->name('admin.manage-replacement');
-
-    Route::get('/dealer-ledger',[DealerLedgerController::class,'index'])
-        ->name('admin.dealer-ledger');
-
-    Route::post('/dealer-management', [DealerManagementController::class, 'store'])
-        ->name('admin.dealer.store');
-
-    Route::get('/stock-transfer', [StockTransferController::class, 'index'])
-       ->name('admin.dealer.stock_transfer');
-
-    Route::post('/stock-transfer', [StockTransferController::class, 'store'])
-       ->name('admin.dealer.stock_transfer.store');
-
-    Route::put('/stock-transfer/{ledger}', [StockTransferController::class, 'update'])
-       ->name('admin.dealer.stock_transfer.update');
-
-    Route::delete('/stock-transfer/{ledger}', [StockTransferController::class, 'destroy'])
-       ->name('admin.dealer.stock_transfer.destroy');
-
-    Route::get('/stock-transfer/{ledger}/edit-data', [StockTransferController::class, 'editData'])
-       ->name('admin.dealer.stock_transfer.edit-data');
-
-    // stock transfer automation
-    Route::get('/device-categories/{category}/sim-numbers', [StockTransferController::class, 'getSimNumbers'])
-        ->where('category', '.*')
-        ->name('admin.dealer.sim-numbers');
-
-    Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])
-    ->name('admin.dealer.assigned-devices');
-
-    Route::delete('/unassign-device/{id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
-
-    Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
-
-    Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
-    Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
-    Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');
-    Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
-
-
-    Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
-    Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
-    Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
-    Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
-    Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
-
-    Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');   
-    
-    Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
-
-    // pdf report generation
-    Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
-
-    Route::get('/admin/dealer/stock-transfer/report', [StockTransferController::class, 'generateReport'])->name('admin.dealer.stock_transfer.report');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Customer
-|--------------------------------------------------------------------------
-*/
-
-Route::prefix('admin/customer')->middleware('auth')->group(function () {
-
-    Route::get('/setup', [CustomerSetupController::class, 'index'])
-        ->name('admin.customer-setup');
-
-    Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])
-        ->name('admin.customer-setup.refresh');
-
-    Route::patch('/setup/{customerId}/status', [CustomerSetupController::class, 'toggleStatus'])
-        ->name('admin.customer-setup.toggle-status');
-
-    Route::get('/device-management', [CustomerDeviceManagementController::class, 'index'])
-        ->name('admin.customer-device-management');
-
-    Route::post('/device-management/{vehicleId}/activate', [CustomerDeviceManagementController::class, 'activate'])
-        ->name('admin.customer-device-management.activate');
-
-    Route::patch('/device-management/{activatedDevice}', [CustomerDeviceManagementController::class, 'update'])
-        ->name('admin.customer-device-management.update');
-
-    Route::post('/device-management/{expiredDevice}/reactivate', [CustomerDeviceManagementController::class, 'reactivate'])
-        ->name('admin.customer-device-management.reactivate');
-
-    Route::get('/setup/report', [CustomerSetupController::class, 'generateReport'])->name('admin.customer-setup.report');
-
-    Route::get('customer-device-management/report', [CustomerDeviceManagementController::class, 'generateReport'])->name('admin.customer-device-management.report');
-
-});
-
-/*
-    |--------------------------------------------------------------------------
-    | Vehicles
-    |--------------------------------------------------------------------------
-    */
-
-Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
-
-    Route::get('/details',
-     [VehicleDetailsController::class, 'index'])
-     ->name('details');
-
-     Route::get('/gps-tracking',
-     [GpsTrackingController::class, 'index'])
-     ->name('gps');
-
-
-    Route::get('/gps-tracking/resolve-address', [GpsTrackingController::class, 'resolveAddress'])
-    ->name('gps.resolve-address');
-
-    Route::get('/gps/export', [GpsTrackingController::class, 'exportPdf'])->name('gps.export');
-
-    Route::get('/device-commands', 
-        [DeviceCommandController::class, 'index'])
-        ->name('device-commands');
-
-    Route::post('/device-commands/send', 
-        [DeviceCommandController::class, 'sendCommand'])
-        ->name('device-commands.send');
-
-    Route::get('/device-commands/status/{imei}', 
-        [DeviceCommandController::class, 'deviceStatus'])
-        ->name('device-commands.status');
-
-    Route::get('/device-commands/history/{vehicleId}', 
-    [DeviceCommandController::class, 'commandHistory'])
-    ->name('device-commands.history');
+    // Stock
+    Route::get('/stock/import-template', [ManageStockController::class, 'downloadImportTemplate'])->name('admin.stock.import-template');
+    Route::post('/stock/import', [ManageStockController::class, 'importStock'])->name('admin.stock.import');
 
 });
 
@@ -467,35 +396,6 @@ Route::prefix('admin/activations')->middleware('auth')->group(function () {
 });
 
 
-/*
-|--------------------------------------------------------------------------
-| Stock
-|--------------------------------------------------------------------------
-*/
-
-Route::prefix('admin/stock')->middleware('auth')->group(function () {
-
-    Route::get('/manage-stock', [ManageStockController::class, 'index'])->name('admin.stock.manage');
-    Route::post('/manage-stock', [ManageStockController::class, 'store'])->name('admin.stock.store');
-    Route::patch('/ledger/{ledger}', [ManageStockController::class, 'updateLedgerDescription'])->name('admin.stock.ledger.update');
-    Route::delete('/ledger/{ledger}', [ManageStockController::class, 'destroyLedger'])->name('admin.stock.ledger.destroy');
-
-    Route::get('/report', [ManageStockController::class, 'generateReport'])->name('admin.stock.report');
-
-    // Stock
-Route::get('/stock/import-template', [ManageStockController::class, 'downloadImportTemplate'])->name('admin.stock.import-template');
-Route::post('/stock/import', [ManageStockController::class, 'importStock'])->name('admin.stock.import');
-
-
-    // 2. Current Stock Route
-    //Route::get('/current-stock', [CurrentStockController::class, 'index'])->name('admin.current-stock');
-
-    // 3. Sold Device Report Route
-   // Route::get('/sold-device-report', [SoldDeviceReportController::class, 'index'])->name('admin.sold-device-report');
-
-    // 4. Add Faulty Device Route
-   // Route::get('/add-faulty-device', [AddFaultyDeviceController::class, 'index'])->name('admin.add-faulty-device');
-});
 
 /*
 |--------------------------------------------------------------------------
