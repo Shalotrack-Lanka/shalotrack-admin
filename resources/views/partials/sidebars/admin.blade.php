@@ -55,28 +55,24 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.add-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Setup Shalotrack Device
+                <a href="{{ route('admin.add-device-types') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                     Add Device Types
                 </a>
 
                 <a href="{{ route('admin.add-sim') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                     Add SIM
                 </a>
 
-                <a href="{{ route('admin.cancel-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                   Device Status Management
+                <a href="{{ route('admin.add-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                    Setup Shalotrack Device
                 </a>
 
-                <a href="{{ route('admin.cancel-sim') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                   Cancel Sim
+                <a href="{{ route('admin.dealer.stock_transfer') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                    Transfer Setuped Devices
                 </a>
 
              <!--   <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
                     Add Features
-                </a> 
-
-                <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Add Price Group
                 </a>
 
                 <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
@@ -91,109 +87,39 @@
 
         </div>
 
-                    <!-- ADMIN -->
+       <!-- CANCEL REQUESTS -->
         <div x-data="{open:false}">
 
             <button
                 @click="open=!open"
                 class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
 
-                <span>Admin</span>
+                <span>Cancel Requests</span>
 
-            <svg :class="open ? 'rotate-180' : ''"
+                <svg :class="open ? 'rotate-180' : ''"
                 class="w-4 h-4 transition-transform duration-200"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24">
 
-            <path stroke-linecap="round"
+                <path stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
                   d="M19 9l-7 7-7-7"/>
 
-            </svg>
-
-            </button>
-
-             <div x-show="open" class="ml-5 text-sm">
-
-                <a href="{{ route('admin.add-device-types') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                     Add Device Types
-                </a>
-
-            </div>
-
-        </div>
-
-        <!-- SUPPLIERS -->
-        <div x-data="{open:false}">
-
-            <button
-                @click="open=!open"
-                class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
-
-                <span>Suppliers</span>
-
-                <svg :class="open ? 'rotate-180' : ''"
-                     class="w-4 h-4 transition-transform duration-200"
-                     fill="none"
-                     stroke="currentColor"
-                     viewBox="0 0 24 24">
-
-                    <path stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 9l-7 7-7-7"/>
-
                 </svg>
 
             </button>
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.suppliers') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                     Supplier Management
+                <a href="{{ route('admin.cancel-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                   Cancel Device
                 </a>
 
-                <a href="{{ route('admin.supplier-invoice') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Supplier Invoice
+                <a href="{{ route('admin.cancel-sim') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                   Cancel Sim
                 </a>
-
-            </div>
-
-        </div>
-
-        <!-- DEALERS -->
-        <div x-data="{open:false}">
-
-            <button
-                @click="open=!open"
-                class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
-
-                <span>Dealers</span>
-
-                <svg :class="open ? 'rotate-180' : ''"
-                     class="w-4 h-4 transition-transform duration-200"
-                     fill="none"
-                     stroke="currentColor"
-                     viewBox="0 0 24 24">
-
-                    <path stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 9l-7 7-7-7"/>
-
-                </svg>
-
-            </button>
-
-            <div x-show="open" class="ml-5 text-sm">
-
-                <a href="{{ route('admin.dealer-management') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Dealer Management</a>
-                <a href="{{ route('admin.dealer.stock_transfer') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Transfer Setuped Devices</a>
-                <a href="{{ route('admin.dealers.customer-ads') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Customers added by Dealers</a>
-                <a href="{{ route('admin.manage-replacement') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Manage Replacements</a>
-                <a href="{{ route('admin.dealer-ledger') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Dealer Ledger</a>
 
             </div>
 
@@ -277,14 +203,15 @@
 
         </div>
 
-        {{-- COMPLAINTS & ENQUIRIES MANAGEMENT — hidden from sidebar for now, routes/controllers still exist and work if linked to directly
+
+           <!-- DEALERS -->
         <div x-data="{open:false}">
 
             <button
                 @click="open=!open"
                 class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
 
-                <span>Complains & Enquiries</span>
+                <span>Dealers</span>
 
                 <svg :class="open ? 'rotate-180' : ''"
                      class="w-4 h-4 transition-transform duration-200"
@@ -303,15 +230,54 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.troubleshoot') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Troubleshoot</a>
-                <a href="{{ route('admin.view-complains') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">View Complains</a>
-                <a href="{{ route('admin.feedback') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Feedbacks</a>
-                <a href="{{ route('admin.device-replace-request') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Device Replace Requests</a>
+                <a href="{{ route('admin.dealer-management') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Dealer Management</a>
+                <a href="{{ route('admin.dealers.customer-ads') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition"> Dealer customers</a>
+                <!--<a href="{{ route('admin.manage-replacement') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Manage Replacements</a>-->
+                <!--<a href="{{ route('admin.dealer-ledger') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Dealer Ledger</a>-->
 
             </div>
 
         </div>
-        --}}
+
+
+              <!-- SUPPLIERS -->
+        <div x-data="{open:false}">
+
+            <button
+                @click="open=!open"
+                class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
+
+                <span>Suppliers</span>
+
+                <svg :class="open ? 'rotate-180' : ''"
+                     class="w-4 h-4 transition-transform duration-200"
+                     fill="none"
+                     stroke="currentColor"
+                     viewBox="0 0 24 24">
+
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 9l-7 7-7-7"/>
+
+                </svg>
+
+            </button>
+
+            <div x-show="open" class="ml-5 text-sm">
+
+                <a href="{{ route('admin.suppliers') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                     Supplier Management
+                </a>
+
+                <a href="{{ route('admin.supplier-invoice') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                    Supplier Invoice
+                </a>
+
+            </div>
+
+        </div>
+
 
          <!-- STOCK MANAGEMENT -->
         <div x-data="{open:false}">
@@ -339,13 +305,49 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.stock.manage') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Manage Raw Stock</a>
+                <a href="{{ route('admin.stock.manage') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Stock</a>
                <!-- <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Sold Device Report</a>  -->
                <!-- <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Faulty Device</a> -->
 
             </div>
 
         </div>
+
+        <!-- COMPLAINS & ENQUIRIES -->
+        <div x-data="{open:false}">
+
+            <button
+                @click="open=!open"
+                class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
+
+                <span>Complains</span>
+
+                <svg :class="open ? 'rotate-180' : ''"
+                     class="w-4 h-4 transition-transform duration-200"
+                     fill="none"
+                     stroke="currentColor"
+                     viewBox="0 0 24 24">
+
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 9l-7 7-7-7"/>
+
+                </svg>
+
+            </button>
+
+            <div x-show="open" class="ml-5 text-sm">
+
+                <a href="{{ route('admin.troubleshoot') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Troubleshoot</a>
+                <a href="{{ route('admin.view-complains') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">View Complains</a>
+                <a href="{{ route('admin.feedback') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Feedbacks</a>
+                <a href="{{ route('admin.device-replace-request') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Device Replace Requests</a>
+
+            </div>
+
+        </div>
+        
 
         {{-- ACTIVATION MANAGEMENT — hidden from sidebar for now, routes/controllers still exist and work if linked to directly
         <div x-data="{open:false}">
