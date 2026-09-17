@@ -46,6 +46,15 @@ class DealerDashboardController extends Controller
             $user->save();
         }
 
+        // 💡 AUTO-FIX: Hide wela giyapu (Orphaned) devices apahu Available Stocks walata gannawa
+        SetupShalotrackDevice::where('dealer_id', $dealer->id)
+            ->where(function ($q) {
+                $q->whereNull('assigned_customer_id')
+                  ->orWhere('assigned_customer_id', 0);
+            })
+            ->where('status', 'Assigned to Customer')
+            ->update(['status' => 'Not Activated']);
+
         $dealerLeads     = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
         $dealerCustomers = $dealerLeads;
 
@@ -76,7 +85,7 @@ class DealerDashboardController extends Controller
             
         $assignedDevicesCount = $assignedDevices->count();
 
-        // 💡 UPDATE: Removed ->whereNotNull('assigned_customer_id') to show ALL pending devices
+        // Pending Repair Devices
         $pendingDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->where('status', 'Pending Repair')
             ->latest()
@@ -317,6 +326,13 @@ class DealerDashboardController extends Controller
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $shdevice_id)
             ->firstOrFail();
+
+        // 💡 UPDATE: Customer kenek nathnam eka Available Stocks walata gannawa
+        if (empty($device->assigned_customer_id) || $device->assigned_customer_id == 0) {
+            $device->status = 'Not Activated';
+            $device->save();
+            return back()->with('success', "Device IMEI {$device->imei_number} had no customer linked, so it was moved to Available Stocks.");
+        }
 
         $device->status = 'Assigned to Customer';
         $device->save();
