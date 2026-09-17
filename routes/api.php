@@ -17,3 +17,11 @@ Route::middleware(['auth.firebase'])->group(function () {
 
     // You will add the rest of your GpsTracking endpoints here later...
 });
+
+// Called BY the C# API (reverse direction of the existing sync
+// commands, which THIS app calls INTO the API). Protected by the
+// same shared secret both systems already agree on -- see
+// VerifyAdminSyncKey and AdminSyncKeyMiddleware on the API side.
+Route::middleware(['auth.adminsync'])->group(function () {
+    Route::get('/internal/dealer-lookup', [\App\Http\Controllers\Api\DealerLookupController::class, 'lookup']);
+});

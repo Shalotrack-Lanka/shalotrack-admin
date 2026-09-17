@@ -267,24 +267,11 @@ Route::prefix('admin/dealer')->group(function () {
 
     // Dealer Dashboard
     Route::delete('/unassign-device/{id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
-
-
-    // Existing route eka laginma danna
-Route::delete('/unassign-device/{shdevice_id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
-
-// 💡 ME ALUTH ROUTES DEKA EKATHU KARANNA
-Route::post('/reassign-device/{shdevice_id}', [DealerDashboardController::class, 'reassignDevice'])->name('dealer.reassign-device');
-Route::delete('/remove-broken-device/{shdevice_id}', [DealerDashboardController::class, 'markDeviceBroken'])->name('dealer.remove-broken-device');
-
-
-// 💡 ME ALUTH ROUTE EKATH DANNA
-    Route::post('/move-to-pending/{shdevice_id}', [DealerDashboardController::class, 'moveToPending'])->name('dealer.move-to-pending');
-    
     Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
     Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
     Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
     Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
-    Route::post('/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
+    Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
     // pdf report generation
     Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
 
@@ -301,6 +288,13 @@ Route::delete('/remove-broken-device/{shdevice_id}', [DealerDashboardController:
     // Device Commands
     Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');
 
+});
+
+Route::prefix('admin/complaints')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'index'])->name('admin.complaints.index');
+    Route::post('/{complaintId}/reply', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'reply'])->name('admin.complaints.reply');
+    Route::post('/{complaintId}/resolve', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'resolve'])->name('admin.complaints.resolve');
+    Route::post('/{complaintId}/close', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'close'])->name('admin.complaints.close');
 });
 
 
@@ -476,6 +470,10 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     Route::get('/device-commands/history/{vehicleId}', [DeviceCommandController::class, 'commandHistory'])->name('device-commands.history');
 
     Route::get('/gps-tracking', [GpsTrackingController::class, 'dealerIndex'])->name('gps-tracking');
+
+    Route::get('/complaints', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'index'])->name('complaints');
+    Route::post('/complaints/{complaintId}/reply', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'reply'])->name('complaints.reply');
+    Route::post('/complaints/{complaintId}/escalate', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'escalate'])->name('complaints.escalate');
 });
 
 

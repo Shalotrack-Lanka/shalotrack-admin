@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register the custom Firebase middleware alias
         $middleware->alias([
             'auth.firebase' => \App\Http\Middleware\VerifyFirebaseToken::class,
+            'auth.adminsync' => \App\Http\Middleware\VerifyAdminSyncKey::class,
         ]);
 
     })

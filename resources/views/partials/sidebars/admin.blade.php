@@ -340,7 +340,7 @@
             <div x-show="open" class="ml-5 text-sm">
 
                 <a href="{{ route('admin.troubleshoot') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.troubleshoot') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Troubleshoot</a>
-                <a href="{{ route('admin.view-complains') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.view-complains') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">View Complains</a>
+                <a href="{{ route('admin.complaints.index') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.complaints.*') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">View Complains</a>
                 <a href="{{ route('admin.feedback') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.feedback') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Feedbacks</a>
                 <a href="{{ route('admin.device-replace-request') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.device-replace-request') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Device Replace Requests</a>
 
