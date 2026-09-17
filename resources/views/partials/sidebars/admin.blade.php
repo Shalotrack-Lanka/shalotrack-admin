@@ -25,12 +25,12 @@
     <nav class="px-3 pb-5 mt-2">
 
         <a href="{{ route('admin.dashboard') }}"
-           class="block p-3 rounded text-white hover:bg-blue-900">
+           class="block p-3 rounded text-white hover:bg-blue-900 {{ request()->routeIs('admin.dashboard') ? 'bg-blue-800' : '' }}">
             Dashboard
         </a>
 
         <!-- MASTER PAGES -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/master-pages*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -55,20 +55,20 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.add-device-type') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.add-device-type') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.add-device-type') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                      Add Device Types
                 </a>
 
-                <a href="{{ route('admin.add-sim') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.add-sim') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.add-sim') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Add SIM
                 </a>
 
-                <a href="{{ route('admin.setup-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.setup-device') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.setup-device') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Setup Shalotrack Device
                 </a>
 
-                <a href="{{ route('admin.stock_transfer') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
-                    Stock Transfer 
+                <a href="{{ route('admin.stock_transfer') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.stock_transfer') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
+                    Stock Transfer
                 </a>
 
              <!--   <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
@@ -88,7 +88,7 @@
         </div>
 
        <!-- CANCEL REQUESTS -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/cancel-requests*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -113,11 +113,11 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.cancel-device') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.cancel-device') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.cancel-device') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                    Cancel Device
                 </a>
 
-                <a href="{{ route('admin.cancel-sim') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.cancel-sim') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.cancel-sim') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                    Cancel Sim
                 </a>
 
@@ -126,7 +126,7 @@
         </div>
         
         <!-- CUSTOMER -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/customer*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -151,11 +151,11 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.customer-setup') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.customer-setup') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.customer-setup') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Customer Setup
                 </a>
 
-                <a href="{{ route('admin.customer-device-management') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.customer-device-management') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.customer-device-management') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Customer Device Management
                 </a>
 
@@ -164,7 +164,7 @@
         </div>
         
         <!-- VEHICLES -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/vehicles*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -189,13 +189,13 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.vehicles.details') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.vehicles.details') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.vehicles.details') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Vehicle Details
                 </a>
-                <a href="{{ route('admin.vehicles.gps') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.vehicles.gps') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.vehicles.gps') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Gps Tracking
                 </a>
-                <a href="{{ route('admin.vehicles.device-commands') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.vehicles.device-commands') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.vehicles.device-commands') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Device Commands
                 </a>
 
@@ -205,7 +205,7 @@
 
 
            <!-- DEALERS -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/dealer*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -230,10 +230,10 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.dealer-management') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Dealer Management</a>
-                <a href="{{ route('admin.dealers.customer-ads') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition"> Dealer customers</a>
-                <!--<a href="{{ route('admin.manage-replacement') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Manage Replacements</a>-->
-                <!--<a href="{{ route('admin.dealer-ledger') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Dealer Ledger</a>-->
+                <a href="{{ route('admin.dealer-management') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealer-management') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer Management</a>
+                <a href="{{ route('admin.dealers.customer-ads') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealers.customer-ads') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer customers</a>
+                <!--<a href="{{ route('admin.manage-replacement') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.manage-replacement') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Manage Replacements</a>-->
+                <!--<a href="{{ route('admin.dealer-ledger') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealer-ledger') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer Ledger</a>-->
 
             </div>
 
@@ -241,7 +241,7 @@
 
 
               <!-- SUPPLIERS -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/supplier*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -266,11 +266,11 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.suppliers') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.suppliers') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.suppliers') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                      Supplier Management
                 </a>
 
-                <a href="{{ route('admin.supplier-invoice') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">
+                <a href="{{ route('admin.supplier-invoice') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.supplier-invoice') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Supplier Invoice
                 </a>
 
@@ -280,7 +280,7 @@
 
 
          <!-- STOCK MANAGEMENT -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/stock*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -305,7 +305,7 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.stock.manage') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Stock</a>
+                <a href="{{ route('admin.stock.manage') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.stock.manage') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Add Stock</a>
                <!-- <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Sold Device Report</a>  -->
                <!-- <a href="" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Add Faulty Device</a> -->
 
@@ -314,13 +314,13 @@
         </div>
 
         <!-- COMPLAINS & ENQUIRIES -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/complains*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
                 class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
 
-                <span>Complains</span>
+                <span>Complains & Enquiries</span>
 
                 <svg :class="open ? 'rotate-180' : ''"
                      class="w-4 h-4 transition-transform duration-200"
@@ -339,10 +339,10 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.troubleshoot') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Troubleshoot</a>
-                <a href="{{ route('admin.view-complains') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">View Complains</a>
-                <a href="{{ route('admin.feedback') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Feedbacks</a>
-                <a href="{{ route('admin.device-replace-request') }}" class="block py-3 rounded-lg text-white hover:bg-blue-900 transition">Device Replace Requests</a>
+                <a href="{{ route('admin.troubleshoot') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.troubleshoot') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Troubleshoot</a>
+                <a href="{{ route('admin.view-complains') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.view-complains') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">View Complains</a>
+                <a href="{{ route('admin.feedback') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.feedback') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Feedbacks</a>
+                <a href="{{ route('admin.device-replace-request') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.device-replace-request') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Device Replace Requests</a>
 
             </div>
 
