@@ -46,7 +46,7 @@ class DealerDashboardController extends Controller
             $user->save();
         }
 
-        // 💡 AUTO-FIX: Hide wela giyapu (Orphaned) devices apahu Available Stocks walata gannawa
+        // AUTO-FIX: Customer nathi ewa stock ekata gannawa
         SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->where(function ($q) {
                 $q->whereNull('assigned_customer_id')
@@ -64,7 +64,6 @@ class DealerDashboardController extends Controller
             return strlen($digits) >= 9 ? substr($digits, -9) : $digits;
         })->toArray();
 
-        // Allocated Devices (Available Stocks)
         $allocatedDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->where(function ($q) {
                 $q->whereNull('assigned_customer_id')
@@ -76,7 +75,6 @@ class DealerDashboardController extends Controller
             
         $allocatedDevicesCount = $allocatedDevices->count();
 
-        // Assigned Devices
         $assignedDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->whereNotNull('assigned_customer_id')
             ->where('assigned_customer_id', '>', 0)
@@ -85,21 +83,17 @@ class DealerDashboardController extends Controller
             
         $assignedDevicesCount = $assignedDevices->count();
 
-        // Pending Repair Devices
         $pendingDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->where('status', 'Pending Repair')
             ->latest()
             ->get();
 
-        // Broken Devices
         $brokenDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->where('status', 'Broken Device')
             ->latest()
             ->get();
 
-        // Commission Calculation
         $earnedCommission = $assignedDevicesCount * 1000;
-
         $totalCustomers = $dealerLeads->count();
 
         $customerIds = \App\Models\CustomerAd::query()
@@ -166,7 +160,6 @@ class DealerDashboardController extends Controller
 
         if ($requiredDevices > $availableStock) {
             $shortage = $requiredDevices - $availableStock;
-
             $this->sendFirebaseNotification([
                 'title'         => '⚠️ Stock Reminder Alert!',
                 'body'          => "Customer {$customer->name} requested {$requiredDevices} devices, but you only have {$availableStock} in stock. Pending: {$shortage} devices.",
@@ -305,42 +298,8 @@ class DealerDashboardController extends Controller
         return back()->with('success', "Device IMEI {$device->imei_number} successfully assigned to {$customer->name}!");
     }
 
+    // 💡 1. UNASSIGN: Status -> Pending. (Habai Customer wa mathaka thiya gannawa)
     public function unassignDevice($shdevice_id)
-    {
-        $dealerId = auth()->user()->dealer->id ?? null;
-
-        $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
-            ->where('shdevice_id', $shdevice_id)
-            ->firstOrFail();
-
-        $device->status = 'Pending Repair';
-        $device->save();
-
-        return back()->with('success', "Device IMEI {$device->imei_number} moved to Pending Repair!");
-    }
-
-    public function reassignDevice($shdevice_id)
-    {
-        $dealerId = auth()->user()->dealer->id ?? null;
-
-        $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
-            ->where('shdevice_id', $shdevice_id)
-            ->firstOrFail();
-
-        // 💡 UPDATE: Customer kenek nathnam eka Available Stocks walata gannawa
-        if (empty($device->assigned_customer_id) || $device->assigned_customer_id == 0) {
-            $device->status = 'Not Activated';
-            $device->save();
-            return back()->with('success', "Device IMEI {$device->imei_number} had no customer linked, so it was moved to Available Stocks.");
-        }
-
-        $device->status = 'Assigned to Customer';
-        $device->save();
-
-        return back()->with('success', "Device IMEI {$device->imei_number} reassigned to the customer successfully!");
-    }
-
-    public function markDeviceBroken($shdevice_id)
     {
         $dealerId = auth()->user()->dealer->id ?? null;
 
@@ -350,10 +309,10 @@ class DealerDashboardController extends Controller
 
         $customerId = $device->assigned_customer_id;
 
-        $device->assigned_customer_id = null; 
-        $device->status = 'Broken Device';
+        $device->status = 'Pending Repair';
         $device->save();
 
+        // Customer ge App account eken device eka ain karanawa, eyaata aluth ekak denna puluwan wenna
         if ($customerId) {
             $customer = DealerCustomerAd::find($customerId);
             if ($customer) {
@@ -368,9 +327,65 @@ class DealerDashboardController extends Controller
             }
         }
 
-        return back()->with('success', "Device IMEI {$device->imei_number} marked as Broken and removed from customer!");
+        return back()->with('success', "Device IMEI {$device->imei_number} moved to Pending Repair!");
     }
 
+    // 💡 2. REASSIGN: Status -> Assigned. (Parana customer tama apahu denawa)
+    public function reassignDevice($shdevice_id)
+    {
+        $dealerId = auth()->user()->dealer->id ?? null;
+
+        $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
+            ->where('shdevice_id', $shdevice_id)
+            ->firstOrFail();
+
+        $customerId = $device->assigned_customer_id;
+
+        if (!$customerId) {
+            $device->status = 'Not Activated';
+            $device->save();
+            return back()->with('success', "Device moved to Available Stocks (no customer linked).");
+        }
+
+        $device->status = 'Assigned to Customer';
+        $device->save();
+
+        // Customer ge App eke list ekata apahu add karanawa
+        $customer = DealerCustomerAd::find($customerId);
+        if ($customer) {
+            $currentImeis = $customer->imei_numbers ?? [];
+            if (!is_array($currentImeis)) {
+                $currentImeis = [];
+            }
+            if ($device->imei_number && !in_array($device->imei_number, $currentImeis)) {
+                $currentImeis[] = $device->imei_number;
+            }
+
+            $customer->update([
+                'no_of_devices' => max(0, ((int) $customer->no_of_devices) - 1),
+                'imei_numbers'  => $currentImeis,
+            ]);
+        }
+
+        return back()->with('success', "Device IMEI {$device->imei_number} reassigned to the original customer successfully!");
+    }
+
+    // 💡 3. BROKEN: Status -> Broken. (Meka hadanna ba, Customer ain karanne na history ekata ona nisa)
+    public function markDeviceBroken($shdevice_id)
+    {
+        $dealerId = auth()->user()->dealer->id ?? null;
+
+        $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
+            ->where('shdevice_id', $shdevice_id)
+            ->firstOrFail();
+
+        $device->status = 'Broken Device';
+        $device->save();
+
+        return back()->with('success', "Device IMEI {$device->imei_number} marked as Broken.");
+    }
+
+    // 💡 4. TESTING: Broken idan apahu Pending walata
     public function moveToPending($shdevice_id)
     {
         $dealerId = auth()->user()->dealer->id ?? null;
