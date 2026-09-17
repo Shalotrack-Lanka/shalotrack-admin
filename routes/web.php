@@ -267,11 +267,24 @@ Route::prefix('admin/dealer')->group(function () {
 
     // Dealer Dashboard
     Route::delete('/unassign-device/{id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
+
+
+    // Existing route eka laginma danna
+Route::delete('/unassign-device/{shdevice_id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
+
+// 💡 ME ALUTH ROUTES DEKA EKATHU KARANNA
+Route::post('/reassign-device/{shdevice_id}', [DealerDashboardController::class, 'reassignDevice'])->name('dealer.reassign-device');
+Route::delete('/remove-broken-device/{shdevice_id}', [DealerDashboardController::class, 'markDeviceBroken'])->name('dealer.remove-broken-device');
+
+
+// 💡 ME ALUTH ROUTE EKATH DANNA
+    Route::post('/move-to-pending/{shdevice_id}', [DealerDashboardController::class, 'moveToPending'])->name('dealer.move-to-pending');
+    
     Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
     Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
     Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
     Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
-    Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
+    Route::post('/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
     // pdf report generation
     Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
 

@@ -303,7 +303,7 @@
                 <table class="w-full text-left border-collapse text-sm">
                     <thead class="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-100">
                         <tr>
-                            <th class="p-4 w-12">No.</th> <!-- Added Column for Number -->
+                            <th class="p-4 w-12">No.</th>
                             <th class="p-4">Customer Name</th>
                             <th class="p-4">IMEI Number</th>
                             <th class="p-4">Device Category</th>
@@ -319,12 +319,11 @@
                                 if ($device->assignedCustomer && is_array($device->assignedCustomer->imei_numbers)) {
                                     $index = array_search($device->imei_number, $device->assignedCustomer->imei_numbers);
                                     if ($index !== false) {
-                                        $deviceNumber = $index + 1; // Array is 0-indexed, so add 1
+                                        $deviceNumber = $index + 1; 
                                     }
                                 }
                             @endphp
                             <tr class="hover:bg-slate-50/80 transition">
-                                <!-- Print the Device Number in a Red Badge -->
                                 <td class="p-4">
                                     <span class="flex items-center justify-center w-7 h-7 bg-red-100 text-red-600 font-black text-xs rounded-full">
                                         {{ $deviceNumber }}
@@ -348,12 +347,12 @@
                                 <td class="p-4 text-center">
                                     <form action="{{ route('dealer.unassign-device', $device->shdevice_id) }}" 
                                           method="POST" 
-                                          onsubmit="return confirm('Are you sure you want to unassign this device and move it back to stock?');"
+                                          onsubmit="return confirm('Are you sure you want to unassign this device? It will be moved to Pending Repair.');"
                                           class="inline-block">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" 
-                                                title="Unassign Device"
+                                                title="Unassign Device (Move to Repair)"
                                                 class="p-2 text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-xl transition shadow-sm cursor-pointer inline-flex items-center gap-1 text-xs font-bold">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                             <span>Unassign</span>
@@ -364,6 +363,118 @@
                         @empty
                             <tr>
                                 <td colspan="7" class="p-8 text-center text-slate-400 italic">No stock devices assigned to customers yet.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- PENDING REPAIR DEVICES TABLE --}}
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-orange-50/50">
+                <div>
+                    <h3 class="font-black text-slate-900 text-lg">Pending Devices (Repair)</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Unassigned devices waiting for repair/checkup</p>
+                </div>
+                <span class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-bold border border-orange-200">
+                    Pending: {{ $pendingDevices->count() }}
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead class="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-100">
+                        <tr>
+                            <th class="p-4">Customer Name</th>
+                            <th class="p-4">Date Unassigned</th>
+                            <th class="p-4">IMEI Number</th>
+                            <th class="p-4">Device Category</th>
+                            <th class="p-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                        @forelse($pendingDevices as $device)
+                            <tr class="hover:bg-slate-50/80 transition">
+                                <td class="p-4 font-bold text-orange-700">{{ $device->assignedCustomer->name ?? 'N/A' }}</td>
+                                <td class="p-4 text-xs">{{ $device->updated_at->format('d M Y, H:i') }}</td>
+                                <td class="p-4 font-mono text-xs text-blue-600 font-bold">{{ $device->imei_number }}</td>
+                                <td class="p-4 font-bold text-slate-900">{{ $device->device_category }}</td>
+                                <td class="p-4 text-center space-x-2">
+                                    {{-- REASSIGN BUTTON --}}
+                                    <form action="{{ route('dealer.reassign-device', $device->shdevice_id) }}" method="POST" class="inline-block" onsubmit="return confirm('Reassign this repaired device back to the customer?');">
+                                        @csrf
+                                        <button type="submit" class="p-2 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-600 rounded-xl transition shadow-sm cursor-pointer inline-flex items-center gap-1 text-xs font-bold">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            <span>Reassign</span>
+                                        </button>
+                                    </form>
+
+                                    {{-- REMOVE (MARK AS BROKEN) BUTTON --}}
+                                    <form action="{{ route('dealer.remove-broken-device', $device->shdevice_id) }}" method="POST" class="inline-block" onsubmit="return confirm('Cannot repair? This will mark it as Broken and remove it from the customer. Continue?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="p-2 text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-xl transition shadow-sm cursor-pointer inline-flex items-center gap-1 text-xs font-bold">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            <span>Remove</span>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-slate-400 italic">No pending devices for repair.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- BROKEN DEVICES TABLE --}}
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-red-50/50">
+                <div>
+                    <h3 class="font-black text-slate-900 text-lg">Broken Devices</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Devices marked as unrepairable</p>
+                </div>
+                <span class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold border border-red-200">
+                    Broken: {{ $brokenDevices->count() }}
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead class="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-100">
+                        <tr>
+                            <th class="p-4">Date Marked</th>
+                            <th class="p-4">IMEI Number</th>
+                            <th class="p-4">Device Category</th>
+                            <th class="p-4">SIM Number</th>
+                            <th class="p-4 text-center">Action</th> 
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                        @forelse($brokenDevices as $device)
+                            <tr class="hover:bg-slate-50/80 transition">
+                                <td class="p-4 text-xs">{{ $device->updated_at->format('d M Y, H:i') }}</td>
+                                <td class="p-4 font-mono text-xs text-blue-600 font-bold">{{ $device->imei_number }}</td>
+                                <td class="p-4 font-bold text-slate-900">{{ $device->device_category }}</td>
+                                <td class="p-4 font-mono text-xs">{{ $device->sim_number ?? 'N/A' }}</td>
+                                <td class="p-4 text-center">
+                                    {{-- REVERT TO PENDING BUTTON (TESTING) --}}
+                                    <form action="{{ route('dealer.move-to-pending', $device->shdevice_id) }}" method="POST" class="inline-block" onsubmit="return confirm('Move this broken device back to Pending Repair for testing?');">
+                                        @csrf
+                                        <button type="submit" class="p-2 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-600 rounded-xl transition shadow-sm cursor-pointer inline-flex items-center gap-1 text-xs font-bold">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            <span>To Pending</span>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-slate-400 italic">No broken devices recorded.</td>
                             </tr>
                         @endforelse
                     </tbody>
