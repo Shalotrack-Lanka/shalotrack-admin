@@ -59,10 +59,73 @@
                 </form>
             </div>
 
-            {{-- ===================== SEARCH RESULTS / ALL SUPPLIERS ===================== --}}
+            {{-- ===================== ADD SUPPLIER FORM (MOVED UP) ===================== --}}
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
+                    Add Supplier Form
+                </div>
+                <form method="POST" action="{{ route('admin.suppliers.store') }}" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-gray-700">
+                    @csrf
+                    <div><label class="block mb-1">Supplier Name</label><input type="text" name="supplier_name" required class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div><label class="block mb-1">Phone Number</label><input type="text" name="phone_number" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div><label class="block mb-1">Email ID</label><input type="email" name="email_id" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div>
+                        <label class="block mb-1">Country</label>
+                        <select name="country" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                            <option value="" selected disabled>--Select--</option>
+                            <option value="srilanka">Sri Lanka</option>
+                        </select>
+                    </div>
+                    <div><label class="block mb-1">State</label><input type="text" name="state" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div><label class="block mb-1">Website (if any)</label><input type="text" name="website" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div class="md:col-span-2"><label class="block mb-1">Tax / VAT Reg. No.</label><input type="text" name="gstin" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div class="md:col-span-2"><label class="block mb-1">Address</label><textarea name="address" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm"></textarea></div>
+
+                    {{-- DYNAMIC PRODUCTS IN ADD FORM --}}
+                    <div class="md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-200 mt-2" 
+                         x-data="{
+                             products: [{ id: Date.now(), product_name: '', price: '', qty: '' }],
+                             addProduct() { this.products.push({ id: Date.now(), product_name: '', price: '', qty: '' }); },
+                             removeProduct(index) { if(this.products.length > 1) { this.products.splice(index, 1); } }
+                         }">
+                        <h4 class="font-bold mb-3 text-gray-700">Assign Products</h4>
+                        <template x-for="(item, index) in products" :key="item.id">
+                            <div class="flex flex-wrap md:flex-nowrap gap-2 items-end mb-3">
+                                <div class="flex-1 w-full">
+                                    <label class="block mb-1 text-[10px]">Product Name</label>
+                                    <input type="text" list="existing-products" required x-model="item.product_name" :name="`products[${index}][product_name]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="Select or type new product...">
+                                </div>
+                                <div class="w-1/4 md:w-28">
+                                    <label class="block mb-1 text-[10px]">Unit Price</label>
+                                    <input type="number" step="0.01" min="0" x-model="item.price" :name="`products[${index}][price]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0.00">
+                                </div>
+                                <div class="w-1/4 md:w-24">
+                                    <label class="block mb-1 text-[10px]">Qty</label>
+                                    <input type="number" step="1" min="0" x-model="item.qty" :name="`products[${index}][qty]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0">
+                                </div>
+                                <div class="w-1/4 md:w-32">
+                                    <label class="block mb-1 text-[10px] text-gray-500">Total Price</label>
+                                    <div class="h-9 px-3 flex items-center bg-gray-200 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 overflow-hidden">
+                                        Rs. <span x-text="( (item.price || 0) * (item.qty || 0) ).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})" class="ml-1"></span>
+                                    </div>
+                                </div>
+                                <button type="button" @click="removeProduct(index)" class="bg-red-50 text-red-600 h-9 px-3 rounded-lg border border-red-200 w-auto font-bold hover:bg-red-100">X</button>
+                            </div>
+                        </template>
+                        <button type="button" @click="addProduct" class="text-xs text-blue-600 font-bold mt-1">+ Add Another Product</button>
+                    </div>
+
+                    <div class="md:col-span-2 flex gap-2 pt-2 border-t border-gray-100">
+                        <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-bold shadow-sm">Reset</button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-sm">Save Supplier</button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- ===================== SEARCH RESULTS / ALL SUPPLIERS (MOVED DOWN) ===================== --}}
             @php $displaySuppliers = ($search !== '' || $status !== '') ? $searchResults : $allSuppliers; @endphp
             
-            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-10">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
                     {{ ($search !== '' || $status !== '') ? 'Search Results' : 'All Suppliers' }}
                     <span class="text-gray-500 font-normal ml-2">({{ $displaySuppliers->count() }} result{{ $displaySuppliers->count() == 1 ? '' : 's' }})</span>
@@ -149,7 +212,7 @@
                                                                 $editProducts = $supplier->products->map(function($p) {
                                                                     return [
                                                                         'id' => rand(100000, 999999), 
-                                                                        'product_name' => $p->product_name, // 💡 Changed to product_name
+                                                                        'product_name' => $p->product_name,
                                                                         'price' => $p->pivot->price,
                                                                         'qty' => $p->pivot->qty ?? 0
                                                                     ];
@@ -168,7 +231,6 @@
                                                                     <div class="flex flex-wrap md:flex-nowrap gap-2 items-end mb-3">
                                                                         <div class="flex-1 w-full">
                                                                             <label class="block mb-1 text-[10px]">Product Name</label>
-                                                                            {{-- 💡 INPUT WITH DATALIST --}}
                                                                             <input type="text" list="existing-products" required x-model="item.product_name" :name="`products[${index}][product_name]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="Select or type new product...">
                                                                         </div>
                                                                         <div class="w-1/4 md:w-28">
@@ -210,69 +272,6 @@
                 </div>
             </div>
 
-            {{-- ===================== ADD SUPPLIER FORM ===================== --}}
-            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-10">
-                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
-                    Add Supplier Form
-                </div>
-                <form method="POST" action="{{ route('admin.suppliers.store') }}" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-gray-700">
-                    @csrf
-                    <div><label class="block mb-1">Supplier Name</label><input type="text" name="supplier_name" required class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
-                    <div><label class="block mb-1">Phone Number</label><input type="text" name="phone_number" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
-                    <div><label class="block mb-1">Email ID</label><input type="email" name="email_id" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
-                    <div>
-                        <label class="block mb-1">Country</label>
-                        <select name="country" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                            <option value="" selected disabled>--Select--</option>
-                            <option value="srilanka">Sri Lanka</option>
-                        </select>
-                    </div>
-                    <div><label class="block mb-1">State</label><input type="text" name="state" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
-                    <div><label class="block mb-1">Website (if any)</label><input type="text" name="website" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
-                    <div class="md:col-span-2"><label class="block mb-1">Tax / VAT Reg. No.</label><input type="text" name="gstin" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
-                    <div class="md:col-span-2"><label class="block mb-1">Address</label><textarea name="address" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm"></textarea></div>
-
-                    {{-- DYNAMIC PRODUCTS IN ADD FORM --}}
-                    <div class="md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-200 mt-2" 
-                         x-data="{
-                             products: [{ id: Date.now(), product_name: '', price: '', qty: '' }],
-                             addProduct() { this.products.push({ id: Date.now(), product_name: '', price: '', qty: '' }); },
-                             removeProduct(index) { if(this.products.length > 1) { this.products.splice(index, 1); } }
-                         }">
-                        <h4 class="font-bold mb-3 text-gray-700">Assign Products</h4>
-                        <template x-for="(item, index) in products" :key="item.id">
-                            <div class="flex flex-wrap md:flex-nowrap gap-2 items-end mb-3">
-                                <div class="flex-1 w-full">
-                                    <label class="block mb-1 text-[10px]">Product Name</label>
-                                    {{-- 💡 INPUT WITH DATALIST --}}
-                                    <input type="text" list="existing-products" required x-model="item.product_name" :name="`products[${index}][product_name]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="Select or type new product...">
-                                </div>
-                                <div class="w-1/4 md:w-28">
-                                    <label class="block mb-1 text-[10px]">Unit Price</label>
-                                    <input type="number" step="0.01" min="0" x-model="item.price" :name="`products[${index}][price]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0.00">
-                                </div>
-                                <div class="w-1/4 md:w-24">
-                                    <label class="block mb-1 text-[10px]">Qty</label>
-                                    <input type="number" step="1" min="0" x-model="item.qty" :name="`products[${index}][qty]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0">
-                                </div>
-                                <div class="w-1/4 md:w-32">
-                                    <label class="block mb-1 text-[10px] text-gray-500">Total Price</label>
-                                    <div class="h-9 px-3 flex items-center bg-gray-200 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 overflow-hidden">
-                                        Rs. <span x-text="( (item.price || 0) * (item.qty || 0) ).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})" class="ml-1"></span>
-                                    </div>
-                                </div>
-                                <button type="button" @click="removeProduct(index)" class="bg-red-50 text-red-600 h-9 px-3 rounded-lg border border-red-200 w-auto font-bold hover:bg-red-100">X</button>
-                            </div>
-                        </template>
-                        <button type="button" @click="addProduct" class="text-xs text-blue-600 font-bold mt-1">+ Add Another Product</button>
-                    </div>
-
-                    <div class="md:col-span-2 flex gap-2 pt-2 border-t border-gray-100">
-                        <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-bold shadow-sm">Reset</button>
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-sm">Save Supplier</button>
-                    </div>
-                </form>
-            </div>
         </main>
     </div>
 </div>
