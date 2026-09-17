@@ -82,7 +82,6 @@ class SupplierManagementController extends Controller
             ->with('success', "Supplier '{$supplier->name}' added successfully.");
     }
     
-
     public function update(Request $request, $id)
     {
         $supplier = Supplier::findOrFail($id);
