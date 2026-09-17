@@ -81,6 +81,7 @@ class SupplierManagementController extends Controller
             ->route('admin.suppliers')
             ->with('success', "Supplier '{$supplier->name}' added successfully.");
     }
+    
 
     public function update(Request $request, $id)
     {
