@@ -39,8 +39,7 @@
                         {{ $supplier->country ?? 'Country not set' }}
                         @if($supplier->website)
                             &middot;
-                            <a href="{{ $supplier->website }}" target="_blank" rel="noopener noreferrer"
-                               class="text-blue-600 hover:underline">{{ $supplier->website }}</a>
+                            <span class="text-blue-600 font-medium">{{ $supplier->website }}</span>
                         @endif
                     </p>
                 </div>
@@ -117,8 +116,9 @@
 
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">Website</label>
-                    <input type="url" name="website" value="{{ old('website', $supplier->website) }}"
-                           placeholder="https://example.com"
+                    {{-- 💡 UPDATE: type="text" damma url onama widihakata gahanna puluwan wenna --}}
+                    <input type="text" name="website" value="{{ old('website', $supplier->website) }}"
+                           placeholder="www.example.com"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none">
                 </div>
 
@@ -202,8 +202,7 @@
                     <div>
                         <div class="text-xs text-gray-400 uppercase font-bold">Website</div>
                         @if($supplier->website)
-                            <a href="{{ $supplier->website }}" target="_blank" rel="noopener noreferrer"
-                               class="text-blue-600 hover:underline text-xs break-all">{{ $supplier->website }}</a>
+                            <span class="text-blue-600 font-medium break-all">{{ $supplier->website }}</span>
                         @else
                             <div class="text-gray-400">—</div>
                         @endif
@@ -269,7 +268,7 @@
                             <tr>
                                 <th class="p-2">Product</th>
                                 <th class="p-2">Price</th>
-                                <th class="p-2">Discount</th>
+                                <th class="p-2">Qty</th> {{-- 💡 UPDATE: Discount wenuwata Qty --}}
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -277,7 +276,7 @@
                                 <tr>
                                     <td class="p-2 font-medium text-gray-800">{{ $product->product_name }}</td>
                                     <td class="p-2">Rs. {{ number_format($product->pivot->price, 2) }}</td>
-                                    <td class="p-2">{{ $product->pivot->discount ?? 0 }}%</td>
+                                    <td class="p-2 font-bold">{{ $product->pivot->qty ?? 0 }}</td> {{-- 💡 UPDATE: Show Qty --}}
                                 </tr>
                             @empty
                                 <tr>

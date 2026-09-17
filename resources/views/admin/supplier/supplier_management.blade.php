@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShaloTrack Admin - Supplier Management</title>
-
     @vite(['resources/css/app.css','resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="{ sidebarOpen: false }">
 
 <div class="flex h-screen overflow-hidden">
-
     @include('partials.sidebars.admin')
 
     <div class="flex-1 flex flex-col overflow-y-auto">
@@ -35,241 +33,42 @@
                 </div>
             @endif
 
-            {{-- ===================== SEARCH SUPPLIERS (TOP) ===================== --}}
+            {{-- COMMON DATALIST FOR PRODUCTS --}}
+            <datalist id="existing-products">
+                @foreach($allProducts as $p)
+                    <option value="{{ $p->product_name }}"></option>
+                @endforeach
+            </datalist>
+
+            {{-- ===================== SEARCH SUPPLIERS ===================== --}}
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
                     Search Suppliers
                 </div>
-                <form method="GET" action="{{ route('admin.suppliers') }}"
-                      class="p-5 flex flex-col md:flex-row gap-3 text-xs font-semibold text-gray-700">
-                    <input type="text" name="search" value="{{ $search ?? '' }}"
-                           placeholder="Search by name, email, phone, or country..."
-                           class="flex-1 rounded-lg border-gray-300 h-9 shadow-sm">
+                <form method="GET" action="{{ route('admin.suppliers') }}" class="p-5 flex flex-col md:flex-row gap-3 text-xs font-semibold text-gray-700">
+                    <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Search by name, email, phone..." class="flex-1 rounded-lg border-gray-300 h-9 shadow-sm">
                     <select name="status" class="w-full md:w-40 rounded-lg border-gray-300 h-9 shadow-sm">
-                        <option value="" {{ ($status ?? '') === '' ? 'selected' : '' }}>All Statuses</option>
+                        <option value="">All Statuses</option>
                         <option value="Active" {{ ($status ?? '') === 'Active' ? 'selected' : '' }}>Active</option>
                         <option value="Inactive" {{ ($status ?? '') === 'Inactive' ? 'selected' : '' }}>Inactive</option>
                     </select>
-                    <button type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-5 h-9 rounded-lg font-bold shadow-sm">
-                        Search
-                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 h-9 rounded-lg font-bold shadow-sm">Search</button>
                     @if(($search ?? '') !== '' || ($status ?? '') !== '')
-                        <a href="{{ route('admin.suppliers') }}"
-                           class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 h-9 flex items-center rounded-lg font-bold shadow-sm">
-                            Clear
-                        </a>
+                        <a href="{{ route('admin.suppliers') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 h-9 flex items-center rounded-lg font-bold shadow-sm">Clear</a>
                     @endif
                 </form>
             </div>
 
-            {{-- ===================== SEARCH RESULTS ===================== --}}
-@if(($search ?? '') !== '' || ($status ?? '') !== '')
-
-    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-
-        <div class="px-5 py-3 border-b border-gray-100 bg-blue-50 font-bold text-gray-800 text-sm">
-            Search Results
-
-            <span class="text-gray-500 font-normal ml-2">
-                ({{ $allSuppliers->count() }} result{{ $allSuppliers->count() == 1 ? '' : 's' }})
-            </span>
-        </div>
-
-        <div class="p-5">
-
-            <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
-
-                <table class="w-full text-left border-collapse">
-
-                    <thead class="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th class="p-3">Supplier Name</th>
-                            <th class="p-3">Country</th>
-                            <th class="p-3">Phone Number</th>
-                            <th class="p-3">Email</th>
-                            <th class="p-3">Status</th>
-                            <th class="p-3">Products</th>
-                            <th class="p-3">Actions</th>
-                        </tr>
-                    </thead>
-
-                    <tbody class="divide-y divide-gray-200 bg-white">
-
-                        @forelse($searchResults  as $supplier)
-
-                            <tr class="hover:bg-gray-50 transition">
-
-                                <td class="p-3">
-                                    {{ $supplier->name }}
-                                </td>
-
-                                <td class="p-3">
-                                    {{ ucfirst($supplier->country ?? '-') }}
-                                </td>
-
-                                <td class="p-3">
-                                    {{ $supplier->phone_number ?? '-' }}
-                                </td>
-
-                                <td class="p-3">
-                                    {{ $supplier->email ?? '-' }}
-                                </td>
-
-                                <td class="p-3">
-
-                                    @if($supplier->status === 'Active')
-
-                                        <span class="px-2 py-1 rounded-full
-                                                     bg-green-50 text-green-700
-                                                     border border-green-200
-                                                     text-[10px] font-bold">
-                                            Active
-                                        </span>
-
-                                    @else
-
-                                        <span class="px-2 py-1 rounded-full
-                                                     bg-gray-100 text-gray-500
-                                                     border border-gray-200
-                                                     text-[10px] font-bold">
-                                            Inactive
-                                        </span>
-
-                                    @endif
-
-                                </td>
-
-                                <td class="p-3">
-                                    {{ $supplier->products_count }}
-                                </td>
-
-                                <td class="p-3">
-
-                                    <div class="flex flex-wrap gap-1.5">
-
-                                        {{-- Full Profile --}}
-                                        <a href="{{ route('admin.supplier.profile.show', $supplier->id) }}"
-                                           class="px-3 py-1 rounded-lg bg-cyan-600 text-white
-                                                  text-[11px] font-bold hover:bg-cyan-700">
-                                            View Profile
-                                        </a>
-
-                                        {{-- Edit / View (inline panel) --}}
-                                        <a href="{{ route('admin.suppliers', ['supplier_id' => $supplier->id]) }}"
-                                           class="px-3 py-1 rounded-lg bg-gray-800 text-white
-                                                  text-[11px] font-bold hover:bg-gray-900">
-
-                                            Edit / View
-
-                                        </a>
-
-
-                                        {{-- Activate / Deactivate --}}
-                                        <form
-                                            action="{{ route('admin.suppliers.toggle-status', $supplier->id) }}"
-                                            method="POST"
-                                            onsubmit="return confirm('{{ $supplier->status === 'Active' ? 'Deactivate' : 'Activate' }} {{ $supplier->name }}?');">
-
-                                            @csrf
-                                            @method('PATCH')
-
-                                            @if($supplier->status === 'Active')
-
-                                                <button
-                                                    type="submit"
-                                                    class="px-3 py-1 rounded-lg
-                                                           bg-red-50 text-red-700
-                                                           border border-red-200
-                                                           hover:bg-red-100
-                                                           text-[11px] font-bold">
-
-                                                    Deactivate
-
-                                                </button>
-
-                                            @else
-
-                                                <button
-                                                    type="submit"
-                                                    class="px-3 py-1 rounded-lg
-                                                           bg-green-50 text-green-700
-                                                           border border-green-200
-                                                           hover:bg-green-100
-                                                           text-[11px] font-bold">
-
-                                                    Activate
-
-                                                </button>
-
-                                            @endif
-
-                                        </form>
-
-
-                                        {{-- Invoice --}}
-                                        <a href="{{ route('admin.supplier-invoice', ['supplier_id' => $supplier->id]) }}"
-                                           class="px-3 py-1 rounded-lg
-                                                  bg-blue-50 text-blue-700
-                                                  border border-blue-200
-                                                  hover:bg-blue-100
-                                                  text-[11px] font-bold">
-
-                                            Invoices
-
-                                        </a>
-
-                                    </div>
-
-                                </td>
-
-                            </tr>
-
-                        @empty
-
-                            <tr>
-                                <td colspan="7"
-                                    class="p-6 text-center text-gray-400">
-
-                                    No suppliers match your search.
-
-                                </td>
-                            </tr>
-
-                        @endforelse
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </div>
-
-    </div>
-
-@endif
-
-            {{-- ===================== 1. ADD SUPPLIER FORM ===================== --}}
+            {{-- ===================== ADD SUPPLIER FORM (MOVED UP) ===================== --}}
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
                     Add Supplier Form
                 </div>
-                <form method="POST" action="{{ route('admin.suppliers.store') }}"
-                      class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-gray-700">
+                <form method="POST" action="{{ route('admin.suppliers.store') }}" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-gray-700">
                     @csrf
-                    <div>
-                        <label class="block mb-1">Supplier Name</label>
-                        <input type="text" name="supplier_name" required class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                    </div>
-                    <div>
-                        <label class="block mb-1">Phone Number</label>
-                        <input type="text" name="phone_number" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                    </div>
-                    <div>
-                        <label class="block mb-1">Email ID</label>
-                        <input type="email" name="email_id" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                    </div>
+                    <div><label class="block mb-1">Supplier Name</label><input type="text" name="supplier_name" required class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div><label class="block mb-1">Phone Number</label><input type="text" name="phone_number" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div><label class="block mb-1">Email ID</label><input type="email" name="email_id" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
                     <div>
                         <label class="block mb-1">Country</label>
                         <select name="country" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
@@ -277,36 +76,61 @@
                             <option value="srilanka">Sri Lanka</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block mb-1">State</label>
-                        <select name="state" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                            <option value="">--Select--</option>
-                        </select>
+                    <div><label class="block mb-1">State</label><input type="text" name="state" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div><label class="block mb-1">Website (if any)</label><input type="text" name="website" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div class="md:col-span-2"><label class="block mb-1">Tax / VAT Reg. No.</label><input type="text" name="gstin" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                    <div class="md:col-span-2"><label class="block mb-1">Address</label><textarea name="address" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm"></textarea></div>
+
+                    {{-- DYNAMIC PRODUCTS IN ADD FORM --}}
+                    <div class="md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-200 mt-2" 
+                         x-data="{
+                             products: [{ id: Date.now(), product_name: '', price: '', qty: '' }],
+                             addProduct() { this.products.push({ id: Date.now(), product_name: '', price: '', qty: '' }); },
+                             removeProduct(index) { if(this.products.length > 1) { this.products.splice(index, 1); } }
+                         }">
+                        <h4 class="font-bold mb-3 text-gray-700">Assign Products</h4>
+                        <template x-for="(item, index) in products" :key="item.id">
+                            <div class="flex flex-wrap md:flex-nowrap gap-2 items-end mb-3">
+                                <div class="flex-1 w-full">
+                                    <label class="block mb-1 text-[10px]">Product Name</label>
+                                    <input type="text" list="existing-products" required x-model="item.product_name" :name="`products[${index}][product_name]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="Select or type new product...">
+                                </div>
+                                <div class="w-1/4 md:w-28">
+                                    <label class="block mb-1 text-[10px]">Unit Price</label>
+                                    <input type="number" step="0.01" min="0" x-model="item.price" :name="`products[${index}][price]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0.00">
+                                </div>
+                                <div class="w-1/4 md:w-24">
+                                    <label class="block mb-1 text-[10px]">Qty</label>
+                                    <input type="number" step="1" min="0" x-model="item.qty" :name="`products[${index}][qty]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0">
+                                </div>
+                                <div class="w-1/4 md:w-32">
+                                    <label class="block mb-1 text-[10px] text-gray-500">Total Price</label>
+                                    <div class="h-9 px-3 flex items-center bg-gray-200 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 overflow-hidden">
+                                        Rs. <span x-text="( (item.price || 0) * (item.qty || 0) ).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})" class="ml-1"></span>
+                                    </div>
+                                </div>
+                                <button type="button" @click="removeProduct(index)" class="bg-red-50 text-red-600 h-9 px-3 rounded-lg border border-red-200 w-auto font-bold hover:bg-red-100">X</button>
+                            </div>
+                        </template>
+                        <button type="button" @click="addProduct" class="text-xs text-blue-600 font-bold mt-1">+ Add Another Product</button>
                     </div>
-                    <div>
-                        <label class="block mb-1">Website (if any)</label>
-                        <input type="text" name="website" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                    </div>
-                    <div>
-                        <label class="block mb-1">Tax / VAT Reg. No. <span class="text-gray-400 font-normal">(GSTIN, if applicable)</span></label>
-                        <input type="text" name="gstin" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="block mb-1">Address</label>
-                        <textarea name="address" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm"></textarea>
-                    </div>
-                    <div class="md:col-span-2 flex gap-2 pt-1">
+
+                    <div class="md:col-span-2 flex gap-2 pt-2 border-t border-gray-100">
                         <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-bold shadow-sm">Reset</button>
                         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-sm">Save Supplier</button>
                     </div>
                 </form>
             </div>
 
-            {{-- ===================== 2. ALL SUPPLIERS ===================== --}}
-            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            {{-- ===================== SEARCH RESULTS / ALL SUPPLIERS (MOVED DOWN) ===================== --}}
+            @php $displaySuppliers = ($search !== '' || $status !== '') ? $searchResults : $allSuppliers; @endphp
+            
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-10">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
-                    All Suppliers
+                    {{ ($search !== '' || $status !== '') ? 'Search Results' : 'All Suppliers' }}
+                    <span class="text-gray-500 font-normal ml-2">({{ $displaySuppliers->count() }} result{{ $displaySuppliers->count() == 1 ? '' : 's' }})</span>
                 </div>
+
                 <div class="p-5">
                     <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
                         <table class="w-full text-left border-collapse">
@@ -322,8 +146,8 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 bg-white">
-                                @forelse($allSuppliers  as $supplier)
-                                    <tr class="hover:bg-gray-50 transition {{ $selectedSupplier?->id === $supplier->id ? 'bg-blue-50' : '' }}">
+                                @forelse($displaySuppliers as $supplier)
+                                    <tr class="hover:bg-gray-50 transition" x-data="{ editModalOpen: false }">
                                         <td class="p-3">{{ $supplier->name }}</td>
                                         <td class="p-3">{{ ucfirst($supplier->country ?? '-') }}</td>
                                         <td class="p-3">{{ $supplier->phone_number ?? '-' }}</td>
@@ -338,272 +162,118 @@
                                         <td class="p-3">{{ $supplier->products_count }}</td>
                                         <td class="p-3">
                                             <div class="flex flex-wrap gap-1.5">
-                                                <a href="{{ route('admin.supplier.profile.show', $supplier->id) }}"
-                                                   class="px-3 py-1 rounded-lg bg-cyan-600 text-white text-[11px] font-bold hover:bg-cyan-700">
-                                                    View Profile
-                                                </a>
-                                                <a href="{{ route('admin.suppliers', ['supplier_id' => $supplier->id]) }}"
-                                                   class="px-3 py-1 rounded-lg bg-gray-800 text-white text-[11px] font-bold hover:bg-gray-900">
-                                                    Edit / View
-                                                </a>
-                                                <form action="{{ route('admin.suppliers.toggle-status', $supplier->id) }}" method="POST"
-                                                      onsubmit="return confirm('{{ $supplier->status === 'Active' ? 'Deactivate' : 'Activate' }} {{ $supplier->name }}?');">
+                                                <a href="{{ route('admin.supplier.profile.show', $supplier->id) }}" class="px-3 py-1 rounded-lg bg-cyan-600 text-white text-[11px] font-bold hover:bg-cyan-700">View Profile</a>
+                                                
+                                                <button type="button" @click="editModalOpen = true" class="px-3 py-1 rounded-lg bg-gray-800 text-white text-[11px] font-bold hover:bg-gray-900 cursor-pointer">Edit</button>
+
+                                                <form action="{{ route('admin.suppliers.toggle-status', $supplier->id) }}" method="POST" onsubmit="return confirm('{{ $supplier->status === 'Active' ? 'Deactivate' : 'Activate' }} {{ $supplier->name }}?');">
                                                     @csrf
                                                     @method('PATCH')
                                                     @if($supplier->status === 'Active')
-                                                        <button type="submit" class="px-3 py-1 rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-[11px] font-bold">
-                                                            Deactivate
-                                                        </button>
+                                                        <button type="submit" class="px-3 py-1 rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-[11px] font-bold">Deactivate</button>
                                                     @else
-                                                        <button type="submit" class="px-3 py-1 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-[11px] font-bold">
-                                                            Activate
-                                                        </button>
+                                                        <button type="submit" class="px-3 py-1 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-[11px] font-bold">Activate</button>
                                                     @endif
                                                 </form>
-                                                <a href="{{ route('admin.supplier-invoice', ['supplier_id' => $supplier->id]) }}"
-                                                   class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-[11px] font-bold">
-                                                    Invoices
-                                                </a>
+
+                                                <a href="{{ route('admin.supplier-invoice', ['supplier_id' => $supplier->id]) }}" class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-[11px] font-bold">Invoices</a>
+                                            </div>
+
+                                            {{-- ===================== EDIT SUPPLIER MODAL ===================== --}}
+                                            <div x-show="editModalOpen" x-cloak style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                                                <div @click.away="editModalOpen = false" class="bg-white rounded-2xl shadow-xl w-full max-w-4xl mx-4 overflow-hidden text-left">
+                                                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                                                        <h3 class="font-bold text-gray-800 text-sm">Edit Supplier — {{ $supplier->name }}</h3>
+                                                        <button type="button" @click="editModalOpen = false" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                                                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                        </button>
+                                                    </div>
+                                                    <div class="p-5 max-h-[80vh] overflow-y-auto">
+                                                        <form method="POST" action="{{ route('admin.suppliers.update', $supplier->id) }}" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-gray-700">
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <div><label class="block mb-1">Supplier Name</label><input type="text" name="supplier_name" required value="{{ $supplier->name }}" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                                                            <div><label class="block mb-1">Phone Number</label><input type="text" name="phone_number" value="{{ $supplier->phone_number }}" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                                                            <div><label class="block mb-1">Email ID</label><input type="email" name="email_id" value="{{ $supplier->email }}" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                                                            <div>
+                                                                <label class="block mb-1">Country</label>
+                                                                <select name="country" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                                                                    <option value="" {{ !$supplier->country ? 'selected' : '' }}>--Select--</option>
+                                                                    <option value="srilanka" {{ $supplier->country === 'srilanka' ? 'selected' : '' }}>Sri Lanka</option>
+                                                                </select>
+                                                            </div>
+                                                            <div><label class="block mb-1">State</label><input type="text" name="state" value="{{ $supplier->state }}" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                                                            <div><label class="block mb-1">Website (if any)</label><input type="text" name="website" value="{{ $supplier->website }}" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                                                            <div class="md:col-span-2"><label class="block mb-1">Tax / VAT Reg. No.</label><input type="text" name="gstin" value="{{ $supplier->gstin_number }}" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
+                                                            <div class="md:col-span-2"><label class="block mb-1">Address</label><textarea name="address" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm">{{ $supplier->address }}</textarea></div>
+                                                            
+                                                            {{-- DYNAMIC PRODUCTS IN EDIT FORM --}}
+                                                            @php
+                                                                $editProducts = $supplier->products->map(function($p) {
+                                                                    return [
+                                                                        'id' => rand(100000, 999999), 
+                                                                        'product_name' => $p->product_name,
+                                                                        'price' => $p->pivot->price,
+                                                                        'qty' => $p->pivot->qty ?? 0
+                                                                    ];
+                                                                })->values()->toArray();
+                                                            @endphp
+
+                                                            <div class="md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-200 mt-2" 
+                                                                 x-data="{
+                                                                     products: {{ json_encode($editProducts) }},
+                                                                     init() { if (this.products.length === 0) this.addProduct(); },
+                                                                     addProduct() { this.products.push({ id: Date.now(), product_name: '', price: '', qty: '' }); },
+                                                                     removeProduct(index) { this.products.splice(index, 1); }
+                                                                 }">
+                                                                <h4 class="font-bold mb-3 text-gray-700">Assign Products</h4>
+                                                                <template x-for="(item, index) in products" :key="item.id">
+                                                                    <div class="flex flex-wrap md:flex-nowrap gap-2 items-end mb-3">
+                                                                        <div class="flex-1 w-full">
+                                                                            <label class="block mb-1 text-[10px]">Product Name</label>
+                                                                            <input type="text" list="existing-products" required x-model="item.product_name" :name="`products[${index}][product_name]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="Select or type new product...">
+                                                                        </div>
+                                                                        <div class="w-1/4 md:w-28">
+                                                                            <label class="block mb-1 text-[10px]">Unit Price</label>
+                                                                            <input type="number" step="0.01" min="0" x-model="item.price" :name="`products[${index}][price]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0.00">
+                                                                        </div>
+                                                                        <div class="w-1/4 md:w-24">
+                                                                            <label class="block mb-1 text-[10px]">Qty</label>
+                                                                            <input type="number" step="1" min="0" x-model="item.qty" :name="`products[${index}][qty]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0">
+                                                                        </div>
+                                                                        <div class="w-1/4 md:w-32">
+                                                                            <label class="block mb-1 text-[10px] text-gray-500">Total Price</label>
+                                                                            <div class="h-9 px-3 flex items-center bg-gray-200 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 overflow-hidden">
+                                                                                Rs. <span x-text="( (item.price || 0) * (item.qty || 0) ).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})" class="ml-1"></span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button type="button" @click="removeProduct(index)" class="bg-red-50 text-red-600 h-9 px-3 rounded-lg border border-red-200 w-auto font-bold hover:bg-red-100">X</button>
+                                                                    </div>
+                                                                </template>
+                                                                <button type="button" @click="addProduct" class="text-xs text-blue-600 font-bold mt-1">+ Add Another Product</button>
+                                                            </div>
+
+                                                            <div class="md:col-span-2 flex justify-end gap-2 pt-2 border-t border-gray-100">
+                                                                <button type="button" @click="editModalOpen = false" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-bold shadow-sm cursor-pointer">Cancel</button>
+                                                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-sm">Save Changes</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="7" class="p-6 text-center text-gray-400">
-                                        @if(($search ?? '') !== '' || ($status ?? '') !== '')
-                                            No suppliers match your search.
-                                        @else
-                                            No suppliers yet.
-                                        @endif
-                                    </td></tr>
+                                    <tr><td colspan="7" class="p-6 text-center text-gray-400">No suppliers found.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-        
-            @if($selectedSupplier)
-
-                {{-- ===================== 3. SUPPLIER OVERVIEW & EDIT ===================== --}}
-                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm flex items-center justify-between">
-                        <span>Supplier Details — {{ $selectedSupplier->name }}</span>
-                        @if($selectedSupplier->status === 'Active')
-                            <span class="px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold">Active</span>
-                        @else
-                            <span class="px-2 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-bold">Inactive</span>
-                        @endif
-                    </div>
-                    <form method="POST" action="{{ route('admin.suppliers.update', $selectedSupplier->id) }}"
-                          class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-gray-700">
-                        @csrf
-                        @method('PUT')
-                        <div>
-                            <label class="block mb-1">Supplier Name</label>
-                            <input type="text" name="supplier_name" required
-                                   value="{{ old('supplier_name', $selectedSupplier->name) }}"
-                                   class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                        </div>
-                        <div>
-                            <label class="block mb-1">Phone Number</label>
-                            <input type="text" name="phone_number"
-                                   value="{{ old('phone_number', $selectedSupplier->phone_number) }}"
-                                   class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                        </div>
-                        <div>
-                            <label class="block mb-1">Email ID</label>
-                            <input type="email" name="email_id"
-                                   value="{{ old('email_id', $selectedSupplier->email) }}"
-                                   class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                        </div>
-                        <div>
-                            <label class="block mb-1">Country</label>
-                            <select name="country" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                                <option value="" {{ !$selectedSupplier->country ? 'selected' : '' }}>--Select--</option>
-                                <option value="srilanka" {{ $selectedSupplier->country === 'srilanka' ? 'selected' : '' }}>Sri Lanka</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block mb-1">State</label>
-                            <input type="text" name="state"
-                                   value="{{ old('state', $selectedSupplier->state) }}"
-                                   class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                        </div>
-                        <div>
-                            <label class="block mb-1">Website (if any)</label>
-                            <input type="text" name="website"
-                                   value="{{ old('website', $selectedSupplier->website) }}"
-                                   class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                        </div>
-                        <div>
-                            <label class="block mb-1">Tax / VAT Reg. No. <span class="text-gray-400 font-normal">(GSTIN, if applicable)</span></label>
-                            <input type="text" name="gstin"
-                                   value="{{ old('gstin', $selectedSupplier->gstin_number) }}"
-                                   class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block mb-1">Address</label>
-                            <textarea name="address" rows="2"
-                                      class="w-full rounded-lg border-gray-300 shadow-sm">{{ old('address', $selectedSupplier->address) }}</textarea>
-                        </div>
-                        <div class="md:col-span-2 flex gap-2 pt-1">
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-sm">
-                                Save Changes
-                            </button>
-                            <a href="{{ route('admin.suppliers') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-bold shadow-sm flex items-center">
-                                Close
-                            </a>
-                        </div>
-                    </form>
-                </div>
-
-                {{-- ===================== 4. SELECTED SUPPLIER PRODUCTS ===================== --}}
-                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
-                        Selected Supplier Products
-                        <span class="font-normal text-gray-400">— {{ $selectedSupplier->name }}</span>
-                    </div>
-                    <div class="p-5">
-                        <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th class="p-3">Product</th>
-                                        <th class="p-3">Price</th>
-                                        <th class="p-3">Discount</th>
-                                        <th class="p-3"></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 bg-white">
-                                    @forelse($selectedProducts as $product)
-                                        <tr class="hover:bg-gray-50 transition">
-                                            <td class="p-3">{{ $product->product_name }}</td>
-                                            <td class="p-3">{{ number_format($product->pivot->price, 2) }}</td>
-                                            <td class="p-3">{{ number_format($product->pivot->discount, 2) }}</td>
-                                            <td class="p-3">
-                                                <form action="{{ route('admin.suppliers.detach-product', [$selectedSupplier->id, $product->id]) }}"
-                                                      method="POST"
-                                                      onsubmit="return confirm('Remove {{ $product->product_name }} from {{ $selectedSupplier->name }}?');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit"
-                                                            class="px-3 py-1 rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-[11px] font-bold">
-                                                        Remove
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr><td colspan="4" class="p-6 text-center text-gray-400">No products added for this supplier yet.</td></tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- ===================== 5. SUPPLY / STOCK HISTORY ===================== --}}
-                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
-                        Supply / Stock History
-                        <span class="font-normal text-gray-400">— {{ $selectedSupplier->name }}</span>
-                    </div>
-                    <div class="p-5">
-                        <p class="text-[11px] text-gray-400 mb-3">
-                            Unit price and total amount aren't tracked in the stock table yet — showing what's actually recorded.
-                        </p>
-                        <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th class="p-3">Date</th>
-                                        <th class="p-3">Device Type</th>
-                                        <th class="p-3">Quantity Received</th>
-                                        <th class="p-3">Unit Price</th>
-                                        <th class="p-3">Total Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 bg-white">
-                                    @forelse($stockHistory as $stock)
-                                        <tr class="hover:bg-gray-50 transition">
-                                            <td class="p-3">{{ optional($stock->created_at)->format('d M Y') }}</td>
-                                            <td class="p-3">
-                                                {{ $stock->deviceType->device_category ?? '-' }}
-                                                @if($stock->deviceType?->model)
-                                                    <span class="text-gray-400">— {{ $stock->deviceType->model }}</span>
-                                                @endif
-                                            </td>
-                                            <td class="p-3">{{ $stock->stock_in }}</td>
-                                            <td class="p-3 text-gray-400">Not tracked</td>
-                                            <td class="p-3 text-gray-400">Not tracked</td>
-                                        </tr>
-                                    @empty
-                                        <tr><td colspan="5" class="p-6 text-center text-gray-400">No stock has been received from this supplier yet.</td></tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- ===================== 6. ALL PRODUCTS ===================== --}}
-                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">
-                        All Products
-                    </div>
-                    <div class="p-5">
-                        <div class="border border-gray-200 rounded-xl overflow-x-auto text-xs font-semibold text-gray-700">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th class="p-3">Product</th>
-                                        <th class="p-3">Price</th>
-                                        <th class="p-3">Discount</th>
-                                        <th class="p-3"></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 bg-white">
-                                    @forelse($availableProducts as $product)
-                                        @php($formId = 'attach-form-'.$product->id)
-                                        <tr class="hover:bg-gray-50 transition">
-                                            <td class="p-3">{{ $product->product_name }}</td>
-                                            <td class="p-3">
-                                                <form id="{{ $formId }}"
-                                                      action="{{ route('admin.suppliers.attach-product', $selectedSupplier->id) }}"
-                                                      method="POST">
-                                                    @csrf
-                                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                                    <input type="number" step="0.01" min="0" name="price" required
-                                                           placeholder="Price"
-                                                           class="w-24 rounded-lg border-gray-300 text-[11px] shadow-sm">
-                                                </form>
-                                            </td>
-                                            <td class="p-3">
-                                                <input type="number" step="0.01" min="0" name="discount" form="{{ $formId }}"
-                                                       placeholder="Discount"
-                                                       class="w-24 rounded-lg border-gray-300 text-[11px] shadow-sm">
-                                            </td>
-                                            <td class="p-3">
-                                                <button type="submit" form="{{ $formId }}"
-                                                        class="px-3 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-700">
-                                                    Add
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr><td colspan="4" class="p-6 text-center text-gray-400">All products are already added for this supplier.</td></tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-            @endif
 
         </main>
     </div>
 </div>
-
 </body>
 </html>

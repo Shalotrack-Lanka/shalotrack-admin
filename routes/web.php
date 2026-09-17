@@ -53,7 +53,6 @@ use App\Http\Controllers\Admin\Stock\CurrentStockController;
 use App\Http\Controllers\Admin\Stock\SoldDeviceReportController;
 use App\Http\Controllers\Admin\Stock\AddFaultyDeviceController;
 
-
 use App\Http\Controllers\Admin\Vehicles\VehicleDetailsController;
 use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
 use App\Http\Controllers\Admin\Vehicles\DeviceCommandController;
