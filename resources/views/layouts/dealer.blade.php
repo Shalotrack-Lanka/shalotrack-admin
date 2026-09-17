@@ -76,7 +76,7 @@
                 Dashboard
             </a>
 
-            <!-- CUSTOMERS -->
+            <!-- CUSTOMERS DROPDOWN -->
             <div x-data="{open: {{ request()->is('dealer/customers*') ? 'true' : 'false' }} }">
                 <button
                     @click="open=!open"
@@ -94,25 +94,36 @@
                 <div x-show="open" class="ml-5 text-sm mt-1 space-y-1">
                     <a href="{{ route('dealer.customers.index') }}" class="block py-2 px-3 text-white hover:bg-blue-800 rounded-lg transition {{ request()->routeIs('dealer.customers.index') ? 'bg-blue-800' : '' }}">Customer List</a>
                 </div>
-                
-                {{-- Device Command Center Link --}}
-                <a href="{{ route('dealer.device-commands') }}"
-                   class="flex items-center gap-3 px-4 py-2.5 mt-1 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.device-commands') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:bg-blue-800 hover:text-white' }}">
-                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
-                    <span>Device Commands</span>
-                </a>
+            </div>
 
-                {{-- GPS Tracking Link --}}
-                <a href="{{ route('dealer.gps-tracking') }}"
-                   class="flex items-center gap-3 px-4 py-2.5 mt-1 text-xs font-bold rounded-xl transition {{ request()->routeIs('dealer.gps-tracking') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:bg-blue-800 hover:text-white' }}">
-                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <!-- TRACKING DROPDOWN (Aluthin add karapu eka) -->
+            <div x-data="{open: {{ request()->routeIs('dealer.device-commands') || request()->routeIs('dealer.gps-tracking') ? 'true' : 'false' }} }" class="mt-1">
+                <button
+                    @click="open=!open"
+                    class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
+                    
+                    <span>Tracking </span>
+                    <svg :class="open ? 'rotate-180' : ''"
+                         class="w-4 h-4 transition-transform duration-200"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
-                    <span>GPS Tracking</span>
-                </a>
+
+                </button>
+
+                <div x-show="open" class="ml-5 text-sm mt-1 space-y-1">
+                    {{-- Device Command Center Link --}}
+                    <a href="{{ route('dealer.device-commands') }}"
+                       class="block py-2 px-3 text-white hover:bg-blue-800 rounded-lg transition {{ request()->routeIs('dealer.device-commands') ? 'bg-blue-800' : '' }}">
+                        Device Commands
+                    </a>
+
+                    {{-- GPS Tracking Link --}}
+                    <a href="{{ route('dealer.gps-tracking') }}"
+                       class="block py-2 px-3 text-white hover:bg-blue-800 rounded-lg transition {{ request()->routeIs('dealer.gps-tracking') ? 'bg-blue-800' : '' }}">
+                        GPS Tracking
+                    </a>
+                </div>
             </div>
 
         </nav>

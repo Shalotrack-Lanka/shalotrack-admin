@@ -30,7 +30,7 @@
         </a>
 
         <!-- MASTER PAGES -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/master-pages*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -88,7 +88,7 @@
         </div>
 
        <!-- CANCEL REQUESTS -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/cancel-requests*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -126,7 +126,7 @@
         </div>
         
         <!-- CUSTOMER -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/customer*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -164,7 +164,7 @@
         </div>
         
         <!-- VEHICLES -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/vehicles*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -205,7 +205,7 @@
 
 
            <!-- DEALERS -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/dealers*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -241,7 +241,7 @@
 
 
               <!-- SUPPLIERS -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/suppliers*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -280,7 +280,7 @@
 
 
          <!-- STOCK MANAGEMENT -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/stock*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -314,13 +314,13 @@
         </div>
 
         <!-- COMPLAINS & ENQUIRIES -->
-        <div x-data="{open:false}">
+        <div x-data="{ open: {{ request()->is('admin/complains*') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
                 class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
 
-                <span>Complains</span>
+                <span>Complains & Enquiries</span>
 
                 <svg :class="open ? 'rotate-180' : ''"
                      class="w-4 h-4 transition-transform duration-200"
