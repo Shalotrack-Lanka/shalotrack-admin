@@ -314,41 +314,41 @@
         </div>
 
         <!-- COMPLAINS & ENQUIRIES -->
-<div x-data="{ open: {{ request()->is('admin/complaints*') ? 'true' : 'false' }} }">
-    <button
-        @click="open=!open"
-        class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
-        
-        <div class="flex items-center space-x-2">
-            <span>Complains</span>
-            
-            <!-- Count එක 0 ට වඩා වැඩි නම් පමණක් Badge එක පෙන්වීම -->
-            @if(isset($complaintsCount) && $complaintsCount > 0)
-                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                    {{ $complaintsCount }}
-                </span>
-            @endif
-        </div>
+            <div x-data="{ open: {{ request()->is('admin/complaints*') ? 'true' : 'false' }} }">
+                <button
+                    @click="open=!open"
+                    class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
+                    
+                    <div class="flex items-center space-x-2">
+                        <span>Complains</span>
+                        
+                        <!-- Count එක 0 ට වඩා වැඩි නම් පමණක් Badge එක පෙන්වීම -->
+                        @if(isset($complaintsCount) && $complaintsCount > 0)
+                            <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                                {{ $complaintsCount }}
+                            </span>
+                        @endif
+                    </div>
 
-        <svg :class="open ? 'rotate-180' : ''"
-             class="w-4 h-4 transition-transform duration-200"
-             fill="none"
-             stroke="currentColor"
-             viewBox="0 0 24 24">
-            <path stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"/>
-        </svg>
-    </button>
+                    <svg :class="open ? 'rotate-180' : ''"
+                        class="w-4 h-4 transition-transform duration-200"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
 
-    <div x-show="open" class="ml-5 text-sm" style="display: none;">
-        <!--<a href="{{ route('admin.troubleshoot') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.troubleshoot') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Troubleshoot</a>-->
-        <a href="{{ route('admin.complaints.index') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.complaints.*') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">View Complains</a>
-        <!--<a href="{{ route('admin.feedback') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.feedback') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Feedbacks</a>-->
-        <!--<a href="{{ route('admin.device-replace-request') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.device-replace-request') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Device Replace Requests</a>-->
-    </div>
-</div>
+                <div x-show="open" class="ml-5 text-sm" style="display: none;">
+                    <!--<a href="{{ route('admin.troubleshoot') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.troubleshoot') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Troubleshoot</a>-->
+                    <a href="{{ route('admin.complaints.index') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.complaints.*') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">View Complains</a>
+                    <!--<a href="{{ route('admin.feedback') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.feedback') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Feedbacks</a>-->
+                    <!--<a href="{{ route('admin.device-replace-request') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.device-replace-request') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Device Replace Requests</a>-->
+                </div>
+            </div>
 
         {{-- ACTIVATION MANAGEMENT — hidden from sidebar for now, routes/controllers still exist and work if linked to directly
         <div x-data="{open:false}">
