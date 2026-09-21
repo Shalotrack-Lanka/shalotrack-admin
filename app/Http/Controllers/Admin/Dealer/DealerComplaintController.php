@@ -70,15 +70,16 @@ class DealerComplaintController extends Controller
             return back()->withErrors(['dealer' => 'Dealer profile not found.']);
         }
 
-        $response = Http::timeout(10)
+        $response = \Illuminate\Support\Facades\Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/escalate?dealerId={$dealer->id}");
 
-        if (!$response->successful()) {
-            return back()->withErrors(['escalate' => 'Could not escalate this complaint. Please try again.']);
-        }
-
         \Illuminate\Support\Facades\Cache::forget('dealer_complaints_count_' . $dealer->id);
+
+        if (!$response->successful()) {
+            // සැබෑ C# API Error එක ස්ක්‍රීන් එකේ පෙන්වන්න
+            return back()->withErrors(['escalate' => 'API Error (' . $response->status() . '): ' . $response->body()]);
+        }
 
         return back()->with('success', 'Complaint transferred to ShaloTrack support.');
     }

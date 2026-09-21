@@ -23,23 +23,15 @@ class AdminComplaintController extends Controller
         abort_unless(auth()->user()?->role === 'ADMIN', 403, 'You are not authorized to access this area.');
     }
 
-    public function index()
+   public function index()
     {
         $response = \Illuminate\Support\Facades\Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
 
-        // මුලින්ම API එකෙන් එන ඔක්කොම complaints ගන්නවා
-        $allComplaints = $response->successful() ? ($response->json('data') ?? []) : [];
-
-        // Admin ට පෙන්විය යුතු ඒවා පමණක් පෙරීම (Filter කිරීම)
-        $complaints = array_filter($allComplaints, function ($c) {
-            $status = strtolower($c['status'] ?? '');
-            
-            // 'escalated' හෝ 'with admin' යන තත්ත්වයේ ඇති ඒවා පමණක් Admin ට පෙන්වන්න
-            // (ඔබේ API එකෙන් එවන status එක අනුව මේ නම් දෙක වෙනස් කරගන්න)
-            return in_array($status, ['escalated', 'with admin']); 
-        });
+        // අර අපි දාපු dd() කේතය දැන් ඉවත් කර ඇත. 
+        // API එකෙන් එන 'data' ඇතුළේ තියෙන පැමිණිලි 6ම (සියල්ලම) කෙලින්ම View එකට යවයි.
+        $complaints = $response->successful() ? ($response->json('data') ?? []) : [];
 
         if (!$response->successful()) {
             \Log::warning('Admin complaints fetch failed', ['status' => $response->status()]);
@@ -47,6 +39,7 @@ class AdminComplaintController extends Controller
 
         return view('admin.complaints.index', compact('complaints'));
     }
+
     public function reply(Request $request, string $complaintId)
     {
         $request->validate(['message' => 'required|string|max:2000']);
