@@ -66,6 +66,8 @@ class AdminComplaintController extends Controller
             return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
         }
 
+        \Illuminate\Support\Facades\Cache::forget('admin_complaints_count');
+
         return back()->with('success', 'Complaint marked as resolved.');
     }
 
@@ -78,6 +80,8 @@ class AdminComplaintController extends Controller
         if (!$response->successful()) {
             return back()->withErrors(['close' => 'Could not close this complaint. Please try again.']);
         }
+
+        \Illuminate\Support\Facades\Cache::forget('admin_complaints_count');
 
         return back()->with('success', 'Complaint closed.');
     }

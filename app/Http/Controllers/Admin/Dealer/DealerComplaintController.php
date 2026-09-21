@@ -77,6 +77,8 @@ class DealerComplaintController extends Controller
             return back()->withErrors(['escalate' => 'Could not escalate this complaint. Please try again.']);
         }
 
+        \Illuminate\Support\Facades\Cache::forget('dealer_complaints_count_' . $dealer->id);
+
         return back()->with('success', 'Complaint transferred to ShaloTrack support.');
     }
 
@@ -98,6 +100,8 @@ class DealerComplaintController extends Controller
             return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
         }
 
+        \Illuminate\Support\Facades\Cache::forget('dealer_complaints_count_' . $dealer->id);
+
         return back()->with('success', 'Complaint marked as resolved.');
     }
 
@@ -115,6 +119,8 @@ class DealerComplaintController extends Controller
         if (!$response->successful()) {
             return back()->withErrors(['close' => 'Could not close this complaint. Please try again.']);
         }
+
+        \Illuminate\Support\Facades\Cache::forget('dealer_complaints_count_' . $dealer->id);
 
         return back()->with('success', 'Complaint closed.');
     }
