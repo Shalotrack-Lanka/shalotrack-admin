@@ -35,7 +35,6 @@ use App\Http\Controllers\Admin\Dealer\DealerComplaintController;
 // namespace (the Dealer Portal, not Admin's dealer-management area).
 use App\Http\Controllers\Admin\Dealer\DealerDashboardController;
 
-
 use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 use App\Http\Controllers\Admin\Customer\CustomerDeviceManagementController;
 
@@ -476,6 +475,9 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     Route::get('/complaints', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'index'])->name('complaints');
     Route::post('/complaints/{complaintId}/reply', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'reply'])->name('complaints.reply');
     Route::post('/complaints/{complaintId}/escalate', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'escalate'])->name('complaints.escalate');
+
+    Route::post('/complaints/{complaintId}/resolve', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'resolve'])->name('complaints.resolve');
+    Route::post('/complaints/{complaintId}/close', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'close'])->name('complaints.close');
 });
 
 
