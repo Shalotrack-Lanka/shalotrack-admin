@@ -41,13 +41,16 @@ class AppServiceProvider extends ServiceProvider
 
                     if ($response->successful()) {
                         $complaints = $response->json('data') ?? [];
-                        // Resolved හෝ Closed නොවන පැමිණිලි ගණන පමණක් ගණනය කිරීම
+                        
+                        // මෙතනදිත් Admin ට අදාළ ඒවා පමණක් පෙරීම
                         $unresolved = array_filter($complaints, function ($c) {
-                            return isset($c['status']) && !in_array(strtolower($c['status']), ['resolved', 'closed']);
+                            $status = strtolower($c['status'] ?? '');
+                            // Admin ට අයිති, නමුත් විසඳලා නැති (Resolved/Closed නොවන) ඒවා
+                            return in_array($status, ['escalated', 'with admin']);
                         });
                         return count($unresolved);
                     }
-                    return 0; // API එක Fail වුවහොත් 0 පෙන්වයි
+                    return 0;
                 });
 
                 $view->with('complaintsCount', $adminCount);

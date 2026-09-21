@@ -296,6 +296,8 @@ Route::prefix('admin/complaints')->group(function () {
     Route::post('/{complaintId}/reply', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'reply'])->name('admin.complaints.reply');
     Route::post('/{complaintId}/resolve', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'resolve'])->name('admin.complaints.resolve');
     Route::post('/{complaintId}/close', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'close'])->name('admin.complaints.close');
+
+    Route::get('/check-new', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'checkNew'])->name('admin.complaints.check-new');
 });
 
 
@@ -478,6 +480,8 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
 
     Route::post('/complaints/{complaintId}/resolve', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'resolve'])->name('complaints.resolve');
     Route::post('/complaints/{complaintId}/close', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'close'])->name('complaints.close');
+
+    Route::get('/complaints/check-new', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'checkNew'])->name('complaints.check-new');
 });
 
 
