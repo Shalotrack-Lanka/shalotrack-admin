@@ -26,15 +26,14 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 
-    public function boot()
+   public function boot(): void
     {
-        
+        // Admin Sidebar එක සඳහා
         View::composer('partials.sidebars.admin', function ($view) {
-            // if the user is logged in and has the role of ADMIN, fetch the complaints count
             if (auth()->check() && auth()->user()->role === 'ADMIN') {
                 
-                // Cache මගින් විනාඩි 5ක් count එක තබා ගනී (API එකට අනවශ්‍ය load එකක් නොයෑමට)
-                $adminCount = Cache::remember('admin_complaints_count', 300, function () {
+                // තත්පර 1ක Cache එකක් දැමීම (මෙහි 1 යනු තත්පර 1යි)
+                $adminCount = Cache::remember('admin_complaints_count', 1, function () {
                     $response = Http::timeout(5)
                         ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
                         ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
@@ -42,12 +41,11 @@ class AppServiceProvider extends ServiceProvider
                     if ($response->successful()) {
                         $complaints = $response->json('data') ?? [];
                         
-                        // මෙතනදිත් Admin ට අදාළ ඒවා පමණක් පෙරීම
                         $unresolved = array_filter($complaints, function ($c) {
-                            $status = strtolower($c['status'] ?? '');
-                            // Admin ට අයිති, නමුත් විසඳලා නැති (Resolved/Closed නොවන) ඒවා
+                            $status = strtolower($c['status'] ?? $c['Status'] ?? $c['state'] ?? '');
                             return in_array($status, ['escalated', 'with admin']);
                         });
+                        
                         return count($unresolved);
                     }
                     return 0;
@@ -57,9 +55,9 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        // Dealer Sidebar එක සඳහා (View name එක හරියටම දෙන්න)
+        // Dealer Sidebar එක සඳහා
         View::composer('layouts.dealer', function ($view) {
-            if (auth()->check() && auth()->user()->role === 'DEALER') { // Role එක Dealer නම්
+            if (auth()->check() && auth()->user()->role === 'DEALER') {
                 
                 $user = auth()->user();
                 $dealer = $user->dealer ?? (Dealer::find($user->dealer_id) ?? null);
@@ -67,16 +65,20 @@ class AppServiceProvider extends ServiceProvider
                 if ($dealer) {
                     $dealerCacheKey = 'dealer_complaints_count_' . $dealer->id;
                     
-                    $dealerCount = Cache::remember($dealerCacheKey, 300, function () use ($dealer) {
+                    // තත්පර 1ක Cache එකක් දැමීම
+                    $dealerCount = Cache::remember($dealerCacheKey, 1, function () use ($dealer) {
                         $response = Http::timeout(5)
                             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
                             ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
 
                         if ($response->successful()) {
                             $complaints = $response->json('data') ?? [];
+                            
                             $unresolved = array_filter($complaints, function ($c) {
-                                return isset($c['status']) && !in_array(strtolower($c['status']), ['resolved', 'closed']);
+                                $status = strtolower($c['status'] ?? $c['Status'] ?? $c['state'] ?? '');
+                                return !in_array($status, ['resolved', 'closed']);
                             });
+                            
                             return count($unresolved);
                         }
                         return 0;
