@@ -48,6 +48,11 @@ class DealerComplaintController extends Controller
                 'message' => $request->input('message'),
                 'authorType' => 1, // Dealer -- must match ComplaintReplyAuthorType.Dealer on the API side
                 'authorName' => $dealer->full_name,
+                // NEW -- lets the API verify this complaint is actually
+                // this dealer's own before applying the reply, closing an
+                // IDOR that previously let any dealer act on any
+                // complaintId with no ownership check at all.
+                'dealerId' => $dealer->id,
             ]);
 
         if (!$response->successful()) {
@@ -59,14 +64,67 @@ class DealerComplaintController extends Controller
 
     public function escalate(string $complaintId)
     {
+        $dealer = $this->currentDealer();
+        if (!$dealer) {
+            return back()->withErrors(['dealer' => 'Dealer profile not found.']);
+        }
+
         $response = Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/escalate");
+            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/escalate?dealerId={$dealer->id}");
 
         if (!$response->successful()) {
             return back()->withErrors(['escalate' => 'Could not escalate this complaint. Please try again.']);
         }
 
         return back()->with('success', 'Complaint transferred to ShaloTrack support.');
+    }
+
+    // NEW -- lets a dealer close out a complaint they solved themselves,
+    // instead of it sitting in "With Dealer" forever with no way to mark
+    // it done (previously only Admin could resolve/close at all).
+    public function resolve(string $complaintId)
+    {
+        $dealer = $this->currentDealer();
+        if (!$dealer) {
+            return back()->withErrors(['dealer' => 'Dealer profile not found.']);
+        }
+
+        $response = Http::timeout(10)
+            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/resolve?dealerId={$dealer->id}");
+
+        if (!$response->successful()) {
+            return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
+        }
+
+        return back()->with('success', 'Complaint marked as resolved.');
+    }
+
+    public function close(string $complaintId)
+    {
+        $dealer = $this->currentDealer();
+        if (!$dealer) {
+            return back()->withErrors(['dealer' => 'Dealer profile not found.']);
+        }
+
+        $response = Http::timeout(10)
+            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/close?dealerId={$dealer->id}");
+
+        if (!$response->successful()) {
+            return back()->withErrors(['close' => 'Could not close this complaint. Please try again.']);
+        }
+
+        return back()->with('success', 'Complaint closed.');
+    }
+
+    // NEW -- small helper, same dealer-resolution logic that was
+    // previously duplicated inline in index()/reply(); resolve()/close()
+    // reuse it too rather than a third copy-paste.
+    private function currentDealer(): ?Dealer
+    {
+        $user = auth()->user();
+        return $user->dealer ?? (Dealer::find($user->dealer_id) ?? null);
     }
 }

@@ -8,6 +8,20 @@ use Illuminate\Support\Facades\Http;
 
 class AdminComplaintController extends Controller
 {
+    // NEW -- these routes previously sat behind the generic 'auth'
+    // middleware only, with nothing checking that the logged-in user was
+    // actually an Admin. Any authenticated portal user (Dealer, Finance,
+    // Technician, Supplier) could resolve/close/reply to complaints by
+    // hitting these URLs directly. This app has no role-based route
+    // middleware anywhere yet, so a full reusable role gate is a bigger,
+    // separate piece of work -- this is a scoped fix for this controller
+    // only, matching the roles already used elsewhere in this app
+    // (routes/web.php's home-redirect match on 'ADMIN', 'DEALER', etc).
+    public function __construct()
+    {
+        abort_unless(auth()->user()?->role === 'ADMIN', 403, 'You are not authorized to access this area.');
+    }
+
     public function index()
     {
         $response = Http::timeout(10)
