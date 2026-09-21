@@ -62,6 +62,7 @@ class DealerComplaintController extends Controller
         return back()->with('success', 'Reply sent.');
     }
 
+    
     public function escalate(string $complaintId)
     {
         $dealer = $this->currentDealer();
