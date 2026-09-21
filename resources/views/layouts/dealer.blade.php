@@ -331,7 +331,6 @@
 <audio id="notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
 <script>
-    // නොටිෆිකේෂන් එක පෙන්වන Function එක
     function showToast(customMessage) {
         const toast = document.getElementById('custom-toast');
         const sound = document.getElementById('notification-sound');
@@ -341,41 +340,44 @@
             messageEl.innerText = customMessage;
         }
 
-        // Sound එක Play කිරීම ('ටින්' ශබ්දය)
-        sound.currentTime = 0; // පරණ තත්ත්වය මකා මුල සිට ප්ලේ කිරීමට
-        sound.play().catch(error => {
-            console.log("Browser audio autoplay restriction: ", error);
-        });
+        // Sound එක Play කිරීම
+        if(sound) {
+            sound.currentTime = 0;
+            sound.play().catch(error => {
+                console.log("Audio play blocked by browser policy until user clicks page: ", error);
+            });
+        }
 
-        // Box එක පහළට ස්ලයිඩ කර පෙන්වීම
-        toast.classList.remove('translate-y-[-200%]');
-        toast.classList.add('translate-y-0');
+        // Box එක පෙන්වීම
+        if(toast) {
+            toast.classList.remove('translate-y-[-200%]');
+            toast.classList.add('translate-y-0');
 
-        // තත්පර 6 කින් එය ස්වයංක්‍රීයව වැසී යාම (ඔබට අවශ්‍ය නම් ඉවත් කළ හැක)
-        setTimeout(() => {
-            hideToast();
-        }, 6000);
+            setTimeout(() => {
+                hideToast();
+            }, 6000);
+        }
     }
 
-    // නොටිෆිකේෂන් එක වසන Function එක (X බොත්තම එබූ විට)
     function hideToast() {
         const toast = document.getElementById('custom-toast');
-        toast.classList.remove('translate-y-0');
-        toast.classList.add('translate-y-[-200%]');
+        if(toast) {
+            toast.classList.remove('translate-y-0');
+            toast.classList.add('translate-y-[-200%]');
+        }
     }
 
+    // සෑම තත්පර 15 කට වරක්ම ඩීලර් කෙනෙකුට අලුත් complain එකක් ඇවිදැයි බැලීම
     setInterval(() => {
-        fetch('/admin/check-new-complaints') 
+        fetch('/dealer/check-new-complaints')
             .then(res => res.json())
             .then(data => {
                 if(data.has_new) {
-                    showToast("New complain received!");
+                    showToast("අලුත් Complain එකක් ලැබި ඇත!");
                 }
             })
-            .catch(err => console.error(err));
+            .catch(err => console.error("Notification check error:", err));
     }, 15000);
-
-    // උදාහරණයක් ලෙස පරීක්ෂා කර බැලීමට අවශ්‍ය නම් Browser console එකේ showToast("New Message!") ලෙස ටයිප් කළ හැක.
 </script>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
