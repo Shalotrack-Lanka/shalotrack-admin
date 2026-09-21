@@ -62,7 +62,7 @@ class DealerComplaintController extends Controller
         return back()->with('success', 'Reply sent.');
     }
 
-    
+
     public function escalate(string $complaintId)
     {
         $dealer = $this->currentDealer();
@@ -133,5 +133,46 @@ class DealerComplaintController extends Controller
     {
         $user = auth()->user();
         return $user->dealer ?? (Dealer::find($user->dealer_id) ?? null);
+    }
+
+    public function checkNewComplaints()
+    {
+        $user = auth()->user();
+        $dealer = $user->dealer ?? (Dealer::find($user->dealer_id) ?? null);
+
+        if (!$dealer) {
+            return response()->json(['has_new' => false]);
+        }
+
+        $response = Http::timeout(5)
+            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+            ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
+
+        $hasNew = false;
+
+        if ($response->successful()) {
+            $complaints = $response->json('data') ?? [];
+            
+            $unresolved = array_filter($complaints, function ($c) {
+                $status = strtolower($c['status'] ?? $c['Status'] ?? $c['state'] ?? '');
+                return !in_array($status, ['resolved', 'closed']);
+            });
+
+            $currentCount = count($unresolved);
+            
+            // Session එකේ පරණ count එක ගන්නවා
+            $sessionKey = 'dealer_last_count_' . $dealer->id;
+            $lastCount = session($sessionKey, $currentCount);
+
+            // දැනට තියෙන ගාන පරණ එකට වඩා වැඩි නම් අලුත් එකක් ඇවිත්!
+            if ($currentCount > $lastCount) {
+                $hasNew = true;
+            }
+
+            // අලුත් ගාන session එකේ save කරනවා
+            session([$sessionKey => $currentCount]);
+        }
+
+        return response()->json(['has_new' => $hasNew]);
     }
 }

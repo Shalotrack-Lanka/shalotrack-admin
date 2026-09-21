@@ -39,6 +39,7 @@
     }
 @endphp
 
+
 <!-- x-data added to manage sidebar state -->
 <div x-data="{ sidebarOpen: false }" class="flex h-screen overflow-hidden">
 
@@ -305,6 +306,79 @@
     </div>
 
 </div>
+
+<!-- Transparent Apple-style Notification Toast Box (Initially Hidden) -->
+<div id="custom-toast" class="fixed top-5 right-5 z-50 transform translate-y-[-200%] transition-all duration-300 ease-in-out">
+    <div class="flex items-center p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-2xl space-x-3.5 w-80">
+        <div class="flex-shrink-0 bg-blue-500 text-white p-2.5 rounded-full shadow-md">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">ShaloTrack Alert</h4>
+            <p id="toast-message" class="text-sm font-medium text-gray-900 dark:text-white">New complaint received!</p>
+        </div>
+        <button onclick="hideToast()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<!-- Apple-like 'tinnnn' Sound Audio Element -->
+<audio id="notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+<script>
+    function showToast(customMessage) {
+        const toast = document.getElementById('custom-toast');
+        const sound = document.getElementById('notification-sound');
+        const messageEl = document.getElementById('toast-message');
+
+        if(customMessage) {
+            messageEl.innerText = customMessage;
+        }
+
+        // Sound එක Play කිරීම
+        if(sound) {
+            sound.currentTime = 0;
+            sound.play().catch(error => {
+                console.log("Audio play blocked by browser policy until user clicks page: ", error);
+            });
+        }
+
+        // Box එක පෙන්වීම
+        if(toast) {
+            toast.classList.remove('translate-y-[-200%]');
+            toast.classList.add('translate-y-0');
+
+            setTimeout(() => {
+                hideToast();
+            }, 6000);
+        }
+    }
+
+    function hideToast() {
+        const toast = document.getElementById('custom-toast');
+        if(toast) {
+            toast.classList.remove('translate-y-0');
+            toast.classList.add('translate-y-[-200%]');
+        }
+    }
+
+    // සෑම තත්පර 15 කට වරක්ම ඩීලර් කෙනෙකුට අලුත් complain එකක් ඇවිදැයි බැලීම
+    setInterval(() => {
+        fetch('/dealer/check-new-complaints')
+            .then(res => res.json())
+            .then(data => {
+                if(data.has_new) {
+                    showToast("අලුත් Complain එකක් ලැබި ඇත!");
+                }
+            })
+            .catch(err => console.error("Notification check error:", err));
+    }, 15000);
+</script>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 

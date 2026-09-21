@@ -17,7 +17,7 @@ class AdminComplaintController extends Controller
     // separate piece of work -- this is a scoped fix for this controller
     // only, matching the roles already used elsewhere in this app
     // (routes/web.php's home-redirect match on 'ADMIN', 'DEALER', etc).
-    
+
     public function __construct()
     {
         abort_unless(auth()->user()?->role === 'ADMIN', 403, 'You are not authorized to access this area.');
@@ -25,11 +25,21 @@ class AdminComplaintController extends Controller
 
     public function index()
     {
-        $response = Http::timeout(10)
+        $response = \Illuminate\Support\Facades\Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
 
-        $complaints = $response->successful() ? ($response->json('data') ?? []) : [];
+        // මුලින්ම API එකෙන් එන ඔක්කොම complaints ගන්නවා
+        $allComplaints = $response->successful() ? ($response->json('data') ?? []) : [];
+
+        // Admin ට පෙන්විය යුතු ඒවා පමණක් පෙරීම (Filter කිරීම)
+        $complaints = array_filter($allComplaints, function ($c) {
+            $status = strtolower($c['status'] ?? '');
+            
+            // 'escalated' හෝ 'with admin' යන තත්ත්වයේ ඇති ඒවා පමණක් Admin ට පෙන්වන්න
+            // (ඔබේ API එකෙන් එවන status එක අනුව මේ නම් දෙක වෙනස් කරගන්න)
+            return in_array($status, ['escalated', 'with admin']); 
+        });
 
         if (!$response->successful()) {
             \Log::warning('Admin complaints fetch failed', ['status' => $response->status()]);
@@ -37,7 +47,6 @@ class AdminComplaintController extends Controller
 
         return view('admin.complaints.index', compact('complaints'));
     }
-
     public function reply(Request $request, string $complaintId)
     {
         $request->validate(['message' => 'required|string|max:2000']);
@@ -85,5 +94,41 @@ class AdminComplaintController extends Controller
         \Illuminate\Support\Facades\Cache::forget('admin_complaints_count');
 
         return back()->with('success', 'Complaint closed.');
+    }
+
+    public function checkNew()
+    {
+        // API එකෙන් දත්ත ලබා ගැනීම
+        $response = \Illuminate\Support\Facades\Http::timeout(5)
+            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+
+        $hasNew = false;
+
+        if ($response->successful()) {
+            $complaints = $response->json('data') ?? [];
+            $unresolved = array_filter($complaints, function ($c) {
+                return isset($c['status']) && !in_array(strtolower($c['status']), ['resolved', 'closed']);
+            });
+            
+            $currentCount = count($unresolved);
+            
+            // Session එකේ තියෙන පරණ Count එක ගන්නවා (නැත්නම් දැනට තියෙන ගාන ගන්නවා)
+            $lastCount = session('last_complaints_count', $currentCount);
+
+            // දැනට තියෙන ගාන පරණ ගානට වඩා වැඩි නම්, අලුත් එකක් ඇවිත්!
+            if ($currentCount > $lastCount) {
+                $hasNew = true;
+                
+                // Sidebar එකේ Count එකත් අලුත් වෙන්න Cache එක මකනවා
+                \Illuminate\Support\Facades\Cache::forget('admin_complaints_count');
+            }
+            
+            // අලුත් Count එක Session එකේ සේව් කරනවා
+            session(['last_complaints_count' => $currentCount]);
+        }
+
+        // ප්‍රතිඵලය JavaScript එකට යවනවා
+        return response()->json(['has_new' => $hasNew]);
     }
 }
