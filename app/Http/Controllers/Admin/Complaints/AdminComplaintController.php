@@ -17,6 +17,7 @@ class AdminComplaintController extends Controller
     // separate piece of work -- this is a scoped fix for this controller
     // only, matching the roles already used elsewhere in this app
     // (routes/web.php's home-redirect match on 'ADMIN', 'DEALER', etc).
+    
     public function __construct()
     {
         abort_unless(auth()->user()?->role === 'ADMIN', 403, 'You are not authorized to access this area.');
@@ -66,6 +67,8 @@ class AdminComplaintController extends Controller
             return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
         }
 
+        \Illuminate\Support\Facades\Cache::forget('admin_complaints_count');
+
         return back()->with('success', 'Complaint marked as resolved.');
     }
 
@@ -78,6 +81,8 @@ class AdminComplaintController extends Controller
         if (!$response->successful()) {
             return back()->withErrors(['close' => 'Could not close this complaint. Please try again.']);
         }
+
+        \Illuminate\Support\Facades\Cache::forget('admin_complaints_count');
 
         return back()->with('success', 'Complaint closed.');
     }
