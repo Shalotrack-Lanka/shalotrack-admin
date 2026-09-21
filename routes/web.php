@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\Dealer\DealerAccountController;
 use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
+use App\Http\Controllers\Admin\Dealer\DealerComplaintController;
 
 // FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
 // that doesn't exist — the real one lives in a separate top-level Dealer
@@ -280,7 +281,7 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
     Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
     
-    // Admin-facing: dedicated full profile page for a specific dealer.
+    // Admin-facing: dedicated full profile page for a specific dealer
     Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
     Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
     Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
@@ -474,6 +475,9 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     Route::get('/complaints', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'index'])->name('complaints');
     Route::post('/complaints/{complaintId}/reply', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'reply'])->name('complaints.reply');
     Route::post('/complaints/{complaintId}/escalate', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'escalate'])->name('complaints.escalate');
+
+    Route::post('/complaints/{complaintId}/resolve', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'resolve'])->name('complaints.resolve');
+    Route::post('/complaints/{complaintId}/close', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'close'])->name('complaints.close');
 });
 
 

@@ -83,6 +83,23 @@
                                 class="text-xs font-black text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50">
                             Reply
                         </button>
+                        {{-- NEW: previously a dealer had no way to close out a
+                             complaint they solved themselves -- only Admin
+                             could resolve/close, so a solved complaint sat
+                             here forever. --}}
+                        <form method="POST" action="{{ route('dealer.complaints.resolve', $complaint['complaintId']) }}">
+                            @csrf
+                            <button type="submit" class="text-xs font-black text-green-700 px-3 py-1.5 rounded-lg border border-green-200 hover:bg-green-50">
+                                Mark Resolved
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('dealer.complaints.close', $complaint['complaintId']) }}">
+                            @csrf
+                            <button type="submit" class="text-xs font-black text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50"
+                                    onclick="return confirm('Close this complaint?')">
+                                Close
+                            </button>
+                        </form>
                         <form method="POST" action="{{ route('dealer.complaints.escalate', $complaint['complaintId']) }}">
                             @csrf
                             <button type="submit" class="text-xs font-black text-red-700 px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50"
