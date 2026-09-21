@@ -291,7 +291,7 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');
 
         // NEW -- lets a dealer close out a complaint they solved themselves.
-    Route::get('/complaints', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'index'])->name('complaints');
+    Route::get('/complaints', [DealerComplaintController::class, 'index'])->name('complaints');
     Route::post('/complaints/{complaintId}/reply', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'reply'])->name('complaints.reply');
     Route::post('/complaints/{complaintId}/escalate', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'escalate'])->name('complaints.escalate');
     // NEW -- lets a dealer close out a complaint they solved themselves.
