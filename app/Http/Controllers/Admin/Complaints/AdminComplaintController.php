@@ -96,7 +96,7 @@ class AdminComplaintController extends Controller
         return back()->with('success', 'Complaint closed.');
     }
 
-    public function checkNew()
+   public function checkNew()
     {
         // API එකෙන් දත්ත ලබා ගැනීම
         $response = \Illuminate\Support\Facades\Http::timeout(5)
@@ -107,25 +107,25 @@ class AdminComplaintController extends Controller
 
         if ($response->successful()) {
             $complaints = $response->json('data') ?? [];
+            
+            // නිවැරදි කිරීම: Admin ට අදාළ පැමිණිලි (Transfer කරපු ඒවා) පමණක් වෙන් කිරීම
             $unresolved = array_filter($complaints, function ($c) {
-                return isset($c['status']) && !in_array(strtolower($c['status']), ['resolved', 'closed']);
+                $status = strtolower($c['status'] ?? $c['Status'] ?? $c['state'] ?? '');
+                return in_array($status, ['escalated', 'with admin']); // Admin ට අයිති ඒවා පමණයි
             });
             
             $currentCount = count($unresolved);
             
-            // Session එකේ තියෙන පරණ Count එක ගන්නවා (නැත්නම් දැනට තියෙන ගාන ගන්නවා)
-            $lastCount = session('last_complaints_count', $currentCount);
+            // Session එකේ තියෙන පරණ Count එක ගන්නවා
+            $lastCount = session('last_admin_complaints_count', $currentCount);
 
-            // දැනට තියෙන ගාන පරණ ගානට වඩා වැඩි නම්, අලුත් එකක් ඇවිත්!
+            // දැනට තියෙන ගාන පරණ ගානට වඩා වැඩි නම්, අලුත් එකක් (හෝ Transfer කරපු එකක්) ඇවිත්!
             if ($currentCount > $lastCount) {
                 $hasNew = true;
-                
-                // Sidebar එකේ Count එකත් අලුත් වෙන්න Cache එක මකනවා
-                \Illuminate\Support\Facades\Cache::forget('admin_complaints_count');
             }
             
             // අලුත් Count එක Session එකේ සේව් කරනවා
-            session(['last_complaints_count' => $currentCount]);
+            session(['last_admin_complaints_count' => $currentCount]);
         }
 
         // ප්‍රතිඵලය JavaScript එකට යවනවා
