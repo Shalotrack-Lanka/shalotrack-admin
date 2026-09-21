@@ -129,10 +129,18 @@
             {{-- NEW: Complaints link -- route/controller/view already existed
      (dealer.complaints, DealerComplaintController, dealer/complaints
      view) but nothing in this sidebar ever linked to them. --}}
-<a href="{{ route('dealer.complaints') }}"
-   class="block p-3 mt-1 text-white hover:bg-blue-900 rounded transition {{ request()->routeIs('dealer.complaints') ? 'bg-blue-900 font-semibold' : '' }}">
-    Complaints
-</a>
+            <a href="{{ route('dealer.complaints') }}" class="flex items-center justify-between p-3 text-white hover:bg-blue-900 rounded {{ request()->routeIs('dealer.complaints*') ? 'bg-blue-900' : '' }}">
+                <div class="flex items-center space-x-2">
+                    <span>Complains</span>
+
+                    <!-- Show badge if there are unresolved complaints -->
+                    @if(isset($complaintsCount) && $complaintsCount > 0)
+                        <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                            {{ $complaintsCount }}
+                        </span>
+                    @endif
+                </div>
+            </a>
 
         </nav>
 
