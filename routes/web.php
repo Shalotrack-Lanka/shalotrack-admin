@@ -292,7 +292,7 @@ Route::prefix('admin/dealer')->group(function () {
 
         // NEW -- lets a dealer close out a complaint they solved themselves.
     Route::get('/complaints', [DealerComplaintController::class, 'index'])->name('complaints');
-    Route::post('/complaints/{complaintId}/reply', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'reply'])->name('complaints.reply');
+    Route::post('/complaints/{complaintId}/reply', [DealerComplaintController::class, 'reply'])->name('complaints.reply');
     Route::post('/complaints/{complaintId}/escalate', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'escalate'])->name('complaints.escalate');
     // NEW -- lets a dealer close out a complaint they solved themselves.
     Route::post('/complaints/{complaintId}/resolve', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'resolve'])->name('complaints.resolve');
