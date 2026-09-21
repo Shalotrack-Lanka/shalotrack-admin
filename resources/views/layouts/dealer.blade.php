@@ -126,6 +126,14 @@
                 </div>
             </div>
 
+            {{-- NEW: Complaints link -- route/controller/view already existed
+     (dealer.complaints, DealerComplaintController, dealer/complaints
+     view) but nothing in this sidebar ever linked to them. --}}
+<a href="{{ route('dealer.complaints') }}"
+   class="block p-3 mt-1 text-white hover:bg-blue-900 rounded transition {{ request()->routeIs('dealer.complaints') ? 'bg-blue-900 font-semibold' : '' }}">
+    Complaints
+</a>
+
         </nav>
 
     </aside>
