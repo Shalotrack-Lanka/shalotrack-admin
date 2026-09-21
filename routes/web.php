@@ -282,7 +282,7 @@ Route::prefix('admin/dealer')->group(function () {
     Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
     Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
     
-    // Admin-facing: dedicated full profile page for a specific dealer.
+    // Admin-facing: dedicated full profile page for a specific dealer
     Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
     Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
     Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
