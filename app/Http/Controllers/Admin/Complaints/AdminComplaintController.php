@@ -17,6 +17,7 @@ class AdminComplaintController extends Controller
     // separate piece of work -- this is a scoped fix for this controller
     // only, matching the roles already used elsewhere in this app
     // (routes/web.php's home-redirect match on 'ADMIN', 'DEALER', etc).
+    
     public function __construct()
     {
         abort_unless(auth()->user()?->role === 'ADMIN', 403, 'You are not authorized to access this area.');
