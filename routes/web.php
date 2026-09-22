@@ -132,10 +132,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/device-types/import-template', [AddDeviceTypeController::class, 'downloadImportTemplate'])->name('admin.device-types.import-template');
         Route::post('/device-types/import', [AddDeviceTypeController::class, 'importDeviceTypes'])->name('admin.device-types.import');
 
-        //stock transfer 
+        //stock transfer
         Route::get('/stock-transfer', [StockTransferController::class, 'index'])->name('admin.stock_transfer');
         Route::post('/stock-transfer', [StockTransferController::class, 'store'])->name('admin.stock_transfer.store');
-        
+
         Route::put('/stock-transfer/{ledger}', [StockTransferController::class, 'update'])->name('admin.stock_transfer.update');
         Route::delete('/stock-transfer/{ledger}', [StockTransferController::class, 'destroy'])->name('admin.stock_transfer.destroy');
         Route::get('/stock-transfer/{ledger}/edit-data', [StockTransferController::class, 'editData'])->name('admin.stock_transfer.edit-data');
@@ -179,7 +179,7 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('admin/cancel-requests')->group(function () {
-        
+
         // Cancel Device
         Route::get('/cancel-device', [CancelDeviceController::class, 'index'])->name('admin.cancel-device');
         Route::patch('/cancel-device/{device}', [CancelDeviceController::class, 'update'])->name('admin.cancel-device.update');
@@ -280,7 +280,7 @@ Route::prefix('admin/dealer')->group(function () {
     // Dealer Profile
     Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
     Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
-    
+
     // Admin-facing: dedicated full profile page for a specific dealer
     Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
     Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
@@ -297,7 +297,11 @@ Route::prefix('admin/complaints')->group(function () {
     Route::post('/{complaintId}/resolve', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'resolve'])->name('admin.complaints.resolve');
     Route::post('/{complaintId}/close', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'close'])->name('admin.complaints.close');
 
+    // Polls for new complaints escalated from dealers (complaint count by ID set).
     Route::get('/check-new', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'checkNew'])->name('admin.complaints.check-new');
+
+    // Polls for new replies from dealers/customers on open complaints.
+    Route::get('/check-new-replies', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'checkNewReplies'])->name('admin.complaints.check-new-replies');
 });
 
 
@@ -401,11 +405,11 @@ Route::prefix('admin/activations')->middleware('auth')->group(function () {
     Route::get('/activation-report',
         [ActivationReportController::class,'index'])
         ->name('admin.activation-report');
-    
+
     Route::get('/customer-document-upload',
         [CustomerDocumentUploadController::class,'index'])
         ->name('admin.customer-document-upload');
-    
+
 
 });
 
@@ -479,15 +483,18 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
 
     Route::get('/gps-tracking', [GpsTrackingController::class, 'dealerIndex'])->name('gps-tracking');
 
-    Route::get('/complaints', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'index'])->name('complaints');
-    Route::post('/complaints/{complaintId}/reply', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'reply'])->name('complaints.reply');
-    Route::post('/complaints/{complaintId}/escalate', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'escalate'])->name('complaints.escalate');
+    Route::get('/complaints', [DealerComplaintController::class, 'index'])->name('complaints');
+    Route::post('/complaints/{complaintId}/reply', [DealerComplaintController::class, 'reply'])->name('complaints.reply');
+    Route::post('/complaints/{complaintId}/escalate', [DealerComplaintController::class, 'escalate'])->name('complaints.escalate');
+    Route::post('/complaints/{complaintId}/resolve', [DealerComplaintController::class, 'resolve'])->name('complaints.resolve');
+    Route::post('/complaints/{complaintId}/close', [DealerComplaintController::class, 'close'])->name('complaints.close');
 
-    Route::post('/complaints/{complaintId}/resolve', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'resolve'])->name('complaints.resolve');
-    Route::post('/complaints/{complaintId}/close', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'close'])->name('complaints.close');
+    // Polls for new complaint threads assigned to this dealer.
+    Route::get('/check-new-complaints', [DealerComplaintController::class, 'checkNewComplaints'])->name('check-new-complaints');
 
-// Dealer සඳහා අලුත් complaints චෙක් කරන Route එක
-Route::get('/check-new-complaints', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'checkNewComplaints'])->name('dealer.check-new-complaints');});
+    // Polls for new admin replies on this dealer's open complaints.
+    Route::get('/check-new-replies', [DealerComplaintController::class, 'checkNewReplies'])->name('check-new-replies');
+});
 
 
 require __DIR__.'/auth.php';

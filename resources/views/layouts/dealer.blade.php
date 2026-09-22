@@ -17,7 +17,7 @@
     if (Auth::check()) {
         $dealerId = Auth::user()->dealer->id ?? Auth::user()->dealer_id ?? null;
     }
-    
+
     $pendingReminders = collect();
     $totalPendingCount = 0;
 
@@ -102,7 +102,7 @@
                 <button
                     @click="open=!open"
                     class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
-                    
+
                     <span>Tracking </span>
                     <svg :class="open ? 'rotate-180' : ''"
                          class="w-4 h-4 transition-transform duration-200"
@@ -173,7 +173,7 @@
                     <button @click="openNotification = !openNotification"
                             @click.outside="openNotification = false"
                             class="relative p-2.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition focus:outline-none cursor-pointer">
-                        
+
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                         </svg>
@@ -192,7 +192,7 @@
                          style="display: none;"
                          x-transition
                          class="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 text-slate-800 overflow-hidden z-50">
-                        
+
                         <div class="bg-[#0B1B3F] px-5 py-3.5 flex items-center justify-between text-white">
                             <div class="flex items-center gap-2">
                                 <span>🔔</span>
@@ -307,12 +307,21 @@
 
 </div>
 
-<!-- Transparent Apple-style Notification Toast Box (Clickable) -->
-<div id="custom-toast" class="fixed top-5 right-5 z-50 transform translate-y-[-200%] transition-all duration-300 ease-in-out">
+{{--
+    Toast: hidden by default via inline style (transform: translateY(-200%)).
+    We DO NOT use Tailwind's arbitrary-value class translate-y-[-200%] for
+    the initial hidden state because classList.remove('translate-y-[-200%]')
+    silently fails in most browsers — the brackets and percent sign cause the
+    string-matching lookup to miss, so the hiding class is never removed and
+    the toast stays invisible even though showToast() is called correctly.
+    Using element.style.transform instead is guaranteed to work.
+--}}
+<div id="custom-toast"
+     class="fixed top-5 right-5 z-50 transition-all duration-300 ease-in-out"
+     style="transform: translateY(-200%);">
     <div class="flex items-center p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-2xl space-x-3.5 w-80 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-        
-        <!-- ක්ලික් කළ හැකි ප්‍රදේශය (Clickable Area) -->
-        <!-- Admin සඳහා නම් පහත ලින්ක් එක {{ route('admin.complaints.index') }} ලෙස වෙනස් කරන්න -->
+
+        <!-- ක්ලික් කළ හැකි ප්‍රදේශය (Dealer Complaints පිටුවට යයි) -->
         <div onclick="window.location.href='{{ route('dealer.complaints') }}'" class="flex items-center flex-1 space-x-3.5 cursor-pointer">
             <div class="flex-shrink-0 bg-blue-500 text-white p-2.5 rounded-full shadow-md">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -341,36 +350,34 @@
     function showToast(customMessage) {
         const toast = document.getElementById('custom-toast');
         const sound = document.getElementById('notification-sound');
-        const messageEl = document.getElementById('toast-message');
+        const msgEl = document.getElementById('toast-message');
 
-        if(customMessage) {
-            messageEl.innerText = customMessage;
+        if (customMessage) {
+            msgEl.innerText = customMessage;
         }
 
-        // Sound එක Play කිරීම
-        if(sound) {
+        if (sound) {
             sound.currentTime = 0;
-            sound.play().catch(error => {
-                console.log("Audio play blocked by browser policy until user clicks page: ", error);
+            sound.play().catch(err => {
+                console.log("Audio blocked until first user interaction:", err);
             });
         }
 
-        // Box එක පෙන්වීම
-        if(toast) {
-            toast.classList.remove('translate-y-[-200%]');
-            toast.classList.add('translate-y-0');
-
-            setTimeout(() => {
-                hideToast();
-            }, 6000);
+        // FIX: use element.style.transform instead of toggling Tailwind
+        // arbitrary-value classes. classList.remove('translate-y-[-200%]')
+        // fails silently because the bracket/percent characters make the
+        // DOMTokenList string lookup miss, leaving both classes on the element
+        // and the hiding transform winning.
+        if (toast) {
+            toast.style.transform = 'translateY(0)';
+            setTimeout(() => hideToast(), 6000);
         }
     }
 
     function hideToast() {
         const toast = document.getElementById('custom-toast');
-        if(toast) {
-            toast.classList.remove('translate-y-0');
-            toast.classList.add('translate-y-[-200%]');
+        if (toast) {
+            toast.style.transform = 'translateY(-200%)';
         }
     }
 
@@ -379,12 +386,26 @@
         fetch('/dealer/check-new-complaints')
             .then(res => res.json())
             .then(data => {
-                if(data.has_new) {
-                    showToast("අලුත් Complain එකක් ලැබި ඇත!");
+                if (data.has_new) {
+                    showToast("You've Received a Complaint!");
                 }
             })
-            .catch(err => console.error("Notification check error:", err));
-    }, 15000);
+            .catch(err => console.error("Dealer complaint notification error:", err));
+    }, 1000);
+
+    // සෑම තත්පර 20 කට වරක්ම Admin reply කළාදැයි බැලීම
+    // (15s interval ට stagger කර ඇති නිසා API hits overlap නොවේ)
+    setInterval(() => {
+        fetch('/dealer/check-new-replies')
+            .then(res => res.json())
+            .then(data => {
+                if (data.has_new_reply) {
+                    const who = data.author_name || 'ShaloTrack Support';
+                    showToast(who + " reply කර ඇත!");
+                }
+            })
+            .catch(err => console.error("Dealer reply notification error:", err));
+    }, 2000);
 </script>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>

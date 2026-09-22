@@ -57,6 +57,7 @@ class AdminComplaintController extends Controller
 
         return view('admin.complaints.index', compact('complaints'));
     }
+
     public function reply(Request $request, string $complaintId)
     {
         $request->validate(['message' => 'required|string|max:2000']);
@@ -106,37 +107,132 @@ class AdminComplaintController extends Controller
         return back()->with('success', 'Complaint closed.');
     }
 
+    /**
+     * FIX: was comparing complaint COUNT stored in session, which fails silently
+     * when a complaint is resolved and a new one arrives in the same polling
+     * window (count stays the same → no notification fires).
+     *
+     * Now stores the full set of complaint IDs in session instead. A notification
+     * fires only when an ID appears that wasn't in the previous snapshot, which
+     * is correct regardless of how many complaints were resolved in between.
+     *
+     * On the very first call the snapshot is seeded with the current IDs so the
+     * admin doesn't get a burst of notifications for everything that already
+     * exists when they first log in.
+     */
     public function checkNew()
     {
-        // API එකෙන් දත්ත ලබා ගැනීම
         $response = \Illuminate\Support\Facades\Http::timeout(5)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
 
-        $hasNew = false;
-
-        if ($response->successful()) {
-            // FIX: same broken string-vs-int status filter as index() above,
-            // removed for the same reason -- /api/internal/complaints/for-admin
-            // already returns only WithAdmin complaints server-side, so
-            // $complaints here doesn't need re-filtering at all.
-            $complaints = $response->json('data') ?? [];
-
-            $currentCount = count($complaints);
-
-            // Session එකේ තියෙන පරණ Count එක ගන්නවා
-            $lastCount = session('last_admin_complaints_count', $currentCount);
-
-            // දැනට තියෙන ගාන පරණ ගානට වඩා වැඩි නම්, අලුත් එකක් (හෝ Transfer කරපු එකක්) ඇවිත්!
-            if ($currentCount > $lastCount) {
-                $hasNew = true;
-            }
-
-            // අලුත් Count එක Session එකේ සේව් කරනවා
-            session(['last_admin_complaints_count' => $currentCount]);
+        if (!$response->successful()) {
+            return response()->json(['has_new' => false]);
         }
 
-        // ප්‍රතිඵලය JavaScript එකට යවනවා
+        $complaints = $response->json('data') ?? [];
+
+        // Extract the current set of complaint IDs from the API response.
+        // /api/internal/complaints/for-admin already filters to WithAdmin only
+        // server-side, so no additional filtering is needed here.
+        $currentIds = array_column($complaints, 'complaintId');
+
+        $storedIds = session('admin_complaint_ids');
+
+        if ($storedIds === null) {
+            // First call this session -- seed so we don't immediately fire
+            // for every existing WithAdmin complaint.
+            session(['admin_complaint_ids' => $currentIds]);
+            return response()->json(['has_new' => false]);
+        }
+
+        // Any ID present now but not in the stored snapshot is a truly new
+        // (or newly escalated) complaint.
+        $newIds = array_diff($currentIds, $storedIds);
+        $hasNew  = count($newIds) > 0;
+
+        // Always update the snapshot -- even when nothing is new, the list
+        // may have shrunk (resolved/closed complaints fall off).
+        session(['admin_complaint_ids' => $currentIds]);
+
         return response()->json(['has_new' => $hasNew]);
+    }
+
+    /**
+     * Notify the admin when someone OTHER than the admin replies to one of
+     * the complaints currently sitting with the admin (WithAdmin status).
+     *
+     * In practice this fires when a dealer adds a follow-up message after
+     * escalating -- authorType 0 = Customer, 1 = Dealer, 2 = Admin. We
+     * notify whenever the new reply is NOT from Admin (i.e. authorType ≠ 2).
+     *
+     * We track reply counts per complaint ID in session rather than a global
+     * total, so a reply on complaint A is not hidden by the admin having just
+     * replied on complaint B.
+     *
+     * On the first call the snapshot is seeded to prevent a burst of stale
+     * notifications on login.
+     */
+    public function checkNewReplies()
+    {
+        $response = \Illuminate\Support\Facades\Http::timeout(5)
+            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+
+        if (!$response->successful()) {
+            return response()->json(['has_new_reply' => false, 'author_name' => null]);
+        }
+
+        $complaints = $response->json('data') ?? [];
+
+        // Build current snapshot: complaintId => total reply count
+        $currentSnapshot = [];
+        foreach ($complaints as $c) {
+            $currentSnapshot[$c['complaintId']] = count($c['replies'] ?? []);
+        }
+
+        $storedSnapshot = session('admin_reply_snapshot');
+
+        if ($storedSnapshot === null) {
+            // First call -- seed to avoid notification burst on login.
+            session(['admin_reply_snapshot' => $currentSnapshot]);
+            return response()->json(['has_new_reply' => false, 'author_name' => null]);
+        }
+
+        $hasNewReply = false;
+        $authorName  = null;
+
+        foreach ($complaints as $c) {
+            $id           = $c['complaintId'];
+            $replies      = $c['replies'] ?? [];
+            $currentCount = count($replies);
+            $storedCount  = $storedSnapshot[$id] ?? 0;
+
+            if ($currentCount > $storedCount) {
+                // New replies arrived on this complaint -- check if any are
+                // from someone other than the admin (authorType ≠ 2).
+                // array_slice from $storedCount gives us only the newly
+                // appended replies, assuming the API returns them in insertion
+                // order (which the C# repository does -- ORDER BY CreatedAt ASC).
+                $newReplies = array_slice($replies, $storedCount);
+                foreach ($newReplies as $reply) {
+                    $authorType = (int) ($reply['authorType'] ?? -1);
+                    if ($authorType !== 2) {
+                        // Dealer or customer replied -- notify admin.
+                        $hasNewReply = true;
+                        $authorName  = $reply['authorName'] ?? null;
+                        break 2; // One notification is enough per poll cycle.
+                    }
+                }
+            }
+        }
+
+        // Update snapshot regardless of whether we found anything new.
+        session(['admin_reply_snapshot' => $currentSnapshot]);
+
+        return response()->json([
+            'has_new_reply' => $hasNewReply,
+            'author_name'   => $authorName,
+        ]);
     }
 }
