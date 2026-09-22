@@ -370,9 +370,14 @@ Route::prefix('admin/complains')->group(function () {
         [TroubleshootController::class,'index'])
         ->name('admin.troubleshoot');
 
-     Route::get('/view-complaints',
-        [ViewComplainsController::class,'index'])
-        ->name('admin.view-complains');
+     // Legacy dead page — superseded by /admin/complaints (AdminComplaintController),
+     // which reads real data from the API. This route/controller/view are pure
+     // static mockup with a hardcoded "no complaints" string and were never wired
+     // to any backend. Redirecting rather than deleting so any old bookmark or
+     // stale link still lands somewhere real instead of silently showing fake data.
+     Route::get('/view-complaints', function () {
+         return redirect()->route('admin.complaints.index', [], 301);
+     })->name('admin.view-complains');
 
      Route::get('/feedback',
         [FeedbackController::class,'index'])
