@@ -152,10 +152,20 @@ class DealerComplaintController extends Controller
 
         if ($response->successful()) {
             $complaints = $response->json('data') ?? [];
-            
+
+            // FIX: was strtolower($c['status']) checked against the WORDS
+            // 'resolved'/'closed'. `status` comes back from the API as a raw
+            // int (no JsonStringEnumConverter on the C# side), so that string
+            // comparison could never match -- meaning !in_array(...) was
+            // ALWAYS true, and every complaint (including ones long since
+            // resolved or closed) was counted as "unresolved" forever. This
+            // is the opposite failure mode from the Admin controller's bug
+            // (inflated count instead of always-zero), same root cause.
+            // ComplaintStatus: WithDealer=0, WithAdmin=1, Resolved=2, Closed=3
+            // -- compare against the real int values instead.
             $unresolved = array_filter($complaints, function ($c) {
-                $status = strtolower($c['status'] ?? $c['Status'] ?? $c['state'] ?? '');
-                return !in_array($status, ['resolved', 'closed']);
+                $status = (int) ($c['status'] ?? -1);
+                return !in_array($status, [2, 3], true);
             });
 
             $currentCount = count($unresolved);
