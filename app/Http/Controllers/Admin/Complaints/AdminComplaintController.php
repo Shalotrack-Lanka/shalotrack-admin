@@ -29,17 +29,27 @@ class AdminComplaintController extends Controller
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
 
-        // මුලින්ම API එකෙන් එන ඔක්කොම complaints ගන්නවා
-        $allComplaints = $response->successful() ? ($response->json('data') ?? []) : [];
-
-        // Admin ට පෙන්විය යුතු ඒවා පමණක් පෙරීම (Filter කිරීම)
-        $complaints = array_filter($allComplaints, function ($c) {
-            $status = strtolower($c['status'] ?? '');
-            
-            // 'escalated' හෝ 'with admin' යන තත්ත්වයේ ඇති ඒවා පමණක් Admin ට පෙන්වන්න
-            // (ඔබේ API එකෙන් එවන status එක අනුව මේ නම් දෙක වෙනස් කරගන්න)
-            return in_array($status, ['escalated', 'with admin']); 
-        });
+        // FIX: this used to re-filter the response with
+        // array_filter(... strtolower($c['status']) in ['escalated','with admin'] ...).
+        // That can never match anything -- the C# API has no
+        // JsonStringEnumConverter configured anywhere, so `status` serializes
+        // as a raw int (ComplaintStatus.WithAdmin = 1), never the word "with
+        // admin". strtolower(1) is "1", which never equals either string in
+        // that list, so every complaint was silently dropped on every request
+        // -- this is why the page always showed 0, regardless of how many
+        // complaints actually had status WithAdmin.
+        //
+        // It was also filtering for a status ("escalated") that doesn't
+        // exist in the C# ComplaintStatus enum at all -- escalation is
+        // recorded via the EscalatedAt timestamp, not a status value.
+        //
+        // The real fix is to delete the filter, not repair it: GetForAdminAsync
+        // on the API side (Repositories/Implementations/ComplaintRepository.cs)
+        // already does `.Where(c => c.Status == ComplaintStatus.WithAdmin)`
+        // server-side, so /api/internal/complaints/for-admin only ever returns
+        // WithAdmin complaints in the first place. Re-filtering here was both
+        // redundant and broken.
+        $complaints = $response->successful() ? ($response->json('data') ?? []) : [];
 
         if (!$response->successful()) {
             \Log::warning('Admin complaints fetch failed', ['status' => $response->status()]);
@@ -96,7 +106,7 @@ class AdminComplaintController extends Controller
         return back()->with('success', 'Complaint closed.');
     }
 
-   public function checkNew()
+    public function checkNew()
     {
         // API එකෙන් දත්ත ලබා ගැනීම
         $response = \Illuminate\Support\Facades\Http::timeout(5)
@@ -106,16 +116,14 @@ class AdminComplaintController extends Controller
         $hasNew = false;
 
         if ($response->successful()) {
+            // FIX: same broken string-vs-int status filter as index() above,
+            // removed for the same reason -- /api/internal/complaints/for-admin
+            // already returns only WithAdmin complaints server-side, so
+            // $complaints here doesn't need re-filtering at all.
             $complaints = $response->json('data') ?? [];
-            
-            // නිවැරදි කිරීම: Admin ට අදාළ පැමිණිලි (Transfer කරපු ඒවා) පමණක් වෙන් කිරීම
-            $unresolved = array_filter($complaints, function ($c) {
-                $status = strtolower($c['status'] ?? $c['Status'] ?? $c['state'] ?? '');
-                return in_array($status, ['escalated', 'with admin']); // Admin ට අයිති ඒවා පමණයි
-            });
-            
-            $currentCount = count($unresolved);
-            
+
+            $currentCount = count($complaints);
+
             // Session එකේ තියෙන පරණ Count එක ගන්නවා
             $lastCount = session('last_admin_complaints_count', $currentCount);
 
@@ -123,7 +131,7 @@ class AdminComplaintController extends Controller
             if ($currentCount > $lastCount) {
                 $hasNew = true;
             }
-            
+
             // අලුත් Count එක Session එකේ සේව් කරනවා
             session(['last_admin_complaints_count' => $currentCount]);
         }
