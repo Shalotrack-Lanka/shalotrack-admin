@@ -302,6 +302,8 @@ Route::prefix('admin/complaints')->group(function () {
 
     // Polls for new replies from dealers/customers on open complaints.
     Route::get('/check-new-replies', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'checkNewReplies'])->name('admin.complaints.check-new-replies');
+
+    Route::get('/resolved', [App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'resolved'])->name('admin.complaints.resolved');
 });
 
 
