@@ -142,6 +142,14 @@
                     @endif
                 </div>
             </a>
+ 
+                      {{-- RESOLVED COMPLAINTS LINK --}}
+            <a href="{{ route('dealer.complaints.resolved') }}" class="flex items-center justify-between p-3 text-white hover:bg-blue-900 rounded {{ request()->routeIs('dealer.complaints.resolved') ? 'bg-blue-900 font-bold' : '' }}">
+                <div class="flex items-center space-x-2">
+                    <span>Resolved Complaints</span>
+                </div>
+            </a>
+
 
         </nav>
 
