@@ -496,6 +496,8 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
 
     // Polls for new admin replies on this dealer's open complaints.
     Route::get('/check-new-replies', [DealerComplaintController::class, 'checkNewReplies'])->name('check-new-replies');
+
+    Route::get('/complaints/resolved', [DealerComplaintController::class, 'resolved'])->name('complaints.resolved');
 });
 
 

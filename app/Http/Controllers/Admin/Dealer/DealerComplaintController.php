@@ -273,4 +273,23 @@ class DealerComplaintController extends Controller
             'author_name'   => $authorName,
         ]);
     }
+
+    public function resolved()
+    {
+        // TODO: C# API eka haduwama methanata API call eka danna.
+        // Danata UI eka test karanna podi sample data ekak pass karanawa.
+        $complaints = [
+            [
+                'vehicleNumber' => 'WP BGU 1212 - TVS Moto',
+                'categoryName' => 'Device Issue',
+                'description' => 'The device was dropping signals frequently. Replaced the antenna.',
+                'resolvedAt' => now()->subDays(2),
+                'replies' => [
+                    ['authorName' => 'ShaloTrack Support', 'message' => 'Antenna replacement completed successfully.']
+                ]
+            ]
+        ];
+
+        return view('dealer.complaints_resolved', compact('complaints'));
+    }
 }
