@@ -124,7 +124,7 @@
             </div>
 
         </div>
-        
+
         <!-- CUSTOMER -->
         <div x-data="{ open: {{ request()->is('admin/customer*') ? 'true' : 'false' }} }">
 
@@ -162,7 +162,7 @@
             </div>
 
         </div>
-        
+
         <!-- VEHICLES -->
         <div x-data="{ open: {{ request()->is('admin/vehicles*') ? 'true' : 'false' }} }">
 
@@ -318,10 +318,10 @@
                 <button
                     @click="open=!open"
                     class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
-                    
+
                     <div class="flex items-center space-x-2">
                         <span>Complains</span>
-                        
+
                         <!-- Count එක 0 ට වඩා වැඩි නම් පමණක් Badge එක පෙන්වීම -->
                         @if(isset($complaintsCount) && $complaintsCount > 0)
                             <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
@@ -345,7 +345,7 @@
                 <div x-show="open" class="ml-5 text-sm" style="display: none;">
                     <!--<a href="{{ route('admin.troubleshoot') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.troubleshoot') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Troubleshoot</a>-->
                     <a href="{{ route('admin.complaints.index') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.complaints.*') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">View Complains</a>
-                    <!--<a href="{{ route('admin.feedback') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.feedback') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Feedbacks</a>-->
+                    <a href="{{ route('admin.complaints.resolved') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.complaints.resolved') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Resolved Complaint</a>                    <!--<a href="{{ route('admin.feedback') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.feedback') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Feedbacks</a>-->
                     <!--<a href="{{ route('admin.device-replace-request') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.device-replace-request') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Device Replace Requests</a>-->
                 </div>
             </div>
@@ -417,7 +417,7 @@
 
         </div>
         --}}
-        
+
     </nav>
 
 </aside>
@@ -429,10 +429,20 @@
 </div>
 
 
-<!-- Transparent Apple-style Notification Toast Box (Clickable for Admin) -->
-<div id="custom-toast" class="fixed top-5 right-5 z-50 transform translate-y-[-200%] transition-all duration-300 ease-in-out">
+{{--
+    Toast: hidden by default via inline style (transform: translateY(-200%)).
+    We DO NOT use Tailwind's arbitrary-value class translate-y-[-200%] for
+    the initial hidden state because classList.remove('translate-y-[-200%]')
+    silently fails in most browsers — the brackets and percent sign cause the
+    string-matching lookup to miss, so the hiding class is never removed and
+    the toast stays invisible even though showToast() is called correctly.
+    Using element.style.transform instead is guaranteed to work.
+--}}
+<div id="custom-toast"
+     class="fixed top-5 right-5 z-50 transition-all duration-300 ease-in-out"
+     style="transform: translateY(-200%);">
     <div class="flex items-center p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-2xl space-x-3.5 w-80 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-        
+
         <!-- ක්ලික් කළ හැකි ප්‍රදේශය (Admin Complaints පිටුවට යයි) -->
         <div onclick="window.location.href='{{ route('admin.complaints.index') }}'" class="flex items-center flex-1 space-x-3.5 cursor-pointer">
             <div class="flex-shrink-0 bg-blue-500 text-white p-2.5 rounded-full shadow-md">
@@ -460,38 +470,36 @@
 
 <script>
     function showToast(customMessage) {
-        const toast = document.getElementById('custom-toast');
-        const sound = document.getElementById('notification-sound');
-        const messageEl = document.getElementById('toast-message');
+        const toast   = document.getElementById('custom-toast');
+        const sound   = document.getElementById('notification-sound');
+        const msgEl   = document.getElementById('toast-message');
 
-        if(customMessage) {
-            messageEl.innerText = customMessage;
+        if (customMessage) {
+            msgEl.innerText = customMessage;
         }
 
-        // Sound එක Play කිරීම
-        if(sound) {
+        if (sound) {
             sound.currentTime = 0;
-            sound.play().catch(error => {
-                console.log("Audio play blocked by browser policy until user clicks page: ", error);
+            sound.play().catch(err => {
+                console.log("Audio blocked until first user interaction:", err);
             });
         }
 
-        // Box එක පෙන්වීම
-        if(toast) {
-            toast.classList.remove('translate-y-[-200%]');
-            toast.classList.add('translate-y-0');
-
-            setTimeout(() => {
-                hideToast();
-            }, 6000);
+        // FIX: use element.style.transform instead of toggling Tailwind
+        // arbitrary-value classes. classList.remove('translate-y-[-200%]')
+        // fails silently because the bracket/percent characters make the
+        // DOMTokenList string lookup miss, leaving both classes on the element
+        // and the hiding transform winning.
+        if (toast) {
+            toast.style.transform = 'translateY(0)';
+            setTimeout(() => hideToast(), 6000);
         }
     }
 
     function hideToast() {
         const toast = document.getElementById('custom-toast');
-        if(toast) {
-            toast.classList.remove('translate-y-0');
-            toast.classList.add('translate-y-[-200%]');
+        if (toast) {
+            toast.style.transform = 'translateY(-200%)';
         }
     }
 
@@ -500,10 +508,24 @@
         fetch("{{ route('admin.complaints.check-new') }}")
             .then(res => res.json())
             .then(data => {
-                if(data.has_new) {
-                    showToast("ඩීලර් විසින් පැමිණිල්ලක් මාරු කර ඇත!");
+                if (data.has_new) {
+                    showToast("You've Received a Complaint!");
                 }
             })
-            .catch(err => console.error("Admin notification check error:", err));
-    }, 15000);
+            .catch(err => console.error("Admin complaint notification error:", err));
+    }, 1000);
+
+    // සෑම තත්පර 20 කට වරක්ම Admin ට open complain එකකට dealer/customer
+    // reply කළාදැයි බැලීම (15s interval ට stagger කර ඇත)
+    setInterval(() => {
+        fetch("{{ route('admin.complaints.check-new-replies') }}")
+            .then(res => res.json())
+            .then(data => {
+                if (data.has_new_reply) {
+                    const who = data.author_name || 'ඩීලරයෙකු';
+                    showToast(who + " reply කර ඇත!");
+                }
+            })
+            .catch(err => console.error("Admin reply notification error:", err));
+    }, 2000);
 </script>

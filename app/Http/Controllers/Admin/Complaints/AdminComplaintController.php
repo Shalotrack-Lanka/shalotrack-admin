@@ -8,16 +8,6 @@ use Illuminate\Support\Facades\Http;
 
 class AdminComplaintController extends Controller
 {
-    // NEW -- these routes previously sat behind the generic 'auth'
-    // middleware only, with nothing checking that the logged-in user was
-    // actually an Admin. Any authenticated portal user (Dealer, Finance,
-    // Technician, Supplier) could resolve/close/reply to complaints by
-    // hitting these URLs directly. This app has no role-based route
-    // middleware anywhere yet, so a full reusable role gate is a bigger,
-    // separate piece of work -- this is a scoped fix for this controller
-    // only, matching the roles already used elsewhere in this app
-    // (routes/web.php's home-redirect match on 'ADMIN', 'DEALER', etc).
-
     public function __construct()
     {
         abort_unless(auth()->user()?->role === 'ADMIN', 403, 'You are not authorized to access this area.');
@@ -48,7 +38,7 @@ class AdminComplaintController extends Controller
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/reply", [
                 'message' => $request->input('message'),
-                'authorType' => 2, // Admin -- must match ComplaintReplyAuthorType.Admin on the API side
+                'authorType' => 2, // Admin
                 'authorName' => auth()->user()->name ?? 'ShaloTrack Support',
             ]);
 
@@ -59,14 +49,15 @@ class AdminComplaintController extends Controller
         return back()->with('success', 'Reply sent.');
     }
 
-    public function resolve(string $complaintId)
+public function resolve(string $complaintId)
     {
         $response = Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/resolve");
 
+        // 💡 DEBUG 1: C# API eka resolve karanna denne nathnam, hethuwa kalu screen eken pennai
         if (!$response->successful()) {
-            return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
+            dd('ERROR: API eka resolve karanna denne na!', 'Status: ' . $response->status(), 'C# API Response: ' . $response->body());
         }
 
         \Illuminate\Support\Facades\Cache::forget('admin_complaints_count');
@@ -74,6 +65,27 @@ class AdminComplaintController extends Controller
         return back()->with('success', 'Complaint marked as resolved.');
     }
 
+    public function resolved()
+    {
+        $response = \Illuminate\Support\Facades\Http::timeout(10)
+            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints');
+
+        // 💡 DEBUG 2: C# API eke Resolved ewata route ekak nathnam, hethuwa kalu screen eken pennai
+        if (!$response->successful()) {
+            dd('ERROR: API eke okkoma complaints ganna route eka wada na!', 'Status: ' . $response->status(), 'C# API Response: ' . $response->body());
+        }
+
+        $allComplaints = $response->json('data') ?? [];
+
+        $complaints = array_filter($allComplaints, function ($complaint) {
+            return isset($complaint['status']) && (int)$complaint['status'] === 2;
+        });
+
+        $complaints = array_values($complaints);
+
+        return view('admin.complaints.resolved', compact('complaints'));
+    }
     public function close(string $complaintId)
     {
         $response = Http::timeout(10)
@@ -89,39 +101,86 @@ class AdminComplaintController extends Controller
         return back()->with('success', 'Complaint closed.');
     }
 
-   public function checkNew()
+    public function checkNew()
     {
-        // API එකෙන් දත්ත ලබා ගැනීම
         $response = \Illuminate\Support\Facades\Http::timeout(5)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
 
-        $hasNew = false;
-
-        if ($response->successful()) {
-            $complaints = $response->json('data') ?? [];
-            
-            // නිවැරදි කිරීම: Admin ට අදාළ පැමිණිලි (Transfer කරපු ඒවා) පමණක් වෙන් කිරීම
-            $unresolved = array_filter($complaints, function ($c) {
-                $status = strtolower($c['status'] ?? $c['Status'] ?? $c['state'] ?? '');
-                return in_array($status, ['escalated', 'with admin']); // Admin ට අයිති ඒවා පමණයි
-            });
-            
-            $currentCount = count($unresolved);
-            
-            // Session එකේ තියෙන පරණ Count එක ගන්නවා
-            $lastCount = session('last_admin_complaints_count', $currentCount);
-
-            // දැනට තියෙන ගාන පරණ ගානට වඩා වැඩි නම්, අලුත් එකක් (හෝ Transfer කරපු එකක්) ඇවිත්!
-            if ($currentCount > $lastCount) {
-                $hasNew = true;
-            }
-            
-            // අලුත් Count එක Session එකේ සේව් කරනවා
-            session(['last_admin_complaints_count' => $currentCount]);
+        if (!$response->successful()) {
+            return response()->json(['has_new' => false]);
         }
 
-        // ප්‍රතිඵලය JavaScript එකට යවනවා
+        $complaints = $response->json('data') ?? [];
+        $currentIds = array_column($complaints, 'complaintId');
+        $storedIds = session('admin_complaint_ids');
+
+        if ($storedIds === null) {
+            session(['admin_complaint_ids' => $currentIds]);
+            return response()->json(['has_new' => false]);
+        }
+
+        $newIds = array_diff($currentIds, $storedIds);
+        $hasNew  = count($newIds) > 0;
+
+        session(['admin_complaint_ids' => $currentIds]);
+
         return response()->json(['has_new' => $hasNew]);
+    }
+
+
+
+    public function checkNewReplies()
+    {
+        $response = \Illuminate\Support\Facades\Http::timeout(5)
+            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+
+        if (!$response->successful()) {
+            return response()->json(['has_new_reply' => false, 'author_name' => null]);
+        }
+
+        $complaints = $response->json('data') ?? [];
+
+        $currentSnapshot = [];
+        foreach ($complaints as $c) {
+            $currentSnapshot[$c['complaintId']] = count($c['replies'] ?? []);
+        }
+
+        $storedSnapshot = session('admin_reply_snapshot');
+
+        if ($storedSnapshot === null) {
+            session(['admin_reply_snapshot' => $currentSnapshot]);
+            return response()->json(['has_new_reply' => false, 'author_name' => null]);
+        }
+
+        $hasNewReply = false;
+        $authorName  = null;
+
+        foreach ($complaints as $c) {
+            $id           = $c['complaintId'];
+            $replies      = $c['replies'] ?? [];
+            $currentCount = count($replies);
+            $storedCount  = $storedSnapshot[$id] ?? 0;
+
+            if ($currentCount > $storedCount) {
+                $newReplies = array_slice($replies, $storedCount);
+                foreach ($newReplies as $reply) {
+                    $authorType = (int) ($reply['authorType'] ?? -1);
+                    if ($authorType !== 2) {
+                        $hasNewReply = true;
+                        $authorName  = $reply['authorName'] ?? null;
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        session(['admin_reply_snapshot' => $currentSnapshot]);
+
+        return response()->json([
+            'has_new_reply' => $hasNewReply,
+            'author_name'   => $authorName,
+        ]);
     }
 }
