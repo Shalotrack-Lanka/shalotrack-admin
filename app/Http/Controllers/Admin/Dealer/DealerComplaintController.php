@@ -69,15 +69,16 @@ class DealerComplaintController extends Controller
             return back()->withErrors(['dealer' => 'Dealer profile not found.']);
         }
 
-        $response = Http::timeout(10)
+        $response = \Illuminate\Support\Facades\Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/escalate?dealerId={$dealer->id}");
 
-        if (!$response->successful()) {
-            return back()->withErrors(['escalate' => 'Could not escalate this complaint. Please try again.']);
-        }
-
         \Illuminate\Support\Facades\Cache::forget('dealer_complaints_count_' . $dealer->id);
+
+        if (!$response->successful()) {
+            // සැබෑ C# API Error එක ස්ක්‍රීන් එකේ පෙන්වන්න
+            return back()->withErrors(['escalate' => 'API Error (' . $response->status() . '): ' . $response->body()]);
+        }
 
         return back()->with('success', 'Complaint transferred to ShaloTrack support.');
     }
@@ -195,6 +196,9 @@ class DealerComplaintController extends Controller
         return response()->json(['has_new' => $hasNew]);
     }
 
+<<<<<<< HEAD
+     public function resolved()
+=======
     /**
      * Notify the dealer when the admin replies to one of their complaints.
      *
@@ -275,6 +279,7 @@ class DealerComplaintController extends Controller
     }
 
     public function resolved()
+>>>>>>> 3601b59f3a3a003969b20a134a5e6134a4e6f077
     {
         // TODO: C# API eka haduwama methanata API call eka danna.
         // Danata UI eka test karanna podi sample data ekak pass karanawa.

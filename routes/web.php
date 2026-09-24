@@ -494,6 +494,11 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     // Polls for new complaint threads assigned to this dealer.
     Route::get('/check-new-complaints', [DealerComplaintController::class, 'checkNewComplaints'])->name('check-new-complaints');
 
+// Dealer සඳහා අලුත් complaints චෙක් කරන Route එක
+Route::get('/check-new-complaints', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'checkNewComplaints'])->name('dealer.check-new-complaints');
+
+  Route::get('/complaints/resolved', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'resolved'])->name('complaints.resolved');
+
     // Polls for new admin replies on this dealer's open complaints.
     Route::get('/check-new-replies', [DealerComplaintController::class, 'checkNewReplies'])->name('check-new-replies');
 

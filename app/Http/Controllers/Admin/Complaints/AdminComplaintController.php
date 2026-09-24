@@ -13,12 +13,14 @@ class AdminComplaintController extends Controller
         abort_unless(auth()->user()?->role === 'ADMIN', 403, 'You are not authorized to access this area.');
     }
 
-    public function index()
+   public function index()
     {
         $response = \Illuminate\Support\Facades\Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
 
+        // අර අපි දාපු dd() කේතය දැන් ඉවත් කර ඇත. 
+        // API එකෙන් එන 'data' ඇතුළේ තියෙන පැමිණිලි 6ම (සියල්ලම) කෙලින්ම View එකට යවයි.
         $complaints = $response->successful() ? ($response->json('data') ?? []) : [];
 
         if (!$response->successful()) {
