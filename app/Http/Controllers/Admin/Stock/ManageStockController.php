@@ -32,6 +32,7 @@ class ManageStockController extends Controller
 
     public function store(Request $request)
     {
+
         $request->validate([
             'device_type_id' => 'required',
             'supplier_id'    => 'required|exists:suppliers,id',
@@ -82,7 +83,7 @@ class ManageStockController extends Controller
             ]);
         });
 
-        return redirect()->back()->with('success', 'Stock saved successfully and Date updated!');
+        return redirect()->back()->with('success', 'Stock එක සාර්ථකව පද්ධතියට එකතු කරන ලදී!');
     }
 
     public function importStock(Request $request)
