@@ -196,9 +196,7 @@ class DealerComplaintController extends Controller
         return response()->json(['has_new' => $hasNew]);
     }
 
-<<<<<<< HEAD
      public function resolved()
-=======
     /**
      * Notify the dealer when the admin replies to one of their complaints.
      *
@@ -279,7 +277,6 @@ class DealerComplaintController extends Controller
     }
 
     public function resolved()
->>>>>>> 3601b59f3a3a003969b20a134a5e6134a4e6f077
     {
         // TODO: C# API eka haduwama methanata API call eka danna.
         // Danata UI eka test karanna podi sample data ekak pass karanawa.
