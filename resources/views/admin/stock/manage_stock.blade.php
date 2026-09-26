@@ -273,20 +273,21 @@
 <script>
 document.addEventListener('alpine:init', () => {
     
-    // Page එක Load වෙද්දීම සේරම දත්ත ටික ලෑස්ති කරලා තියාගන්නවා (Server Request එකක් යන්නේ නෑ)
-    const allSuppliersData = {
-        @foreach($suppliers as $sup)
-            "{{ $sup->id }}": [
-                @foreach($sup->products as $prod)
-                    {
-                        id: "{{ $prod->device_type_id ? $prod->device_type_id : $prod->id }}",
-                        name: "{!! addslashes($prod->product_name) !!}",
-                        qty: {{ $prod->pivot->qty ?? 1 }}
-                    },
-                @endforeach
-            ],
-        @endforeach
-    };
+    // Laravel මගින් ඉතාමත් ආරක්ෂිතව දත්ත JSON බවට පත් කිරීම (කිසිදු Error එකක් එන්නේ නැත)
+    const allSuppliersData = @json(
+        $suppliers->mapWithKeys(function ($sup) {
+            return [
+                $sup->id => $sup->products->map(function ($prod) {
+                    return [
+                        // device_type_id එකක් නැත්නම් සාමාන්‍ය product id එක හෝ ගන්නවා
+                        'id' => $prod->device_type_id ? $prod->device_type_id : $prod->id,
+                        'name' => $prod->product_name,
+                        'qty' => $prod->pivot->qty ?? 1
+                    ];
+                })
+            ];
+        })
+    );
 
     Alpine.data('addStockManager', () => ({
         selectedSupplier: '',
@@ -295,7 +296,7 @@ document.addEventListener('alpine:init', () => {
         productsList: [],
 
         fetchSupplierData() {
-            // දත්ත ගන්න Server එකට යන්නේ නෑ, කෙලින්ම ළඟ තියෙන Data වලින් ගන්නවා (Loading Time = 0s)
+            // Supplier වෙනස් කළ විට
             this.selectedDevice = '';
             this.stockQty = 0;
             this.productsList = [];
@@ -306,6 +307,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         updateQuantity() {
+            // Device එක තේරූ විට Qty එක පිරවීම
             let prod = this.productsList.find(p => p.id == this.selectedDevice);
             if (prod) {
                 this.stockQty = prod.qty || 1;
@@ -316,6 +318,5 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 </script>
-
 </body>
 </html>
