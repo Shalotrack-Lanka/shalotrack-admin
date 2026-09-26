@@ -195,8 +195,7 @@ class DealerComplaintController extends Controller
 
         return response()->json(['has_new' => $hasNew]);
     }
-
-     public function resolved()
+    
     /**
      * Notify the dealer when the admin replies to one of their complaints.
      *
