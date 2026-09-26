@@ -19,26 +19,20 @@ class ManageStockController extends Controller
     public function index()
     {
         $stocks = Stock::with('deviceType')->orderBy('device_type_id')->get();
-
-        // device_type_id => current Company Available Stock, so the "Add Raw
-        // Devices" form can show a live Total Available preview before the
-        // stock is actually saved.
         $stockMap = $stocks->pluck('company_available_stock', 'device_type_id');
-
         $ledgerEntries = StockTransferLedger::with('stock.deviceType')
             ->orderByDesc('stocked_in_date')
             ->orderByDesc('id')
             ->get();
-
         $deviceTypes = DeviceType::orderBy('device_category')->orderBy('model')->get();
         $suppliers = Supplier::where('status', 'Active')->orderBy('name')->get();
 
         return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers'));
     }
 
-   public function store(Request $request)
+    public function store(Request $request)
     {
-        // 1. Validation (Product ID හෝ Device ID ඕනෑම එකක් භාරගනී)
+
         $request->validate([
             'device_type_id' => 'required',
             'supplier_id'    => 'required|exists:suppliers,id',
@@ -48,12 +42,8 @@ class ManageStockController extends Controller
         \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
             
             $inputId = $request->device_type_id;
-            
-            // 2. මුලින්ම බලනවා මේක කෙළින්ම Device Type ID එකක්ද කියලා
             $deviceType = \App\Models\DeviceType::find($inputId);
 
-            // 3. එහෙම නැත්නම් (ඔබගේ ෆොටෝ එකේ වගේ), ඒක Product ID එකක්.
-            // එහෙනම් Product එක හොයාගෙන ඒකේ තියෙන Device Type එක ගන්නවා.
             if (!$deviceType) {
                 $product = \App\Models\Product::find($inputId);
                 if ($product && $product->device_type_id) {
@@ -61,39 +51,39 @@ class ManageStockController extends Controller
                 }
             }
 
-            // 4. කොහොම හෙව්වත් Device Type එකක් නැත්නම් Error එකක් දෙනවා
             if (!$deviceType) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'device_type_id' => 'මෙම භාණ්ඩයට අදාළ Device Type එකක් සම්බන්ධ කර නොමැත!'
                 ]);
             }
 
-            // 5. 'with' වචනය ඉවත් කර සරල නම සෑදීම (උදා: V10 plus)
             $deviceLabel = trim("{$deviceType->device_category} {$deviceType->model}");
 
-            // 6. Stock එකට දත්ත එකතු කිරීම
+            // මෙතැනයි වෙනස: Table එකේ තියෙන Columns වලට විතරක් දත්ත දැමීම
             $stock = \App\Models\Stock::firstOrCreate(
-                ['device_type_id' => $deviceType->id]
+                ['device_type_id' => $deviceType->id],
+                ['company_available_stock' => 0]
             );
 
             $stock->device_category_type = $deviceLabel;
-            $stock->supplier_id = $request->supplier_id;
-            
-            // පරණ තොගයට අලුත් තොගය එකතු කිරීම
-            $stock->stock_in = ($stock->stock_in ?? 0) + $request->stock_in;
             $stock->company_available_stock = ($stock->company_available_stock ?? 0) + $request->stock_in;
-            $stock->total_available = ($stock->total_available ?? 0) + $request->stock_in;
-            
-            // මේ මොහොතට Date එක යාවත්කාලීන කිරීම (Last Edited Date)
             $stock->updated_at = now(); 
             $stock->save();
 
-            // 7. Ledger එකට දැමීම
+            // අනෙකුත් සියලුම විස්තර Ledger එකට දැමීම
             $supplier = \App\Models\Supplier::findOrFail($request->supplier_id);
+
+            // මෙයින් අදාළ භාණ්ඩය සැපයුම්කරුගේ ලැයිස්තුවෙන් නිවැරදිව ඉවත් කරයි
+            $productToRemove = $supplier->products()->where('device_type_id', $deviceType->id)->first();
+            if ($productToRemove) {
+                $supplier->products()->detach($productToRemove->id);
+            } else {
+                $supplier->products()->detach($inputId);
+            }
 
             \App\Models\StockTransferLedger::create([
                 'stock_id'              => $stock->id,
-                'device_category_type'  => $deviceLabel, // 'with' නැති නමම යයි
+                'device_category_type'  => $deviceLabel,
                 'supplier_id'           => $supplier->id,
                 'supplier'              => $supplier->name,
                 'stock_in'              => $request->stock_in,
@@ -101,7 +91,38 @@ class ManageStockController extends Controller
             ]);
         });
 
-        return redirect()->back()->with('success', 'Stock saved successfully and Date updated!');
+        return redirect()->back()->with('success', 'Stock එක සාර්ථකව පද්ධතියට එකතු කරන ලදී!');
+    }
+
+    public function importStock(Request $request)
+    {
+        $request->validate([
+            'excel_file' => 'required|file|mimes:xlsx,csv,xls|max:10240',
+        ]);
+
+        try {
+            $import = new \App\Imports\StockImport();
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('excel_file'));
+
+            if (method_exists($import, 'failures') && count($import->failures()) > 0) {
+                $errorMessages = [];
+                foreach ($import->failures() as $failure) {
+                    foreach ($failure->errors() as $error) {
+                        $errorMessages[] = "Row {$failure->row()}: {$error}";
+                    }
+                }
+                return redirect()->back()->withErrors($errorMessages);
+            }
+
+            return redirect()->back()->with([
+                'import_success_count' => count($import->created ?? []),
+                'import_total_stock_in' => $import->totalStockIn ?? 0,
+                'success'              => 'Excel දත්ත සාර්ථකව පද්ධතියට එකතු කරන ලදී!'
+            ]);
+
+        } catch (\Exception $e) {
+            dd($e->getMessage());
+        }
     }
 
     public function updateLedgerDescription(Request $request, StockTransferLedger $ledger)
@@ -109,16 +130,13 @@ class ManageStockController extends Controller
         $validated = $request->validate([
             'description' => 'nullable|string|max:1000',
         ]);
-
         $ledger->update(['description' => $validated['description'] ?? null]);
-
         return redirect()->back()->with('success', 'Description saved.');
     }
 
     public function destroyLedger(StockTransferLedger $ledger)
     {
         $ledger->delete();
-
         return redirect()->back()->with('success', 'Ledger record removed.');
     }
 
@@ -137,7 +155,6 @@ class ManageStockController extends Controller
             $title = 'Stock Transfer Ledger Report';
         }
 
-        // convert logo to base64 to embed in PDF
         $logoPath = public_path('images/logo.png');
         $logoBase64 = '';
         if (file_exists($logoPath)) {
@@ -152,10 +169,6 @@ class ManageStockController extends Controller
         return $pdf->stream(strtolower(str_replace(' ', '_', $title)) . '.pdf');
     }
 
-    /**
-     * Serves a blank .xlsx with the exact columns StockImport expects,
-     * plus one worked example row.
-     */
     public function downloadImportTemplate()
     {
         return Excel::download(
@@ -164,42 +177,6 @@ class ManageStockController extends Controller
         );
     }
 
-    /**
-     * Bulk version of store() — one row per stock-in entry, each creating
-     * its own StockTransferLedger record exactly like a single submission
-     * would. A row for a device type/supplier that doesn't exist is
-     * skipped and reported, not fatal to the rest of the file.
-     */
-    public function importStock(Request $request)
-    {
-        $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,csv|max:10240',
-        ]);
-
-        $import = new StockImport();
-
-        Excel::import($import, $request->file('excel_file'));
-
-        return redirect()
-            ->back()
-            ->with([
-                'import_success_count' => count($import->created),
-                'import_total_stock_in' => $import->totalStockIn,
-                'import_failures'      => $import->failures(),
-                'import_errors'        => $import->errors(),
-            ]);
-    }
-
-    /**
-     * Get products for a specific supplier.
-     *
-     * @param int $supplier_id
-     * @return \Illuminate\Http\JsonResponse
-     */
-
-     /**
-     * තෝරාගත් සැපයුම්කරුට අදාළ භාණ්ඩ සහ ප්‍රමාණ ලබා දීම.
-     */
     public function getSupplierProducts($id)
     {
         try {
