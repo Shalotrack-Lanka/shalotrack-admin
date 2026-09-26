@@ -157,4 +157,39 @@ class ManageStockController extends Controller
                 'import_errors'        => $import->errors(),
             ]);
     }
+
+    /**
+     * Get products for a specific supplier.
+     *
+     * @param int $supplier_id
+     * @return \Illuminate\Http\JsonResponse
+     */
+
+     /**
+     * තෝරාගත් සැපයුම්කරුට අදාළ භාණ්ඩ සහ ප්‍රමාණ ලබා දීම.
+     */
+    public function getSupplierProducts($id)
+    {
+        try {
+            $supplier = \App\Models\Supplier::with('products')->find($id);
+            
+            if (!$supplier) {
+                return response()->json(['success' => false, 'message' => 'Supplier not found']);
+            }
+
+            $productsData = [];
+            foreach ($supplier->products as $product) {
+                $productsData[] = [
+                    'id'   => $product->device_type_id ? $product->device_type_id : $product->id,
+                    'name' => $product->product_name,
+                    'qty'  => $product->pivot->qty ?? 1, 
+                ];
+            }
+
+            return response()->json(['success' => true, 'products' => $productsData]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

@@ -98,74 +98,67 @@
                 </div>
             </div>
 
-            {{-- ===================== ADD RAW DEVICES ===================== --}}
-            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full"
-                 x-data="{
-                     deviceTypeId: '',
-                     supplierId: '',
-                     stockIn: 0,
-                     stockMap: {{ \Illuminate\Support\Js::from($stockMap) }},
-                     get baseAvailable() { return Number(this.stockMap[this.deviceTypeId] ?? 0); },
-                     get total() { return this.baseAvailable + (Number(this.stockIn) || 0); },
-                     reset() { this.deviceTypeId = ''; this.supplierId = ''; this.stockIn = 0; }
-                 }">
-                <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
-                    <span class="font-bold text-gray-800 text-sm">Add Raw Devices</span>
-                </div>
+{{-- Add Raw Devices Section (කිසිම Loading Time එකක් නැත - ක්ෂණිකව වැඩ කරයි) --}}
+<div x-data="addStockManager()" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+        <h3 class="font-bold text-slate-800">Add Raw Devices</h3>
+    </div>
 
-                <div class="p-5 text-xs font-semibold text-gray-700">
-                    <form action="{{ route('admin.stock.store') }}" method="POST"
-                          class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
-                        @csrf
-
-                        <div>
-                            <label class="block mb-1">Device Category / Type</label>
-                            <select name="device_type_id" x-model="deviceTypeId" required
-                                    class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="" disabled>--Select Device Category / Type--</option>
-                                @forelse($deviceTypes as $type)
-                                    <option value="{{ $type->id }}">{{ $type->device_category }} with {{ $type->model }}</option>
-                                @empty
-                                    <option value="" disabled>No device types set up yet</option>
-                                @endforelse
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block mb-1">Supplier</label>
-                            <select name="supplier_id" x-model="supplierId" required
-                                    class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="" disabled>--Select Supplier--</option>
-                                @forelse($suppliers as $supplier)
-                                    <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
-                                @empty
-                                    <option value="" disabled>No active suppliers found</option>
-                                @endforelse
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block mb-1">Stock In</label>
-                            <div class="flex items-center gap-2">
-                                <button type="button" @click="stockIn = Math.max(0, Number(stockIn) - 1)" class="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold shrink-0">&minus;</button>
-                                <input type="number" name="stock_in" x-model.number="stockIn" min="0" required
-                                       class="w-full rounded-lg border-gray-300 h-10 text-xs shadow-sm text-center">
-                                <button type="button" @click="stockIn = Number(stockIn) + 1" class="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold shrink-0">+</button>
-                            </div>
-                        </div>
-
-                        <div class="p-2.5 rounded-lg bg-gray-50 border border-gray-200 flex justify-between items-center h-10">
-                            <span class="text-gray-600">Total Available</span>
-                            <span class="font-bold text-gray-900 text-sm" x-text="total"></span>
-                        </div>
-
-                        <div class="md:col-span-2 xl:col-span-4 flex gap-2 justify-end pt-2 border-t border-gray-100 mt-2">
-                            <button type="button" @click="reset()" class="px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded font-bold transition">Reset</button>
-                            <button type="submit" class="px-8 bg-[#17a2b8] hover:bg-[#138496] text-white py-2.5 rounded font-bold shadow-sm transition">Add Stock</button>
-                        </div>
-                    </form>
-                </div>
+    <form action="{{ route('admin.stock.store') }}" method="POST" class="p-6">
+        @csrf
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            
+            {{-- Supplier Select --}}
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Supplier</label>
+                <select name="supplier_id" 
+                        x-model="selectedSupplier" 
+                        @change="fetchSupplierData" 
+                        required 
+                        class="w-full border-slate-300 rounded-xl p-3 text-sm">
+                    <option value="">--Select Supplier--</option>
+                    @foreach($suppliers as $supplier)
+                        <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                    @endforeach
+                </select>
             </div>
+
+            {{-- Device Select (ක්ෂණිකව පිරවේ) --}}
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Device Category / Type</label>
+                <select name="device_type_id" 
+                        x-model="selectedDevice" 
+                        @change="updateQuantity" 
+                        required 
+                        class="w-full border-slate-300 rounded-xl p-3 text-sm bg-slate-50">
+                    <option value="">--Select Device--</option>
+                    <template x-for="prod in productsList" :key="prod.id">
+                        <option :value="prod.id" x-text="prod.name"></option>
+                    </template>
+                </select>
+            </div>
+
+            {{-- Stock In Qty (ක්ෂණිකව පිරවේ) --}}
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Stock In (Qty)</label>
+                <input type="number" 
+                       name="stock_in" 
+                       x-model.number="stockQty" 
+                       min="1" 
+                       required 
+                       class="w-full border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700">
+            </div>
+
+            {{-- Button --}}
+            <div class="flex gap-2">
+                <button type="submit" class="w-full bg-[#0d9488] hover:bg-[#0f766e] text-white font-bold py-3 px-4 rounded-xl transition shadow-md text-sm cursor-pointer">
+                    Add Stock
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
 
             {{-- ===================== COMPANY AVAILABLE STOCK ===================== --}}
              <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
@@ -275,6 +268,54 @@
         </main>
     </div>
 </div>
+
+
+<script>
+document.addEventListener('alpine:init', () => {
+    
+    // Page එක Load වෙද්දීම සේරම දත්ත ටික ලෑස්ති කරලා තියාගන්නවා (Server Request එකක් යන්නේ නෑ)
+    const allSuppliersData = {
+        @foreach($suppliers as $sup)
+            "{{ $sup->id }}": [
+                @foreach($sup->products as $prod)
+                    {
+                        id: "{{ $prod->device_type_id ? $prod->device_type_id : $prod->id }}",
+                        name: "{!! addslashes($prod->product_name) !!}",
+                        qty: {{ $prod->pivot->qty ?? 1 }}
+                    },
+                @endforeach
+            ],
+        @endforeach
+    };
+
+    Alpine.data('addStockManager', () => ({
+        selectedSupplier: '',
+        selectedDevice: '',
+        stockQty: 0,
+        productsList: [],
+
+        fetchSupplierData() {
+            // දත්ත ගන්න Server එකට යන්නේ නෑ, කෙලින්ම ළඟ තියෙන Data වලින් ගන්නවා (Loading Time = 0s)
+            this.selectedDevice = '';
+            this.stockQty = 0;
+            this.productsList = [];
+
+            if (this.selectedSupplier && allSuppliersData[this.selectedSupplier]) {
+                this.productsList = allSuppliersData[this.selectedSupplier];
+            }
+        },
+
+        updateQuantity() {
+            let prod = this.productsList.find(p => p.id == this.selectedDevice);
+            if (prod) {
+                this.stockQty = prod.qty || 1;
+            } else {
+                this.stockQty = 0;
+            }
+        }
+    }));
+});
+</script>
 
 </body>
 </html>
