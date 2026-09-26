@@ -271,6 +271,9 @@ Route::prefix('admin/dealer')->group(function () {
     Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
     Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
     Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
+    Route::post('/dealer/reassign-device/{id}', [DealerDashboardController::class, 'reassignDevice'])->name('dealer.reassign-device');
+    Route::delete('/dealer/remove-broken-device/{shdevice_id}', [DealerDashboardController::class, 'removeBrokenDevice'])->name('dealer.remove-broken-device');
+    Route::get('/customer-ad/{id}/edit', [DealerDashboardController::class, 'editCustomerAd'])->name('dealer.customer-ad.edit');
     Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
     Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
     // pdf report generation
