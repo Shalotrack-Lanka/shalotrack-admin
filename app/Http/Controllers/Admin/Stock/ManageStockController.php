@@ -73,6 +73,14 @@ class ManageStockController extends Controller
             // අනෙකුත් සියලුම විස්තර Ledger එකට දැමීම
             $supplier = \App\Models\Supplier::findOrFail($request->supplier_id);
 
+            // මෙයින් අදාළ භාණ්ඩය සැපයුම්කරුගේ ලැයිස්තුවෙන් නිවැරදිව ඉවත් කරයි
+            $productToRemove = $supplier->products()->where('device_type_id', $deviceType->id)->first();
+            if ($productToRemove) {
+                $supplier->products()->detach($productToRemove->id);
+            } else {
+                $supplier->products()->detach($inputId);
+            }
+
             \App\Models\StockTransferLedger::create([
                 'stock_id'              => $stock->id,
                 'device_category_type'  => $deviceLabel,
