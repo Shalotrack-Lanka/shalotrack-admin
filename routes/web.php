@@ -346,6 +346,7 @@ Route::prefix('admin/supplier')->group(function () {
     Route::post('/supplier-management-invoice',[SupplierInvoiceController::class, 'store'])->name('admin.supplier-invoice.store');
     Route::get('/{id}/purchase-data',[SupplierInvoiceController::class, 'getSupplierData'])->name('admin.suppliers.purchase-data');
     Route::get('/invoice/{id}/download',[SupplierInvoiceController::class, 'download'])->name('admin.supplier-invoice.download');
+    Route::get('/get-supplier-data/{id}', [SupplierInvoiceController::class, 'getSupplierData']);
 
 });
 
