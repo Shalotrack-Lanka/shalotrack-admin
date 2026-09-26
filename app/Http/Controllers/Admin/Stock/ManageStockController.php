@@ -36,40 +36,72 @@ class ManageStockController extends Controller
         return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers'));
     }
 
-    public function store(Request $request)
+   public function store(Request $request)
     {
-        $validated = $request->validate([
-            'device_type_id' => 'required|exists:device_types,id',
+        // 1. Validation (Product ID හෝ Device ID ඕනෑම එකක් භාරගනී)
+        $request->validate([
+            'device_type_id' => 'required',
             'supplier_id'    => 'required|exists:suppliers,id',
             'stock_in'       => 'required|integer|min:1',
         ]);
 
-        DB::transaction(function () use ($validated) {
-            $deviceType = DeviceType::findOrFail($validated['device_type_id']);
-            $deviceLabel = "{$deviceType->device_category} with {$deviceType->model}";
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+            
+            $inputId = $request->device_type_id;
+            
+            // 2. මුලින්ම බලනවා මේක කෙළින්ම Device Type ID එකක්ද කියලා
+            $deviceType = \App\Models\DeviceType::find($inputId);
 
-            $stock = Stock::firstOrCreate(
-                ['device_type_id' => $validated['device_type_id']],
-                ['company_available_stock' => 0]
+            // 3. එහෙම නැත්නම් (ඔබගේ ෆොටෝ එකේ වගේ), ඒක Product ID එකක්.
+            // එහෙනම් Product එක හොයාගෙන ඒකේ තියෙන Device Type එක ගන්නවා.
+            if (!$deviceType) {
+                $product = \App\Models\Product::find($inputId);
+                if ($product && $product->device_type_id) {
+                    $deviceType = \App\Models\DeviceType::find($product->device_type_id);
+                }
+            }
+
+            // 4. කොහොම හෙව්වත් Device Type එකක් නැත්නම් Error එකක් දෙනවා
+            if (!$deviceType) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'device_type_id' => 'මෙම භාණ්ඩයට අදාළ Device Type එකක් සම්බන්ධ කර නොමැත!'
+                ]);
+            }
+
+            // 5. 'with' වචනය ඉවත් කර සරල නම සෑදීම (උදා: V10 plus)
+            $deviceLabel = trim("{$deviceType->device_category} {$deviceType->model}");
+
+            // 6. Stock එකට දත්ත එකතු කිරීම
+            $stock = \App\Models\Stock::firstOrCreate(
+                ['device_type_id' => $deviceType->id]
             );
 
             $stock->device_category_type = $deviceLabel;
-            $stock->company_available_stock += $validated['stock_in'];
+            $stock->supplier_id = $request->supplier_id;
+            
+            // පරණ තොගයට අලුත් තොගය එකතු කිරීම
+            $stock->stock_in = ($stock->stock_in ?? 0) + $request->stock_in;
+            $stock->company_available_stock = ($stock->company_available_stock ?? 0) + $request->stock_in;
+            $stock->total_available = ($stock->total_available ?? 0) + $request->stock_in;
+            
+            // මේ මොහොතට Date එක යාවත්කාලීන කිරීම (Last Edited Date)
+            $stock->updated_at = now(); 
             $stock->save();
 
-            $supplier = Supplier::findOrFail($validated['supplier_id']);
+            // 7. Ledger එකට දැමීම
+            $supplier = \App\Models\Supplier::findOrFail($request->supplier_id);
 
-            StockTransferLedger::create([
+            \App\Models\StockTransferLedger::create([
                 'stock_id'              => $stock->id,
-                'device_category_type'  => $deviceLabel,
+                'device_category_type'  => $deviceLabel, // 'with' නැති නමම යයි
                 'supplier_id'           => $supplier->id,
                 'supplier'              => $supplier->name,
-                'stock_in'              => $validated['stock_in'],
+                'stock_in'              => $request->stock_in,
                 'stocked_in_date'       => now()->toDateString(),
             ]);
         });
 
-        return redirect()->back()->with('success', 'Stock saved successfully.');
+        return redirect()->back()->with('success', 'Stock saved successfully and Date updated!');
     }
 
     public function updateLedgerDescription(Request $request, StockTransferLedger $ledger)
@@ -156,5 +188,40 @@ class ManageStockController extends Controller
                 'import_failures'      => $import->failures(),
                 'import_errors'        => $import->errors(),
             ]);
+    }
+
+    /**
+     * Get products for a specific supplier.
+     *
+     * @param int $supplier_id
+     * @return \Illuminate\Http\JsonResponse
+     */
+
+     /**
+     * තෝරාගත් සැපයුම්කරුට අදාළ භාණ්ඩ සහ ප්‍රමාණ ලබා දීම.
+     */
+    public function getSupplierProducts($id)
+    {
+        try {
+            $supplier = \App\Models\Supplier::with('products')->find($id);
+            
+            if (!$supplier) {
+                return response()->json(['success' => false, 'message' => 'Supplier not found']);
+            }
+
+            $productsData = [];
+            foreach ($supplier->products as $product) {
+                $productsData[] = [
+                    'id'   => $product->device_type_id ? $product->device_type_id : $product->id,
+                    'name' => $product->product_name,
+                    'qty'  => $product->pivot->qty ?? 1, 
+                ];
+            }
+
+            return response()->json(['success' => true, 'products' => $productsData]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
 }

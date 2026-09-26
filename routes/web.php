@@ -366,6 +366,9 @@ Route::prefix('admin/stock')->middleware('auth')->group(function () {
 
     Route::get('/report', [ManageStockController::class, 'generateReport'])->name('admin.stock.report');
 
+    //add stock automation
+    Route::get('/get-supplier-products/{supplier_id}', [ManageStockController::class, 'getSupplierProducts'])->name('admin.get-supplier-products');
+
     // Stock
     Route::get('/stock/import-template', [ManageStockController::class, 'downloadImportTemplate'])->name('admin.stock.import-template');
     Route::post('/stock/import', [ManageStockController::class, 'importStock'])->name('admin.stock.import');
@@ -513,5 +516,7 @@ Route::get('/check-new-complaints', [\App\Http\Controllers\Admin\Dealer\DealerCo
     Route::get('/complaints/resolved', [DealerComplaintController::class, 'resolved'])->name('complaints.resolved');
 });
 
+Route::get('/admin/get-supplier-products/{supplier_id}', [\App\Http\Controllers\Admin\Stock\ManageStockController::class, 'getSupplierProducts']);
+Route::get('/api/supplier-products-list/{id}', [\App\Http\Controllers\Admin\Stock\ManageStockController::class, 'getSupplierProducts']);
 
 require __DIR__.'/auth.php';
