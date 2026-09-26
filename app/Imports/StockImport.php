@@ -18,20 +18,6 @@ use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Maatwebsite\Excel\Concerns\Importable;
 
-/**
- * Expected columns:
- *   device_category | model | supplier_name | stock_in | stocked_in_date
- *
- * stocked_in_date is optional — defaults to today, same as the single form
- * (which has no date field at all and always uses now()).
- *
- * Each row is the bulk equivalent of one "Add Raw Devices" submission:
- * bumps Stock.company_available_stock for that device type AND creates a
- * matching StockTransferLedger row, same as store() does. This is
- * deliberately NOT the same thing as the Add Device import — that one
- * consumes stock per physical IMEI, this one is what CREATES the stock
- * those IMEIs get consumed from.
- */
 class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure, SkipsOnError
 {
     use Importable, SkipsFailures, SkipsErrors;
@@ -41,21 +27,19 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
 
     public function model(array $row)
     {
-        $deviceType = DeviceType::where('device_category', trim($row['device_category']))
-            ->where('model', trim($row['model']))
+        $deviceType = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($row['device_category']))])
+            ->whereRaw('LOWER(model) = ?', [strtolower(trim($row['model']))])
             ->first();
 
-        $supplier = Supplier::where('name', trim($row['supplier_name']))
+        $supplier = Supplier::whereRaw('LOWER(name) = ?', [strtolower(trim($row['supplier_name']))])
             ->where('status', 'Active')
             ->first();
 
-        // withValidator() below already guarantees both exist — defensive
-        // fallback only, same pattern as the other imports.
         if (! $deviceType || ! $supplier) {
-            throw new \RuntimeException('Could not resolve device type or supplier for this row.');
+            return null; 
         }
 
-        $deviceLabel = "{$deviceType->device_category} with {$deviceType->model}";
+        $deviceLabel = trim("{$deviceType->device_category} {$deviceType->model}");
         $qty = (int) $row['stock_in'];
 
         $stockedInDate = ! empty($row['stocked_in_date'])
@@ -63,15 +47,19 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
             : now()->toDateString();
 
         DB::transaction(function () use ($deviceType, $deviceLabel, $supplier, $qty, $stockedInDate) {
+            
+            // Table එකේ තියෙන Columns වලට විතරක් දත්ත දැමීම
             $stock = Stock::firstOrCreate(
                 ['device_type_id' => $deviceType->id],
                 ['company_available_stock' => 0]
             );
 
             $stock->device_category_type = $deviceLabel;
-            $stock->company_available_stock += $qty;
+            $stock->company_available_stock = ($stock->company_available_stock ?? 0) + $qty;
+            $stock->updated_at = now();
             $stock->save();
 
+            // අනෙකුත් සියලුම විස්තර Ledger එකට දැමීම
             StockTransferLedger::create([
                 'stock_id'             => $stock->id,
                 'device_category_type' => $deviceLabel,
@@ -85,8 +73,6 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
         $this->created[] = $deviceLabel . ' (+' . $qty . ')';
         $this->totalStockIn += $qty;
 
-        // Already persisted manually above — returning null so the
-        // package doesn't attempt a second save.
         return null;
     }
 
@@ -97,44 +83,52 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
             'model'            => ['required', 'string'],
             'supplier_name'    => ['required', 'string'],
             'stock_in'         => ['required', 'integer', 'min:1'],
-            'stocked_in_date'  => ['nullable', 'date'],
+            'stocked_in_date'  => ['nullable'],
         ];
     }
 
-    /**
-     * Cross-field checks: device_category+model must match a real device
-     * type, and supplier_name must match a real, Active supplier.
-     */
     public function withValidator(Validator $validator)
     {
         $validator->after(function ($validator) {
             $data = $validator->getData();
 
             if (! empty($data['device_category']) && ! empty($data['model'])) {
-                $exists = DeviceType::where('device_category', trim($data['device_category']))
-                    ->where('model', trim($data['model']))
+                $exists = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($data['device_category']))])
+                    ->whereRaw('LOWER(model) = ?', [strtolower(trim($data['model']))])
                     ->exists();
 
                 if (! $exists) {
                     $validator->errors()->add(
                         'device_category',
-                        "No device type found matching '{$data['device_category']} / {$data['model']}'."
+                        "මෙම '{$data['device_category']} / {$data['model']}' නමින් Device Type එකක් පද්ධතියේ නොමැත."
                     );
                 }
             }
 
             if (! empty($data['supplier_name'])) {
-                $exists = Supplier::where('name', trim($data['supplier_name']))
+                $exists = Supplier::whereRaw('LOWER(name) = ?', [strtolower(trim($data['supplier_name']))])
                     ->where('status', 'Active')
                     ->exists();
 
                 if (! $exists) {
                     $validator->errors()->add(
                         'supplier_name',
-                        "No Active supplier found named '{$data['supplier_name']}'."
+                        "'{$data['supplier_name']}' නමින් ක්‍රියාකාරී සැපයුම්කරුවෙක් පද්ධතියේ නොමැත."
                     );
                 }
             }
         });
+    }
+
+    public function prepareForValidation($data, $index)
+    {
+        if (!empty($data['stocked_in_date']) && is_numeric($data['stocked_in_date'])) {
+            try {
+                $data['stocked_in_date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($data['stocked_in_date'])->format('Y-m-d');
+            } catch (\Exception $e) {
+                // Ignore Invalid Dates
+            }
+        }
+        return $data;
     }
 }
