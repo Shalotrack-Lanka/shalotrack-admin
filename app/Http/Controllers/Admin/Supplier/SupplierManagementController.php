@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Supplier;
 use App\Models\Product;
+use App\Models\DeviceType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -15,6 +16,9 @@ class SupplierManagementController extends Controller
     {
         $search = trim((string) $request->query('search', ''));
         $status = $request->query('status', '');
+
+        // 1. DeviceTypes සියල්ල ලබා ගැනීම (Dropdown එකේ V5 Basic, V10 Plus ලෙස පෙන්වීමට)
+        $deviceTypes = DeviceType::orderBy('device_category')->orderBy('model')->get();
 
         $allProducts = Product::orderBy('product_name')->get();
 
@@ -55,7 +59,8 @@ class SupplierManagementController extends Controller
             'searchResults',
             'search',
             'status',
-            'allProducts'
+            'allProducts',
+            'deviceTypes'
         ));
     }
 
@@ -140,20 +145,35 @@ class SupplierManagementController extends Controller
         ]);
     }
 
-    // 💡 UPDATE: Aluthin type karana ewa automatically Products table ekata save wenna haduwa
+    // 💡 UPDATE: DeviceType ID එක ලබාගෙන Product එක සාදා අදාළ device_type_id එක සම්බන්ධ කිරීම
     private function syncProducts(Supplier $supplier, ?array $products)
     {
         if (is_array($products)) {
             $syncData = [];
             foreach ($products as $prod) {
-                if (!empty($prod['product_name'])) {
-                    
-                    $productName = trim($prod['product_name']);
-                    
-                    // Name eka thiyenawada check karanawa, nathnam on the fly aluth ekak hadanawa
-                    $product = Product::firstOrCreate(
-                        ['product_name' => $productName]
-                    );
+                // Dropdown එකෙන් DeviceType ID හෝ Product Name පැමිණේ නම්
+                $deviceTypeId = $prod['device_type_id'] ?? $prod['product_name'] ?? null;
+
+                if (!empty($deviceTypeId)) {
+
+                    // 1. ඉදිරියෙන් ආවේ DeviceType ID එකක්දැයි බලයි
+                    $deviceType = DeviceType::find($deviceTypeId);
+
+                    if ($deviceType) {
+                        $productName = trim("{$deviceType->device_category} {$deviceType->model}");
+
+                        // Products table එකේ සාදයි හෝ සොයා ගනියි (device_type_id එකත් සමග)
+                        $product = Product::firstOrCreate(
+                            ['device_type_id' => $deviceType->id],
+                            ['product_name' => $productName]
+                        );
+                    } else {
+                        // හදිසියේවත් කෙළින්ම Product Name එකක් ආවොත් (Fallback)
+                        $productName = trim($deviceTypeId);
+                        $product = Product::firstOrCreate(
+                            ['product_name' => $productName]
+                        );
+                    }
 
                     $syncData[$product->id] = [
                         'price' => $prod['price'] ?? 0,
