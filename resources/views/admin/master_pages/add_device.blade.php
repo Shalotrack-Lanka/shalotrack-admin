@@ -113,7 +113,7 @@
                                     value="{{ $type->id }}"
                                     {{ old('device_type_id') == $type->id ? 'selected' : '' }}
                                 >
-                                    {{ $type->device_category }} with {{ $type->model }}
+                                    {{ $type->device_category }} {{ $type->model }}
                                 </option>
                             @endforeach
                         </select>
