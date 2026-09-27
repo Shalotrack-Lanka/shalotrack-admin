@@ -5,30 +5,17 @@ namespace App\Imports;
 use App\Models\DeviceType;
 use App\Models\Feature;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Validator;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
+use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
-use Maatwebsite\Excel\Concerns\Importable;
+use Maatwebsite\Excel\Concerns\SkipsErrors;
 
-/**
- * Expected columns:
- *   device_category | model | protocol | features
- *
- * "model" must be exactly one of Basic / Plus / Customize — same
- * restriction as the dropdown in the single-entry form.
- *
- * "features" is optional, comma-separated feature NAMES (e.g.
- * "Geofencing, Ignition Alert") — resolved to feature IDs here, since
- * admins filling in a spreadsheet won't know internal feature IDs. Any
- * name that doesn't match an existing Feature fails that row rather than
- * silently being dropped.
- */
-class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure, SkipsOnError
 {
-    use Importable, SkipsFailures;
+    use SkipsFailures, SkipsErrors;
 
     public array $created = [];
 
@@ -36,19 +23,36 @@ class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, Skip
     {
         $featureIds = [];
 
-        if (! empty($row['features'])) {
-            $names = array_filter(array_map('trim', explode(',', $row['features'])));
-            $featureIds = Feature::whereIn('name', $names)->pluck('id')->toArray();
+        // Features කොලම් එකේ දත්ත තියෙනවා නම් ඒවා කඩා වෙන් කර ගැනීම (උදා: "Ignition Alert, Speed alert")
+        if (!empty($row['features'])) {
+            // කොමා (,) වලින් වෙන් කර Array එකක් සෑදීම
+            $featureNames = array_map('trim', explode(',', $row['features']));
+            
+            // එක් එක් Feature නමට අදාළ ID එක සොයා ගැනීම
+            foreach ($featureNames as $name) {
+                if (!empty($name)) {
+                    // Feature එක Database එකේ තියෙනවාද බලනවා (කැපිටල්/සිම්පල් නොසලකා)
+                    $feature = Feature::whereRaw('LOWER(name) = ?', [strtolower($name)])->first();
+                    
+                    // Feature එක නැත්නම් අලුතින් සාදා එහි ID එක ගන්නවා
+                    if (!$feature) {
+                        $feature = Feature::create(['name' => $name]);
+                    }
+                    
+                    $featureIds[] = (string) $feature->id; // JSON වලට ගැලපෙන්න String ලෙස ගන්නවා
+                }
+            }
         }
 
-        $deviceType = new DeviceType([
+        // Database එකට දත්ත ඇතුළත් කිරීම
+        $deviceType = DeviceType::create([
             'device_category' => trim($row['device_category']),
-            'model'            => trim($row['model']),
-            'protocol'         => trim($row['protocol']),
-            'features'         => $featureIds,
+            'model'           => trim($row['model']),
+            'protocol'        => trim($row['protocol']),
+            'features'        => $featureIds, // [ "1", "2" ] වගේ Array එකක් ලෙස සේව් වේ
         ]);
 
-        $this->created[] = $deviceType;
+        $this->created[] = $deviceType->id;
 
         return $deviceType;
     }
@@ -57,51 +61,27 @@ class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, Skip
     {
         return [
             'device_category' => ['required', 'string', 'max:255'],
-            'model'            => ['required', 'string', Rule::in(['Basic', 'Plus', 'Customize'])],
-            'protocol'         => ['required', 'string', 'max:255'],
-            'features'         => ['nullable', 'string'],
+            'model'           => ['required', 'string', 'in:Basic,Plus,Customize'],
+            'protocol'        => ['required', 'string', 'max:255'],
+            'features'        => ['nullable', 'string'],
         ];
     }
 
-    public function customValidationMessages()
-    {
-        return [
-            'model.in' => 'Model must be exactly one of: Basic, Plus, Customize.',
-        ];
-    }
-
-    /**
-     * Two cross-field / cross-table checks that don't fit a single-column
-     * rule: the category+model combo must not already exist (same rule
-     * store() enforces), and every feature name listed must be real.
-     */
-    public function withValidator(Validator $validator)
+    // එකම Category සහ Model එක දෙපාරක් ආවොත් වැළැක්වීම
+    public function withValidator($validator)
     {
         $validator->after(function ($validator) {
             $data = $validator->getData();
-
-            if (! empty($data['device_category']) && ! empty($data['model'])) {
-                $exists = DeviceType::where('device_category', trim($data['device_category']))
-                    ->where('model', trim($data['model']))
+            
+            if (!empty($data['device_category']) && !empty($data['model'])) {
+                $exists = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($data['device_category']))])
+                    ->whereRaw('LOWER(model) = ?', [strtolower(trim($data['model']))])
                     ->exists();
 
                 if ($exists) {
                     $validator->errors()->add(
                         'device_category',
-                        "'{$data['device_category']} / {$data['model']}' already exists."
-                    );
-                }
-            }
-
-            if (! empty($data['features'])) {
-                $names = array_filter(array_map('trim', explode(',', $data['features'])));
-                $found = Feature::whereIn('name', $names)->pluck('name')->toArray();
-                $missing = array_diff($names, $found);
-
-                if (! empty($missing)) {
-                    $validator->errors()->add(
-                        'features',
-                        'Unknown feature name(s): ' . implode(', ', $missing) . '. Add them via Add Feature first.'
+                        "මෙම '{$data['device_category']} / {$data['model']}' නමින් Device Type එකක් දැනටමත් පද්ධතියේ පවතී."
                     );
                 }
             }

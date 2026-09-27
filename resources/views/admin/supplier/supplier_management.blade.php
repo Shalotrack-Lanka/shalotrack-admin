@@ -168,7 +168,17 @@
                                                                     <div class="flex flex-wrap md:flex-nowrap gap-2 items-end mb-3">
                                                                         <div class="flex-1 w-full">
                                                                             <label class="block mb-1 text-[10px]">Product Name</label>
-                                                                            <input type="text" list="existing-products" required x-model="item.product_name" :name="`products[${index}][product_name]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="Select or type new product...">
+                                                                            <select required 
+                                                                                    x-model="item.product_name" 
+                                                                                    :name="`products[${index}][product_name]`" 
+                                                                                    class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs bg-white">
+                                                                                <option value="">Select product...</option>
+                                                                                @foreach($deviceTypes as $type)
+                                                                                    <option value="{{ $type->id }}">
+                                                                                        {{ $type->device_category }} {{$type->model }}
+                                                                                    </option>
+                                                                                @endforeach
+                                                                            </select>
                                                                         </div>
                                                                         <div class="w-1/4 md:w-28">
                                                                             <label class="block mb-1 text-[10px]">Unit Price</label>

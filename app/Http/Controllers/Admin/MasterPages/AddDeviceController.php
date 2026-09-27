@@ -86,7 +86,7 @@ class AddDeviceController extends Controller
         // Example: SIM + dialog = "SIM with dialog"
         $deviceCategory =
             $deviceType->device_category .
-            ' with ' .
+            ' ' .
             $deviceType->model;
 
         // Company Available Stock must cover this setup — one unit of
