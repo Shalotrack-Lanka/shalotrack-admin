@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin\MasterPages;
+namespace App\Http\Controllers\Admin\CancelRequests; // 💡 අලුත් Namespace එක
 
 use App\Http\Controllers\Controller;
 use App\Models\Sim;
@@ -21,7 +21,8 @@ class CancelSimController extends Controller
             return response()->json($sims);
         }
 
-        return view('admin.master_pages.cancel_sim', compact('sims'));
+        // 💡 අලුත් View Path එක (cancel_requests ෆෝල්ඩර් එක)
+        return view('admin.cancel_requests.cancel_sim', compact('sims'));
     }
 
     public function update(Request $request, Sim $sim)
@@ -29,7 +30,6 @@ class CancelSimController extends Controller
         $validated = $request->validate([
             'status' => 'required|in:Activated,Not Activated,Temporary Blocked,Canceled',
         ]);
-
         
         $sim->sim_status = $validated['status'];
         $sim->save();

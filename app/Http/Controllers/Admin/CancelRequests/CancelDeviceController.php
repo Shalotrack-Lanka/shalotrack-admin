@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin\MasterPages;
+namespace App\Http\Controllers\Admin\CancelRequests;
 
 use App\Http\Controllers\Controller;
 use App\Models\SetupShalotrackDevice;
@@ -31,7 +31,7 @@ class CancelDeviceController extends Controller
 
         $dealers = Dealer::orderBy('full_name')->get();
 
-        return view('admin.master_pages.cancel_device', compact('activatedDevices', 'notActivatedDevices', 'dealers'));
+        return view('admin.cancel_requests.cancel_device', compact('activatedDevices', 'notActivatedDevices', 'dealers'));
     }
 
     public function update(Request $request, SetupShalotrackDevice $device)
@@ -68,12 +68,11 @@ class CancelDeviceController extends Controller
 
         $device->save();
 
-        // NEW: push this device's updated state to the API — status
-        // changes (Activated / Temporarily Stopped) need to reach the
-        // mobile side just as much as the initial registration does.
+        // NEW: push this device's updated state to the API
         $this->pushDeviceToApi($device);
 
-        return redirect()->route('admin.cancel-device')
+        // 💡 මෙතන තමයි පරණ Route එක තිබුණේ, එය admin.cancel_device.index ලෙස නිවැරදි කර ඇත.
+        return redirect()->route('admin.cancel_device.index')
             ->with('success', "Device #{$device->shdevice_id} updated to \"{$device->status}\".");
     }
 
@@ -130,10 +129,6 @@ class CancelDeviceController extends Controller
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
-                // Deliberately non-fatal — the device is already saved locally
-                // in Admin's own database; the mobile-side push failing shouldn't
-                // block the Admin user's workflow. Worth a retry/alerting
-                // mechanism later if this needs to be more reliable.
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Device push to API threw an exception', [
