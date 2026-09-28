@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Complaints;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AdminComplaintController extends Controller
 {
@@ -24,7 +25,7 @@ class AdminComplaintController extends Controller
         $complaints = $response->successful() ? ($response->json('data') ?? []) : [];
 
         if (!$response->successful()) {
-            \Log::warning('Admin complaints fetch failed', ['status' => $response->status()]);
+            Log::warning('Admin complaints fetch failed', ['status' => $response->status()]);
         }
 
         return view('admin.complaints.index', compact('complaints'));
@@ -60,7 +61,7 @@ class AdminComplaintController extends Controller
         // redirect back with an error, not hard-crash the whole request
         // with a raw debug dump.
         if (!$response->successful()) {
-            \Log::warning('Admin complaint resolve failed', ['complaint_id' => $complaintId, 'status' => $response->status()]);
+            Log::warning('Admin complaint resolve failed', ['complaint_id' => $complaintId, 'status' => $response->status()]);
             return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
         }
 
@@ -71,30 +72,30 @@ class AdminComplaintController extends Controller
 
     public function resolved()
     {
-        // FIX: this used to call GET /api/internal/complaints, which
-        // doesn't exist on the C# API -- InternalComplaintsController
-        // only exposes /api/internal/complaints/for-admin and
-        // /api/internal/complaints/by-dealer/{dealerId}. That's why this
-        // always 401'd while every other method in this file (which
-        // correctly calls .../for-admin) worked fine. Now uses the same
-        // endpoint as index()/checkNew()/checkNewReplies() and filters
-        // client-side for status === 2, same as before.
+        // FIX (round 2): the previous fix pointed this at
+        // /api/internal/complaints/for-admin and filtered client-side for
+        // status === 2. That corrected the 401 but not the actual bug --
+        // GetForAdminAsync on the C# side is hard-filtered server-side to
+        // WithAdmin-status complaints only (see ComplaintRepository), so a
+        // complaint disappears from that endpoint's response the instant
+        // it's resolved. The status===2 filter here could never have found
+        // anything; this page was structurally guaranteed to always be
+        // empty no matter how many complaints were actually resolved.
+        //
+        // The C# API now exposes a dedicated endpoint for this
+        // (for-admin/resolved -- see InternalComplaintsController /
+        // ComplaintRepository.GetResolvedForAdminAsync), which does the
+        // filtering server-side. This method just calls it directly.
         $response = \Illuminate\Support\Facades\Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin/resolved');
 
         if (!$response->successful()) {
-            \Log::warning('Admin resolved-complaints fetch failed', ['status' => $response->status()]);
+            Log::warning('Admin resolved-complaints fetch failed', ['status' => $response->status()]);
             return view('admin.complaints.resolved', ['complaints' => []]);
         }
 
-        $allComplaints = $response->json('data') ?? [];
-
-        $complaints = array_filter($allComplaints, function ($complaint) {
-            return isset($complaint['status']) && (int)$complaint['status'] === 2;
-        });
-
-        $complaints = array_values($complaints);
+        $complaints = $response->json('data') ?? [];
 
         return view('admin.complaints.resolved', compact('complaints'));
     }
