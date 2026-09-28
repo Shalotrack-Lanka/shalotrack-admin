@@ -277,10 +277,12 @@ document.addEventListener("DOMContentLoaded", function () {
         transferBtn.disabled = true;
     }
 
-    function loadSimNumbers(category, selectEl, callback) {
+   function loadSimNumbers(category, selectEl, callback) {
         selectEl.innerHTML = '<option value="" disabled>Loading...</option>';
 
-        fetch('/admin/dealer/device-categories/' + encodeURIComponent(category) + '/sim-numbers')
+        // URL encode function එක හරහා Category එක නිවැරදිව Encode කර යවන්න
+        // 💡 UPDATE: admin/master-pages/stock-transfer/route ලෙස නිවැරදි කිරීම
+        fetch('{{ url("admin/master-pages/stock-transfer") }}/' + encodeURIComponent(category) + '/sim-numbers')
             .then(response => {
                 if (!response.ok) {
                     throw new Error("HTTP " + response.status);

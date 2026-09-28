@@ -165,6 +165,9 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/admin/stock/sim/{sim}/update-status',
          [AddSimController::class, 'updateStatus'])
          ->name('admin.stock.sim.update-status');
+        
+         //load sim numbers for a specific category
+         Route::get('/stock-transfer/{category}/sim-numbers', [StockTransferController::class, 'getSimNumbers'])->name('admin.stock_transfer.sim_numbers');
 
          //report generation
         Route::get('/add-sim/not-activated/export', [AddSimController::class, 'exportNotActivated'])->name('admin.sim.export-not-activated');
