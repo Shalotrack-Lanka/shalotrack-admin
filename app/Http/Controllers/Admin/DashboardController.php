@@ -10,6 +10,7 @@ use App\Models\Sim;
 use App\Models\Stock;
 use App\Models\CustomerAd;
 use App\Models\VehicleAd;
+use App\Models\DashboardMetricSnapshot;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -19,30 +20,30 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $months = collect(range(5, 0))->map(fn($i) => now()->subMonths($i));
+        $months = collect(range(5, 0))->map(fn ($i) => now()->subMonths($i));
 
-        $customerGrowthLabels = $months->map(fn($m) => $m->format('M'))->toArray();
+        $customerGrowthLabels = $months->map(fn ($m) => $m->format('M'))->toArray();
         $customerGrowthData = $months->map(function ($m) {
             return CustomerAd::where('created_at', '<=', $m->copy()->endOfMonth())->count();
         })->toArray();
 
         $verifiedCustomers    = CustomerAd::where('cus_status', 'verified')->count();
-        $notVerifiedCustomers = CustomerAd::where(function ($q) {
+        $notVerifiedCustomers = CustomerAd::where(function($q) {
             $q->where('cus_status', 'not_verified')
-                ->orWhereNull('cus_status');
+              ->orWhereNull('cus_status');
         })->count();
 
         $recentCustomers = CustomerAd::latest('created_at')
-            ->take(6)
-            ->get([
-                'customer_id',
-                'full_name',
-                'email',
-                'phone_number',
-                'nic_number',
-                'address',
-                'cus_status'
-            ]);
+                            ->take(6)
+                            ->get([
+                                'customer_id',
+                                'full_name',
+                                'email',
+                                'phone_number',
+                                'nic_number',
+                                'address',
+                                'cus_status'
+                            ]);
 
         $gatewayOnline    = false;
         $devicesOnlineNow = 0;
@@ -75,7 +76,7 @@ class DashboardController extends Controller
                 }
 
                 $complaints = $response->json('data') ?? [];
-                usort($complaints, fn($a, $b) => strcmp($b['createdAt'] ?? '', $a['createdAt'] ?? ''));
+                usort($complaints, fn ($a, $b) => strcmp($b['createdAt'] ?? '', $a['createdAt'] ?? ''));
 
                 return $complaints;
             });
@@ -86,24 +87,70 @@ class DashboardController extends Controller
         $openComplaintsCount = count($openComplaints);
         $recentComplaints    = array_slice($openComplaints, 0, 5);
 
+        $topDealerName          = null;
+        $topDealerComplaintCount = 0;
+
+        if ($openComplaintsCount > 0) {
+            $byDealerDesc = collect($openComplaints)
+                ->map(fn ($c) => $c['dealerName'] ?? $c['DealerName'] ?? null)
+                ->map(fn ($name) => $name && trim($name) !== '' ? $name : 'Unassigned')
+                ->countBy()
+                ->sortDesc();
+
+            if ($byDealerDesc->isNotEmpty()) {
+                $topDealerName           = $byDealerDesc->keys()->first();
+                $topDealerComplaintCount = $byDealerDesc->first();
+            }
+        }
+
         $notActivatedDevices = SetupShalotrackDevice::where('status', 'Not Activated')->count();
 
         $stockUnitsAvailable = (int) Stock::sum('company_available_stock');
 
-        $outOfStockCategories = Stock::where('company_available_stock', '<=', 0)->count();
+        $outOfStockCategoryNames = Stock::where('company_available_stock', '<=', 0)
+            ->pluck('device_category_type')
+            ->filter()
+            ->values()
+            ->toArray();
+        $outOfStockCategories = count($outOfStockCategoryNames);
 
-        $resolvedComplaintsCount = 0;
+        $resolvedComplaints = [];
 
         try {
-            $resolvedComplaintsCount = Cache::remember('dashboard_resolved_complaints_count', 30, function () {
+            $resolvedComplaints = Cache::remember('dashboard_resolved_complaints', 30, function () {
                 $response = Http::timeout(5)
                     ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
                     ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin/resolved');
 
-                return $response->successful() ? count($response->json('data') ?? []) : 0;
+                return $response->successful() ? ($response->json('data') ?? []) : [];
             });
         } catch (\Throwable $e) {
             Log::warning('Dashboard: resolved complaints fetch failed: ' . $e->getMessage());
+        }
+
+        $resolvedComplaintsCount = count($resolvedComplaints);
+
+        $avgResolutionHours = null;
+
+        $resolutionDurations = collect($resolvedComplaints)
+            ->map(function ($c) {
+                $createdAt  = $c['createdAt'] ?? $c['CreatedAt'] ?? null;
+                $resolvedAt = $c['resolvedAt'] ?? $c['ResolvedAt'] ?? null;
+
+                if (!$createdAt || !$resolvedAt) {
+                    return null;
+                }
+
+                try {
+                    return Carbon::parse($resolvedAt)->diffInMinutes(Carbon::parse($createdAt));
+                } catch (\Throwable $e) {
+                    return null;
+                }
+            })
+            ->filter(fn ($minutes) => $minutes !== null && $minutes >= 0);
+
+        if ($resolutionDurations->isNotEmpty()) {
+            $avgResolutionHours = round($resolutionDurations->avg() / 60, 1);
         }
 
         $activeDealers   = Dealer::where('status', 'active')->count();
@@ -111,6 +158,25 @@ class DashboardController extends Controller
 
         $totalSIMs        = Sim::count();
         $activatedSIMs    = Sim::where('sim_status', 'Activated')->count();
+
+        $staleDevicesCount = VehicleAd::whereNotNull('imei')
+            ->where('imei', '!=', '')
+            ->where(function ($q) {
+                $q->whereNull('last_synced_at')
+                  ->orWhere('last_synced_at', '<', now()->subDay());
+            })
+            ->count();
+
+        $trendSnapshot = DashboardMetricSnapshot::where('snapshot_date', '<=', now()->subDays(7)->toDateString())
+            ->orderByDesc('snapshot_date')
+            ->first();
+
+        $trends = [
+            'openComplaints' => $trendSnapshot ? $openComplaintsCount - $trendSnapshot->open_complaints_count : null,
+            'devicesOnline'  => $trendSnapshot ? $devicesOnlineNow - $trendSnapshot->devices_online : null,
+            'stockUnits'     => $trendSnapshot ? $stockUnitsAvailable - $trendSnapshot->stock_units_available : null,
+        ];
+        $trendSnapshotDate = $trendSnapshot?->snapshot_date?->format('M j');
 
         $data = [
             'totalDevices'          => SetupShalotrackDevice::count(),
@@ -123,7 +189,8 @@ class DashboardController extends Controller
             'totalSIMs'             => $totalSIMs,
             'activatedSIMs'         => $activatedSIMs,
             'stockUnitsAvailable'   => $stockUnitsAvailable,
-            'outOfStockCategories'  => $outOfStockCategories,
+            'outOfStockCategories'      => $outOfStockCategories,
+            'outOfStockCategoryNames'   => $outOfStockCategoryNames,
             'totalCustomers'        => CustomerAd::count(),
 
             'verifiedCustomers'     => $verifiedCustomers,
@@ -138,10 +205,18 @@ class DashboardController extends Controller
             'devicesOnlineNow'      => $devicesOnlineNow,
             'devicesOfflineNow'     => $devicesOfflineNow,
             'totalTrackedVehicles'  => $totalTrackedVehicles,
+            'staleDevicesCount'     => $staleDevicesCount,
 
             'openComplaintsCount'      => $openComplaintsCount,
             'resolvedComplaintsCount'  => $resolvedComplaintsCount,
             'recentComplaints'         => $recentComplaints,
+            'avgResolutionHours'       => $avgResolutionHours,
+
+            'topDealerName'            => $topDealerName,
+            'topDealerComplaintCount'  => $topDealerComplaintCount,
+
+            'trends'             => $trends,
+            'trendSnapshotDate'  => $trendSnapshotDate,
         ];
 
         return view('admin.dashboard', $data);
