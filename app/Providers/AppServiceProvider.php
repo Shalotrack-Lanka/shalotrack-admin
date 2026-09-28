@@ -28,6 +28,29 @@ class AppServiceProvider extends ServiceProvider
 
    public function boot(): void
     {
+        // FIX: mixed-content bug. route()/url() were emitting http:// absolute
+        // URLs in production (erp.shalotrack.com, served over HTTPS) even
+        // though trustProxies(at: '*') is already set in bootstrap/app.php --
+        // meaning the reverse proxy in front of this app isn't reliably
+        // forwarding X-Forwarded-Proto: https, so Laravel's scheme
+        // auto-detection guesses http. Browsers hard-block any fetch() from
+        // an https:// page to an http:// resource with no useful error beyond
+        // "Failed to fetch" / "TypeError: Failed to fetch" in the console --
+        // this was silently breaking every admin feature that builds an
+        // absolute URL for JS (Device Command Center's send/history calls,
+        // the sidebar's complaint/reply notification pollers). Don't rely on
+        // proxy header forwarding alone for something this load-bearing --
+        // force it. Gated to production so local `php artisan serve` (plain
+        // http) is unaffected.
+        //
+        // This is a mitigation, not the root-cause fix: the reverse proxy /
+        // ALB config should also be checked to confirm it's actually setting
+        // X-Forwarded-Proto on requests to this app. This line just makes
+        // sure the app is correct regardless of whether that gets fixed.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         // Admin Sidebar එක සඳහා
         View::composer('partials.sidebars.admin', function ($view) {
             if (auth()->check() && auth()->user()->role === 'ADMIN') {
