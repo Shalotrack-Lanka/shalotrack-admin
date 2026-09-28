@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Dealer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class DealerComplaintController extends Controller
 {
@@ -275,21 +276,43 @@ class DealerComplaintController extends Controller
         ]);
     }
 
+    // FIX: this previously returned a single hardcoded sample complaint for
+    // EVERY dealer regardless of their actual history (see the removed
+    // "Danata UI eka test karanna" placeholder). The real data was already
+    // one HTTP call away -- by-dealer/{id} is the exact same endpoint
+    // index() already uses, it just wasn't being filtered down to
+    // resolved/closed here. No new API endpoint needed.
     public function resolved()
     {
-        // TODO: C# API eka haduwama methanata API call eka danna.
-        // Danata UI eka test karanna podi sample data ekak pass karanawa.
-        $complaints = [
-            [
-                'vehicleNumber' => 'WP BGU 1212 - TVS Moto',
-                'categoryName' => 'Device Issue',
-                'description' => 'The device was dropping signals frequently. Replaced the antenna.',
-                'resolvedAt' => now()->subDays(2),
-                'replies' => [
-                    ['authorName' => 'ShaloTrack Support', 'message' => 'Antenna replacement completed successfully.']
-                ]
-            ]
-        ];
+        $dealer = $this->currentDealer();
+        if (!$dealer) {
+            return redirect()->back()->with('error', 'Dealer profile not found.');
+        }
+
+        $response = Http::timeout(10)
+            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+            ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
+
+        $allComplaints = $response->successful() ? ($response->json('data') ?? []) : [];
+
+        if (!$response->successful()) {
+            Log::warning('Dealer resolved complaints fetch failed', ['status' => $response->status(), 'dealer_id' => $dealer->id]);
+        }
+
+        // ComplaintStatus: WithDealer=0, WithAdmin=1, Resolved=2, Closed=3.
+        // Both Resolved and Closed land in this tab -- Closed is a resolved
+        // complaint that was also formally closed out afterward, not a
+        // separate outcome the dealer needs split out here.
+        $complaints = array_values(array_filter($allComplaints, function ($c) {
+            return in_array((int) ($c['status'] ?? -1), [2, 3], true);
+        }));
+
+        // Most recently resolved first.
+        usort($complaints, function ($a, $b) {
+            $aDate = $a['resolvedAt'] ?? $a['updatedAt'] ?? '';
+            $bDate = $b['resolvedAt'] ?? $b['updatedAt'] ?? '';
+            return strcmp($bDate, $aDate);
+        });
 
         return view('dealer.complaints_resolved', compact('complaints'));
     }
