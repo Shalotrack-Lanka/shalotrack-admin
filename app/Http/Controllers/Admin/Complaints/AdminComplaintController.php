@@ -25,7 +25,7 @@ class AdminComplaintController extends Controller
         $complaints = $response->successful() ? ($response->json('data') ?? []) : [];
 
         if (!$response->successful()) {
-            \Log::warning('Admin complaints fetch failed', ['status' => $response->status()]);
+            Log::warning('Admin complaints fetch failed', ['status' => $response->status()]);
         }
 
         return view('admin.complaints.index', compact('complaints'));
@@ -61,7 +61,7 @@ class AdminComplaintController extends Controller
         // redirect back with an error, not hard-crash the whole request
         // with a raw debug dump.
         if (!$response->successful()) {
-            \Log::warning('Admin complaint resolve failed', ['complaint_id' => $complaintId, 'status' => $response->status()]);
+            Log::warning('Admin complaint resolve failed', ['complaint_id' => $complaintId, 'status' => $response->status()]);
             return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
         }
 
@@ -91,7 +91,7 @@ class AdminComplaintController extends Controller
             ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin/resolved');
 
         if (!$response->successful()) {
-            \Log::warning('Admin resolved-complaints fetch failed', ['status' => $response->status()]);
+            Log::warning('Admin resolved-complaints fetch failed', ['status' => $response->status()]);
             return view('admin.complaints.resolved', ['complaints' => []]);
         }
 
