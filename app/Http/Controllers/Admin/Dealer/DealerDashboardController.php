@@ -83,6 +83,13 @@ class DealerDashboardController extends Controller
             
         $assignedDevicesCount = $assignedDevices->count();
 
+        // 💡 අලුතින් එකතු කළ කොටස: 'Assigned' සහ 'Temporarily Stopped' කියන දෙකම ගන්නවා
+        $totalSoldDevicesCount = SetupShalotrackDevice::where('dealer_id', $dealer->id)
+            ->whereNotNull('assigned_customer_id')
+            ->where('assigned_customer_id', '>', 0)
+            ->whereIn('status', ['Assigned to Customer', 'Temporarily Stopped'])
+            ->count();
+
         $pendingDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->where('status', 'Pending Repair')
             ->latest()
@@ -93,7 +100,7 @@ class DealerDashboardController extends Controller
             ->latest()
             ->get();
 
-        $earnedCommission = $assignedDevicesCount * 1000;
+        $earnedCommission = $totalSoldDevicesCount * 1000;
         $totalCustomers = $dealerLeads->count();
 
         $customerIds = \App\Models\CustomerAd::query()
@@ -125,7 +132,8 @@ class DealerDashboardController extends Controller
             'assignedDevicesCount',
             'earnedCommission',
             'pendingDevices',
-            'brokenDevices'
+            'brokenDevices',
+            'totalSoldDevicesCount'
         ));
     }
 
