@@ -113,11 +113,11 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.cancel-device') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.cancel-device') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
+                <a href="{{ route('admin.cancel_device.index') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.cancel_device.index') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                    Cancel Device
                 </a>
 
-                <a href="{{ route('admin.cancel-sim') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.cancel-sim') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
+                <a href="{{ route('admin.cancel_sim.index') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.cancel_sim.index') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                    Cancel Sim
                 </a>
 
