@@ -18,10 +18,18 @@
     </div>
 
     {{-- COMPLAINTS GRID --}}
+    @php
+        // Category/Status labels must stay in sync with the C# API's
+        // ComplaintCategory enum -- it serializes as a raw int, same mapping
+        // used in dealer/complaints.blade.php. There is no "categoryName"
+        // field on the API response; using one silently showed "General
+        // Issue" for every real complaint before this was fixed.
+        $categoryLabels = ['Device Issue', 'Billing', 'App Bug', 'Other'];
+    @endphp
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         @forelse($complaints ?? [] as $complaint)
             <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 hover:shadow-md transition">
-                
+
                 <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
@@ -29,11 +37,15 @@
                         </div>
                         <div>
                             <h4 class="font-bold text-slate-900 text-sm">{{ $complaint['vehicleNumber'] ?? 'Vehicle N/A' }}</h4>
-                            <p class="text-xs text-slate-500 font-semibold mt-0.5">{{ $complaint['categoryName'] ?? 'General Issue' }}</p>
+                            <p class="text-xs text-slate-500 font-semibold mt-0.5">{{ $categoryLabels[$complaint['category'] ?? -1] ?? 'Other' }}</p>
                         </div>
                     </div>
                     <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
-                        {{ \Carbon\Carbon::parse($complaint['resolvedAt'] ?? now())->format('d M Y') }}
+                        @if(!empty($complaint['resolvedAt']) || !empty($complaint['updatedAt']))
+                            {{ \Carbon\Carbon::parse($complaint['resolvedAt'] ?? $complaint['updatedAt'])->format('d M Y') }}
+                        @else
+                            Date unavailable
+                        @endif
                     </span>
                 </div>
 
