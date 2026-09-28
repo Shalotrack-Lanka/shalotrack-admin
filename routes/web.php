@@ -181,17 +181,17 @@ Route::middleware(['auth'])->group(function () {
     | Cancel Requests
     |--------------------------------------------------------------------------
     */
-    Route::prefix('admin/cancel-requests')->group(function () {
+  Route::prefix('admin/cancel-requests')->group(function () {
 
         // Cancel Device
-        Route::get('/cancel-device', [CancelDeviceController::class, 'index'])->name('admin.cancel-device');
-        Route::patch('/cancel-device/{device}', [CancelDeviceController::class, 'update'])->name('admin.cancel-device.update');
-        Route::get('/cancel-device/not-activated/export', [CancelDeviceController::class, 'exportNotActivated'])->name('admin.cancel-device.export-not-activated');
-        Route::get('/cancel-device/activated/export', [CancelDeviceController::class, 'exportActivated'])->name('admin.cancel-device.export-activated');
+        Route::get('/cancel-device', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'index'])->name('admin.cancel_device.index');
+        Route::patch('/cancel-device/{device}', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'update'])->name('admin.cancel_device.update');
+        Route::get('/cancel-device/not-activated/export', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'exportNotActivated'])->name('admin.cancel_device.export_not_activated');
+        Route::get('/cancel-device/activated/export', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'exportActivated'])->name('admin.cancel_device.export_activated');
 
         // Cancel Sim
-        Route::get('/cancel-sim', [CancelSimController::class, 'index'])->name('admin.cancel-sim');
-        Route::patch('/cancel-sim/{sim}', [CancelSimController::class, 'update'])->name('admin.cancel-sim.update');
+        Route::get('/cancel-sim', [\App\Http\Controllers\Admin\CancelRequests\CancelSimController::class, 'index'])->name('admin.cancel_sim.index');
+        Route::patch('/cancel-sim/{sim}', [\App\Http\Controllers\Admin\CancelRequests\CancelSimController::class, 'update'])->name('admin.cancel_sim.update');
 
     });
 

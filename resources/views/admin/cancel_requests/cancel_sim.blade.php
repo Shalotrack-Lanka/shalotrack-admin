@@ -178,7 +178,7 @@ function cancelSimPage() {
             sim.saving = true;
 
             try {
-                const response = await fetch(`/admin/master-pages/cancel-sim/${sim.id}`, {
+                const response = await fetch(`{{ url('admin/master-pages/cancel-sim') }}/${sim.id}`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
