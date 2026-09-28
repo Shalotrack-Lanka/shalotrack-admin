@@ -14,3 +14,8 @@ Artisan::command('inspire', function () {
 Schedule::command('customers:sync')->everyFiveMinutes();
 
 Schedule::command('devices:expire-subscriptions')->everyMinute();
+
+// Feeds the admin dashboard's week-over-week trend indicators. Runs late in
+// the day (23:55) so the snapshot reflects the day's activity, not its
+// first hour. See App\Console\Commands\SnapshotDashboardMetrics.
+Schedule::command('dashboard:snapshot')->dailyAt('23:55');
