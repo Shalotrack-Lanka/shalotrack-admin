@@ -276,42 +276,30 @@ document.addEventListener("DOMContentLoaded", function () {
         nuOfDevices.value = 0;
         transferBtn.disabled = true;
     }
+// 💡 PHP වලින් ආපු SIM දත්ත ටික Page එකේ JS Variable එකක ගබඩා කරගැනීම
+    const simsByCategory = @json($simsByCategory);
 
-   function loadSimNumbers(category, selectEl, callback) {
-        selectEl.innerHTML = '<option value="" disabled>Loading...</option>';
+    function loadSimNumbers(category, selectEl, callback) {
+        // Loading... පෙන්වන එක අයින් කරලා කෙළින්ම හිස් කරනවා
+        selectEl.innerHTML = ''; 
 
-        // URL encode function එක හරහා Category එක නිවැරදිව Encode කර යවන්න
-        // 💡 UPDATE: admin/master-pages/stock-transfer/route ලෙස නිවැරදි කිරීම
-        fetch('{{ url("admin/master-pages/stock-transfer") }}/' + encodeURIComponent(category) + '/sim-numbers')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("HTTP " + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                selectEl.innerHTML = '';
+        // අදාළ Category එකට අදාළ SIM ටික Variable එකෙන් කෙළින්ම ගන්නවා
+        const data = simsByCategory[category] || [];
 
-                if (data.length === 0) {
-                    selectEl.innerHTML = '<option value="" disabled>No SIM numbers available</option>';
-                    return;
-                }
+        if (data.length === 0) {
+            selectEl.innerHTML = '<option value="" disabled>No SIM numbers available</option>';
+            return;
+        }
 
-                data.forEach(function (sim) {
-                    const opt = document.createElement('option');
-                    opt.value = sim;
-                    opt.textContent = sim;
-                    selectEl.appendChild(opt);
-                });
+        data.forEach(function (sim) {
+            const opt = document.createElement('option');
+            opt.value = sim;
+            opt.textContent = sim;
+            selectEl.appendChild(opt);
+        });
 
-                if (callback) callback();
-            })
-            .catch(error => {
-                console.error(error);
-                selectEl.innerHTML = '<option value="" disabled>Failed to load SIM numbers</option>';
-            });
+        if (callback) callback();
     }
-
     // -------------------------------
     // Create form
     // -------------------------------

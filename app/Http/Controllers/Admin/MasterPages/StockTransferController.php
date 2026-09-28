@@ -16,8 +16,6 @@ class StockTransferController extends Controller
 {
     public function index()
     {
-        // Only categories that currently have at least one un-transferred,
-        // SIM-fitted device are worth offering — nothing to transfer otherwise.
         $deviceCategories = SetupShalotrackDevice::whereNull('dealer_id')
             ->whereNotNull('sim_number')
             ->distinct()
@@ -28,18 +26,24 @@ class StockTransferController extends Controller
 
         $transfers = DealerTransferLedger::with('dealer')->latest()->get();
 
-        // Individual transferred IMEI devices — same data as the
-        // standalone Assigned Devices page, embedded here too since this
-        // is where an admin naturally wants to see "which exact devices
-        // did that bulk number actually turn into."
         $allocatedDevices = SetupShalotrackDevice::with(['dealer', 'deviceType'])
             ->whereNotNull('dealer_id')
             ->orderByDesc('allocated_at')
             ->get();
 
+        // 💡 අලුතින් එකතු කළ කොටස: සෑම Category එකකටම අදාළ SIM ටික Page එක Load වෙද්දිම ලබා ගැනීම
+        $simsByCategory = SetupShalotrackDevice::whereNull('dealer_id')
+            ->whereNotNull('sim_number')
+            ->get(['device_category', 'sim_number'])
+            ->groupBy('device_category')
+            ->map(function ($items) {
+                return $items->pluck('sim_number')->sort()->values();
+            });
+
         return view(
             'admin.master_pages.stock_transfer',
-            compact('deviceCategories', 'dealers', 'transfers', 'allocatedDevices')
+            // simsByCategory යන්න compact එකට අනිවාර්යයෙන්ම එකතු කරන්න
+            compact('deviceCategories', 'dealers', 'transfers', 'allocatedDevices', 'simsByCategory')
         );
     }
 
