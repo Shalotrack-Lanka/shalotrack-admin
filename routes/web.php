@@ -503,12 +503,14 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     Route::post('/complaints/{complaintId}/close', [DealerComplaintController::class, 'close'])->name('complaints.close');
 
     // Polls for new complaint threads assigned to this dealer.
+    // FIX: this URI + a "resolved" URI were each registered twice in this
+    // group (once more under a fully-qualified duplicate that produced
+    // the malformed name dealer.dealer.check-new-complaints, unreachable
+    // for real traffic since Laravel matches the first-registered route
+    // for a given URI). Both duplicate pairs pointed at the identical
+    // controller/method, so there was no behavioral bug -- just dead,
+    // confusing lines. Collapsed to one registration each.
     Route::get('/check-new-complaints', [DealerComplaintController::class, 'checkNewComplaints'])->name('check-new-complaints');
-
-// Dealer සඳහා අලුත් complaints චෙක් කරන Route එක
-Route::get('/check-new-complaints', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'checkNewComplaints'])->name('dealer.check-new-complaints');
-
-  Route::get('/complaints/resolved', [\App\Http\Controllers\Admin\Dealer\DealerComplaintController::class, 'resolved'])->name('complaints.resolved');
 
     // Polls for new admin replies on this dealer's open complaints.
     Route::get('/check-new-replies', [DealerComplaintController::class, 'checkNewReplies'])->name('check-new-replies');

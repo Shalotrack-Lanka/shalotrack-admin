@@ -49,15 +49,19 @@ class AdminComplaintController extends Controller
         return back()->with('success', 'Reply sent.');
     }
 
-public function resolve(string $complaintId)
+    public function resolve(string $complaintId)
     {
         $response = Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
             ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/resolve");
 
-        // 💡 DEBUG 1: C# API eka resolve karanna denne nathnam, hethuwa kalu screen eken pennai
+        // FIX: replaced a live dd() with the same graceful failure pattern
+        // used by reply()/close() below -- a transient API hiccup should
+        // redirect back with an error, not hard-crash the whole request
+        // with a raw debug dump.
         if (!$response->successful()) {
-            dd('ERROR: API eka resolve karanna denne na!', 'Status: ' . $response->status(), 'C# API Response: ' . $response->body());
+            \Log::warning('Admin complaint resolve failed', ['complaint_id' => $complaintId, 'status' => $response->status()]);
+            return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
         }
 
         \Illuminate\Support\Facades\Cache::forget('admin_complaints_count');
@@ -67,13 +71,21 @@ public function resolve(string $complaintId)
 
     public function resolved()
     {
+        // FIX: this used to call GET /api/internal/complaints, which
+        // doesn't exist on the C# API -- InternalComplaintsController
+        // only exposes /api/internal/complaints/for-admin and
+        // /api/internal/complaints/by-dealer/{dealerId}. That's why this
+        // always 401'd while every other method in this file (which
+        // correctly calls .../for-admin) worked fine. Now uses the same
+        // endpoint as index()/checkNew()/checkNewReplies() and filters
+        // client-side for status === 2, same as before.
         $response = \Illuminate\Support\Facades\Http::timeout(10)
             ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints');
+            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
 
-        // 💡 DEBUG 2: C# API eke Resolved ewata route ekak nathnam, hethuwa kalu screen eken pennai
         if (!$response->successful()) {
-            dd('ERROR: API eke okkoma complaints ganna route eka wada na!', 'Status: ' . $response->status(), 'C# API Response: ' . $response->body());
+            \Log::warning('Admin resolved-complaints fetch failed', ['status' => $response->status()]);
+            return view('admin.complaints.resolved', ['complaints' => []]);
         }
 
         $allComplaints = $response->json('data') ?? [];

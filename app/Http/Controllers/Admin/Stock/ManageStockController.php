@@ -121,7 +121,15 @@ class ManageStockController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            // FIX: replaced a live dd() -- any exception during import
+            // (a malformed file, a row that fails a DB constraint, etc.)
+            // used to hard-crash the whole page with a raw dump instead
+            // of giving the user something they can act on.
+            \Log::error('Stock import failed', ['message' => $e->getMessage()]);
+
+            return redirect()->back()->withErrors([
+                'excel_file' => 'Import failed: ' . $e->getMessage(),
+            ]);
         }
     }
 
