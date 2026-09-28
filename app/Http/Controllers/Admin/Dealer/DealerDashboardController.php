@@ -400,6 +400,30 @@ class DealerDashboardController extends Controller
         return back()->with('success', "Device IMEI {$device->imei_number} moved back to Pending Repair for testing!");
     }
 
+    // Route existed (dealer.customer-ad.edit) but this method never did —
+    // hitting it threw "Call to undefined method". Scoped to the
+    // authenticated dealer exactly like destroyCustomerAd(), so one
+    // dealer can never read another dealer's lead by guessing an id.
+    public function editCustomerAd($id)
+    {
+        $dealerId = auth()->user()->dealer->id ?? null;
+
+        $customerAd = DealerCustomerAd::where('dealer_id', $dealerId)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        return response()->json([
+            'id'            => $customerAd->id,
+            'name'          => $customerAd->name,
+            'email'         => $customerAd->email,
+            'contact'       => $customerAd->contact,
+            'nic_or_id'     => $customerAd->nic_or_id,
+            'no_of_devices' => $customerAd->no_of_devices,
+            'imei_numbers'  => $customerAd->imei_numbers,
+            'address'       => $customerAd->address,
+        ]);
+    }
+
     public function destroyCustomerAd($id)
     {
         $dealerId  = auth()->user()->dealer->id ?? null;

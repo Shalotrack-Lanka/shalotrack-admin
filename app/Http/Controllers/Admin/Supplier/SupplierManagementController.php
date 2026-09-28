@@ -111,6 +111,93 @@ class SupplierManagementController extends Controller
             ->with('success', "Supplier '{$supplier->name}' updated successfully.");
     }
 
+    // Route existed (admin.suppliers.edit) but this method never did —
+    // hitting it threw "Call to undefined method". The Edit Supplier
+    // modal in supplier_management.blade.php is actually populated
+    // server-side inline and submits to update(), not this route, so
+    // this exists as a JSON data endpoint for any future AJAX-driven
+    // edit UI rather than something currently in the request path.
+    public function edit($id)
+    {
+        $supplier = Supplier::with('products')->findOrFail($id);
+
+        return response()->json([
+            'id'           => $supplier->id,
+            'name'         => $supplier->name,
+            'address'      => $supplier->address,
+            'country'      => $supplier->country,
+            'state'        => $supplier->state,
+            'phone_number' => $supplier->phone_number,
+            'email'        => $supplier->email,
+            'website'      => $supplier->website,
+            'gstin_number' => $supplier->gstin_number,
+            'status'       => $supplier->status,
+            'products'     => $supplier->products->map(fn ($p) => [
+                'product_id'      => $p->id,
+                'device_type_id'  => $p->device_type_id,
+                'product_name'    => $p->product_name,
+                'price'           => $p->pivot->price,
+                'qty'             => $p->pivot->qty,
+            ])->values(),
+        ]);
+    }
+
+    // Route existed (admin.suppliers.attach-product) but this method
+    // never did. Unlike update()'s syncProducts() — which replaces the
+    // supplier's ENTIRE product list in one shot — this attaches a
+    // single product without touching the others, using the same
+    // device-type-or-freetext resolution as syncProducts() so both
+    // paths create identical Product rows.
+    public function attachProduct(Request $request, $id)
+    {
+        $supplier = Supplier::findOrFail($id);
+
+        $validated = $request->validate([
+            'device_type_id' => 'nullable|integer|exists:device_types,id',
+            'product_name'   => 'required_without:device_type_id|nullable|string|max:255',
+            'price'          => 'required|numeric|min:0',
+            'qty'            => 'required|integer|min:0',
+        ]);
+
+        if (!empty($validated['device_type_id'])) {
+            $deviceType = DeviceType::findOrFail($validated['device_type_id']);
+            $productName = trim("{$deviceType->device_category} {$deviceType->model}");
+
+            $product = Product::firstOrCreate(
+                ['device_type_id' => $deviceType->id],
+                ['product_name' => $productName]
+            );
+        } else {
+            $product = Product::firstOrCreate([
+                'product_name' => trim($validated['product_name']),
+            ]);
+        }
+
+        $supplier->products()->syncWithoutDetaching([
+            $product->id => [
+                'price' => $validated['price'],
+                'qty'   => $validated['qty'],
+            ],
+        ]);
+
+        return redirect()
+            ->route('admin.suppliers')
+            ->with('success', "Product '{$product->product_name}' attached to '{$supplier->name}'.");
+    }
+
+    // Route existed (admin.suppliers.detach-product) but this method
+    // never did. Detaches one product from the pivot without touching
+    // the supplier's other products.
+    public function detachProduct($id, $productId)
+    {
+        $supplier = Supplier::findOrFail($id);
+        $supplier->products()->detach($productId);
+
+        return redirect()
+            ->route('admin.suppliers')
+            ->with('success', 'Product removed from ' . $supplier->name . '.');
+    }
+
     public function toggleStatus($id)
     {
         $supplier = Supplier::findOrFail($id);

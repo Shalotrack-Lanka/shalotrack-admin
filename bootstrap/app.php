@@ -28,9 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // remain browsing because the login check only fires at login time.
         $middleware->appendToGroup('web', \App\Http\Middleware\EnforceAdminStatus::class);
 
-        // Register the custom Firebase middleware alias
+        // Register the custom middleware aliases
         $middleware->alias([
-            'auth.firebase' => \App\Http\Middleware\VerifyFirebaseToken::class,
             'auth.adminsync' => \App\Http\Middleware\VerifyAdminSyncKey::class,
         ]);
 
