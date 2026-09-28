@@ -178,7 +178,8 @@ function cancelSimPage() {
             sim.saving = true;
 
             try {
-                const response = await fetch(`{{ url('admin/master-pages/cancel-sim') }}/${sim.id}`, {
+                // 💡 මෙතන තමයි නිවැරදි URL එක යාවත්කාලීන කර ඇත්තේ
+                const response = await fetch(`/admin/cancel-requests/cancel-sim/${sim.id}`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
@@ -195,13 +196,11 @@ function cancelSimPage() {
                 if (!response.ok || !data.success) {
                     throw new Error(data.message || 'Database update failed');
                 }
-
                 
                 sim.sim_status = newStatus;
                 this.showToast(`${sim.sim_number} status updated to ${newStatus}.`, 'success');
 
             } catch (e) {
-               
                 event.target.value = oldStatus;
                 sim.sim_status = oldStatus;
                 this.showToast('Failed to update Database!', 'error');
