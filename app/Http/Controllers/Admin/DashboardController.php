@@ -171,13 +171,11 @@ class DashboardController extends Controller
         $totalSIMs        = Sim::count();
         $activatedSIMs    = Sim::where('sim_status', 'Activated')->count();
 
-        $staleDevicesCount = VehicleAd::whereNotNull('imei')
-            ->where('imei', '!=', '')
-            ->where(function ($q) {
-                $q->whereNull('last_synced_at')
-                  ->orWhere('last_synced_at', '<', now()->subDay());
-            })
-            ->count();
+        $staleSummary = app(\App\Services\StaleDeviceService::class)->summarize(
+            VehicleAd::whereNotNull('imei')->where('imei', '!=', '')->pluck('imei')
+        );
+        $staleDevicesCount       = $staleSummary['stale'];
+        $staleDevicesUnavailable = $staleSummary['unavailable'];
 
         $trendSnapshot = DashboardMetricSnapshot::where('snapshot_date', '<=', now()->subDays(7)->toDateString())
             ->orderByDesc('snapshot_date')
@@ -218,6 +216,7 @@ class DashboardController extends Controller
             'devicesOfflineNow'     => $devicesOfflineNow,
             'totalTrackedVehicles'  => $totalTrackedVehicles,
             'staleDevicesCount'     => $staleDevicesCount,
+            'staleDevicesUnavailable' => $staleDevicesUnavailable,
 
             'openComplaintsCount'      => $openComplaintsCount,
             'complaintsUnavailable'    => $complaintsUnavailable,

@@ -119,8 +119,10 @@
                 : ' — restock needed.';
                 $alerts[] = ['level' => 'warning', 'text' => $stockAlertText];
                 }
-                if ($staleDevicesCount > 0) {
-                $alerts[] = ['level' => 'warning', 'text' => $staleDevicesCount . ' tracked ' . Str::plural('vehicle', $staleDevicesCount) . ' — no GPS sync in 24h+.'];
+                if ($staleDevicesUnavailable) {
+                $alerts[] = ['level' => 'warning', 'text' => 'GPS freshness could not be checked right now, so the Stale Devices number is not shown.'];
+                } elseif ($staleDevicesCount > 0) {
+                $alerts[] = ['level' => 'warning', 'text' => $staleDevicesCount . ' tracked ' . Str::plural('vehicle', $staleDevicesCount) . ' — no GPS point in 24h+.'];
                 }
                 @endphp
 
@@ -224,15 +226,15 @@
                     </a>
 
                     <div class="st-card p-5 flex items-center gap-3.5">
-                        <span class="st-tile-icon {{ $staleDevicesCount > 0 ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400' }}">
+                        <span class="st-tile-icon {{ $staleDevicesCount > 0 || $staleDevicesUnavailable ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                             </svg>
                         </span>
                         <div class="min-w-0">
                             <p class="st-section-label">Stale Devices (24h+)</p>
-                            <p class="st-num text-lg font-extrabold {{ $staleDevicesCount > 0 ? 'text-amber-600' : 'text-slate-900' }}">{{ $staleDevicesCount }}</p>
-                            <p class="text-[10px] text-slate-400 font-medium mt-0.5">no GPS sync received</p>
+                            <p data-stale-count class="st-num text-lg font-extrabold {{ $staleDevicesCount > 0 || $staleDevicesUnavailable ? 'text-amber-600' : 'text-slate-900' }}">{{ $staleDevicesUnavailable ? '—' : $staleDevicesCount }}</p>
+                            <p data-stale-note class="text-[10px] text-slate-400 font-medium mt-0.5">{{ $staleDevicesUnavailable ? 'GPS check unavailable' : ($staleDevicesCount > 0 ? 'no GPS point in 24h+' : 'all tracked vehicles reporting') }}</p>
                         </div>
                     </div>
 
@@ -349,8 +351,9 @@
                             </svg>
                         </span>
                         <div class="min-w-0">
-                            <p class="st-section-label">SIM Inventory</p>
-                            <p class="st-num text-lg font-extrabold text-slate-900">{{ $activatedSIMs }} <span class="text-sm font-semibold text-slate-400">/ {{ $totalSIMs }}</span></p>
+                            <p class="st-section-label">Spare SIMs Ready</p>
+                            <p data-sim-ready class="st-num text-lg font-extrabold {{ $activatedSIMs === 0 ? 'text-amber-600' : 'text-slate-900' }}">{{ $activatedSIMs }} <span class="text-sm font-semibold text-slate-400">/ {{ $totalSIMs }}</span></p>
+                            <p data-sim-note class="text-[10px] text-slate-400 font-medium mt-0.5">activated / spare in pool. SIMs already in devices are not counted</p>
                         </div>
                     </div>
 
