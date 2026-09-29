@@ -6,15 +6,15 @@
 <div class="space-y-6">
 
     @if(session('success'))
-        <div class="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs font-bold">
-            {{ session('success') }}
-        </div>
+    <div class="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs font-bold">
+        {{ session('success') }}
+    </div>
     @endif
 
     @if ($errors->any())
-        <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-bold">
-            {{ $errors->first() }}
-        </div>
+    <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-bold">
+        {{ $errors->first() }}
+    </div>
     @endif
 
     {{-- Filled by the page's JavaScript when the Edit form can't be opened. --}}
@@ -23,9 +23,11 @@
     <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
         <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <div class="flex justify-between items-center mb-4">
-              <h2 class="text-xl font-bold text-gray-800">Setuped Device Transfered to Dealers</h2>
+                <h2 class="text-xl font-bold text-gray-800">Setuped Device Transfered to Dealers</h2>
                 <a href="{{ route('admin.stock_transfer.report') }}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-md transition inline-flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
                     Generate Full Transfer Report
                 </a>
             </div>
@@ -44,12 +46,17 @@
                         </option>
 
                         @forelse($deviceCategories as $category)
-                            <option value="{{ $category }}">{{ $category }}</option>
+                        <option value="{{ $category }}">{{ $category }}</option>
                         @empty
-                            <option value="" disabled>No device categories available</option>
+                        <option value="" disabled>No device categories available</option>
                         @endforelse
 
                     </select>
+                    @if($deviceCategories->isEmpty() && ($awaitingActivation ?? 0) > 0)
+                    <p id="awaiting-activation-hint" class="mt-1 text-[11px] text-amber-600 font-normal">
+                        {{ $awaitingActivation }} device(s) are in stock but not activated yet. Activate them on Cancel Device first; only activated devices can be transferred to a dealer.
+                    </p>
+                    @endif
                 </div>
 
                 <div class="md:col-span-1">
@@ -65,9 +72,9 @@
                         </option>
 
                         @foreach($dealers as $dealer)
-                            <option value="{{ $dealer->id }}">
-                                {{ $dealer->full_name }}
-                            </option>
+                        <option value="{{ $dealer->id }}">
+                            {{ $dealer->full_name }}
+                        </option>
                         @endforeach
 
                     </select>
@@ -114,33 +121,33 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 bg-white text-sm font-medium text-gray-700">
                         @forelse($transfers as $transfer)
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="p-4 text-xs text-gray-500">{{ $transfer->created_at->format('Y-m-d h:i A') }}</td>
-                                <td class="p-4 font-bold">{{ $transfer->dealer->full_name ?? '-' }}</td>
-                                <td class="p-4">{{ $transfer->device_category }}</td>
-                                <td class="p-4 text-center font-bold text-blue-600 bg-blue-50">{{ $transfer->quantity }}</td>
-                                <td class="p-4 text-center">
-                                    <div class="inline-flex items-center gap-2">
-                                        <button type="button"
-                                            class="edit-transfer-btn px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold"
-                                            data-id="{{ $transfer->id }}"
-                                            data-category="{{ $transfer->device_category }}">
-                                            Edit
-                                        </button>
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="p-4 text-xs text-gray-500">{{ $transfer->created_at->format('Y-m-d h:i A') }}</td>
+                            <td class="p-4 font-bold">{{ $transfer->dealer->full_name ?? '-' }}</td>
+                            <td class="p-4">{{ $transfer->device_category }}</td>
+                            <td class="p-4 text-center font-bold text-blue-600 bg-blue-50">{{ $transfer->quantity }}</td>
+                            <td class="p-4 text-center">
+                                <div class="inline-flex items-center gap-2">
+                                    <button type="button"
+                                        class="edit-transfer-btn px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold"
+                                        data-id="{{ $transfer->id }}"
+                                        data-category="{{ $transfer->device_category }}">
+                                        Edit
+                                    </button>
 
-                                        <form action="{{ route('admin.stock_transfer.destroy', $transfer) }}" method="POST"
-                                              onsubmit="return confirm('Delete this transfer history record? The devices will remain assigned to the dealer.')" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold">Delete</button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
+                                    <form action="{{ route('admin.stock_transfer.destroy', $transfer) }}" method="POST"
+                                        onsubmit="return confirm('Delete this transfer history record? The devices will remain assigned to the dealer.')" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
                         @empty
-                            <tr>
-                                <td colspan="5" class="p-8 text-center text-gray-400">No stock transfers found.</td>
-                            </tr>
+                        <tr>
+                            <td colspan="5" class="p-8 text-center text-gray-400">No stock transfers found.</td>
+                        </tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -172,33 +179,33 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 bg-white text-sm font-medium text-gray-700">
                         @forelse($allocatedDevices as $device)
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="p-4 font-mono text-xs">{{ $device->imei_number }}</td>
-                                <td class="p-4">{{ $device->sim_number ?? '-' }}</td>
-                                <td class="p-4">
-                                    {{ $device->deviceType->device_category ?? $device->device_category ?? '-' }}
-                                    @if($device->deviceType?->model)
-                                        <span class="text-gray-400">— {{ $device->deviceType->model }}</span>
-                                    @endif
-                                </td>
-                                <td class="p-4 font-bold">{{ $device->dealer->full_name ?? '-' }}</td>
-                                <td class="p-4">
-                                    <span class="px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
-                                        {{ $device->status }}
-                                    </span>
-                                </td>
-                                <td class="p-4 text-xs text-gray-500">
-                                    @if($device->allocated_at)
-                                        {{ $device->allocated_at->format('d M Y, h:i A') }}
-                                    @else
-                                        <span class="text-gray-400 italic">Not recorded</span>
-                                    @endif
-                                </td>
-                            </tr>
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="p-4 font-mono text-xs">{{ $device->imei_number }}</td>
+                            <td class="p-4">{{ $device->sim_number ?? '-' }}</td>
+                            <td class="p-4">
+                                {{ $device->deviceType->device_category ?? $device->device_category ?? '-' }}
+                                @if($device->deviceType?->model)
+                                <span class="text-gray-400">— {{ $device->deviceType->model }}</span>
+                                @endif
+                            </td>
+                            <td class="p-4 font-bold">{{ $device->dealer->full_name ?? '-' }}</td>
+                            <td class="p-4">
+                                <span class="px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
+                                    {{ $device->status }}
+                                </span>
+                            </td>
+                            <td class="p-4 text-xs text-gray-500">
+                                @if($device->allocated_at)
+                                {{ $device->allocated_at->format('d M Y, h:i A') }}
+                                @else
+                                <span class="text-gray-400 italic">Not recorded</span>
+                                @endif
+                            </td>
+                        </tr>
                         @empty
-                            <tr>
-                                <td colspan="6" class="p-8 text-center text-gray-400">No devices have been transferred to a dealer yet.</td>
-                            </tr>
+                        <tr>
+                            <td colspan="6" class="p-8 text-center text-gray-400">No devices have been transferred to a dealer yet.</td>
+                        </tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -228,7 +235,7 @@
                 <select id="edit_dealer_id" name="dealer_id" required
                     class="w-full rounded-lg border-gray-300 h-10 text-xs">
                     @foreach($dealers as $dealer)
-                        <option value="{{ $dealer->id }}">{{ $dealer->full_name }}</option>
+                    <option value="{{ $dealer->id }}">{{ $dealer->full_name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -255,155 +262,159 @@
 @endsection
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", function() {
 
-    const deviceCategory = document.getElementById("device_category");
-    const dealer = document.getElementById("dealer_id");
-    const simNumbers = document.getElementById("sim_numbers");
-    const nuOfDevices = document.getElementById("nu_of_devices");
-    const transferBtn = document.getElementById("transfer_btn");
-    const resetBtn = document.getElementById("reset_btn");
-    const transferForm = document.getElementById("transfer_form");
+        const deviceCategory = document.getElementById("device_category");
+        const dealer = document.getElementById("dealer_id");
+        const simNumbers = document.getElementById("sim_numbers");
+        const nuOfDevices = document.getElementById("nu_of_devices");
+        const transferBtn = document.getElementById("transfer_btn");
+        const resetBtn = document.getElementById("reset_btn");
+        const transferForm = document.getElementById("transfer_form");
 
-    function updateNuOfDevices(selectEl, outputEl, btnEl) {
-        const count = Array.from(selectEl.selectedOptions).filter(o => o.value).length;
-        outputEl.value = count;
-        if (btnEl) {
-            btnEl.disabled = count === 0;
-        }
-        return count;
-    }
-
-    function resetTransferFields() {
-        simNumbers.innerHTML = '<option value="" disabled>-- Select Device Category / Type first --</option>';
-        nuOfDevices.value = 0;
-        transferBtn.disabled = true;
-    }
-// 💡 PHP වලින් ආපු SIM දත්ත ටික Page එකේ JS Variable එකක ගබඩා කරගැනීම
-    const simsByCategory = @json($simsByCategory);
-
-    function loadSimNumbers(category, selectEl, callback) {
-        // Loading... පෙන්වන එක අයින් කරලා කෙළින්ම හිස් කරනවා
-        selectEl.innerHTML = ''; 
-
-        // අදාළ Category එකට අදාළ SIM ටික Variable එකෙන් කෙළින්ම ගන්නවා
-        const data = simsByCategory[category] || [];
-
-        if (data.length === 0) {
-            selectEl.innerHTML = '<option value="" disabled>No SIM numbers available</option>';
-            return;
+        function updateNuOfDevices(selectEl, outputEl, btnEl) {
+            const count = Array.from(selectEl.selectedOptions).filter(o => o.value).length;
+            outputEl.value = count;
+            if (btnEl) {
+                btnEl.disabled = count === 0;
+            }
+            return count;
         }
 
-        data.forEach(function (sim) {
-            const opt = document.createElement('option');
-            opt.value = sim;
-            opt.textContent = sim;
-            selectEl.appendChild(opt);
-        });
-
-        if (callback) callback();
-    }
-    // -------------------------------
-    // Create form
-    // -------------------------------
-    deviceCategory.addEventListener("change", function () {
-        resetTransferFields();
-        if (this.value) {
-            loadSimNumbers(this.value, simNumbers);
+        function resetTransferFields() {
+            simNumbers.innerHTML = '<option value="" disabled>-- Select Device Category / Type first --</option>';
+            nuOfDevices.value = 0;
+            transferBtn.disabled = true;
         }
-    });
+        // 💡 PHP වලින් ආපු SIM දත්ත ටික Page එකේ JS Variable එකක ගබඩා කරගැනීම
+        const simsByCategory = @json($simsByCategory);
 
-    simNumbers.addEventListener("change", function () {
-        updateNuOfDevices(simNumbers, nuOfDevices, transferBtn);
-    });
+        function loadSimNumbers(category, selectEl, callback) {
+            // Loading... පෙන්වන එක අයින් කරලා කෙළින්ම හිස් කරනවා
+            selectEl.innerHTML = '';
 
-    resetBtn.addEventListener("click", function () {
-        transferForm.reset();
-        resetTransferFields();
-    });
+            // අදාළ Category එකට අදාළ SIM ටික Variable එකෙන් කෙළින්ම ගන්නවා
+            const data = simsByCategory[category] || [];
 
-    // -------------------------------
-    // Edit modal
-    // -------------------------------
-    const editModal = document.getElementById("edit_modal");
-    const editForm = document.getElementById("edit_form");
-    const editDeviceCategory = document.getElementById("edit_device_category");
-    const editDealer = document.getElementById("edit_dealer_id");
-    const editSimNumbers = document.getElementById("edit_sim_numbers");
-    const editNuOfDevices = document.getElementById("edit_nu_of_devices");
+            if (data.length === 0) {
+                selectEl.innerHTML = '<option value="" disabled>No SIM numbers available</option>';
+                return;
+            }
 
-    // URLs come from the named routes (the previous hard-coded
-    // /admin/dealer/... paths don't exist, so Edit silently did nothing).
-    const editDataUrlTemplate = @json(route('admin.stock_transfer.edit-data', ['ledger' => '__ID__']));
-    const updateUrlTemplate   = @json(route('admin.stock_transfer.update', ['ledger' => '__ID__']));
-    const transferJsError     = document.getElementById("transfer_js_error");
-
-    function showTransferError(message) {
-        transferJsError.textContent = message;
-        transferJsError.classList.remove("hidden");
-    }
-
-    function clearTransferError() {
-        transferJsError.classList.add("hidden");
-        transferJsError.textContent = "";
-    }
-
-    function openEditModal(id) {
-        clearTransferError();
-        editForm.action = updateUrlTemplate.replace('__ID__', id);
-
-        fetch(editDataUrlTemplate.replace('__ID__', id), { headers: { 'Accept': 'application/json' } })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(response.status === 404
-                        ? 'This transfer record no longer exists. Refresh the page.'
-                        : 'The server could not load this transfer (error ' + response.status + ').');
-                }
-                return response.json();
-            })
-            .then(data => {
-                editDeviceCategory.value = data.device_category;
-                editDealer.value = data.dealer_id;
-
-                editSimNumbers.innerHTML = '';
-                data.sim_numbers.forEach(function (sim) {
-                    const opt = document.createElement('option');
-                    opt.value = sim;
-                    opt.textContent = sim;
-                    opt.selected = data.selected.includes(sim);
-                    editSimNumbers.appendChild(opt);
-                });
-
-                updateNuOfDevices(editSimNumbers, editNuOfDevices, null);
-                editModal.classList.remove("hidden");
-            })
-            .catch(error => {
-                console.error(error);
-                editModal.classList.add("hidden");
-                showTransferError(
-                    (error && error.message && !/Failed to fetch|NetworkError|Unexpected token/i.test(error.message))
-                        ? error.message
-                        : 'Could not open the edit form. Check your connection, then refresh the page and try again.'
-                );
+            data.forEach(function(sim) {
+                const opt = document.createElement('option');
+                opt.value = sim;
+                opt.textContent = sim;
+                selectEl.appendChild(opt);
             });
-    }
 
-    function closeEditModal() {
-        editModal.classList.add("hidden");
-    }
-
-    document.querySelectorAll(".edit-transfer-btn").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-            openEditModal(this.dataset.id);
+            if (callback) callback();
+        }
+        // -------------------------------
+        // Create form
+        // -------------------------------
+        deviceCategory.addEventListener("change", function() {
+            resetTransferFields();
+            if (this.value) {
+                loadSimNumbers(this.value, simNumbers);
+            }
         });
+
+        simNumbers.addEventListener("change", function() {
+            updateNuOfDevices(simNumbers, nuOfDevices, transferBtn);
+        });
+
+        resetBtn.addEventListener("click", function() {
+            transferForm.reset();
+            resetTransferFields();
+        });
+
+        // -------------------------------
+        // Edit modal
+        // -------------------------------
+        const editModal = document.getElementById("edit_modal");
+        const editForm = document.getElementById("edit_form");
+        const editDeviceCategory = document.getElementById("edit_device_category");
+        const editDealer = document.getElementById("edit_dealer_id");
+        const editSimNumbers = document.getElementById("edit_sim_numbers");
+        const editNuOfDevices = document.getElementById("edit_nu_of_devices");
+
+        // URLs come from the named routes (the previous hard-coded
+        // /admin/dealer/... paths don't exist, so Edit silently did nothing).
+        const editDataUrlTemplate = @json(route('admin.stock_transfer.edit-data', ['ledger' => '__ID__']));
+        const updateUrlTemplate = @json(route('admin.stock_transfer.update', ['ledger' => '__ID__']));
+        const transferJsError = document.getElementById("transfer_js_error");
+
+        function showTransferError(message) {
+            transferJsError.textContent = message;
+            transferJsError.classList.remove("hidden");
+        }
+
+        function clearTransferError() {
+            transferJsError.classList.add("hidden");
+            transferJsError.textContent = "";
+        }
+
+        function openEditModal(id) {
+            clearTransferError();
+            editForm.action = updateUrlTemplate.replace('__ID__', id);
+
+            fetch(editDataUrlTemplate.replace('__ID__', id), {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(response.status === 404 ?
+                            'This transfer record no longer exists. Refresh the page.' :
+                            'The server could not load this transfer (error ' + response.status + ').');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    editDeviceCategory.value = data.device_category;
+                    editDealer.value = data.dealer_id;
+
+                    editSimNumbers.innerHTML = '';
+                    data.sim_numbers.forEach(function(sim) {
+                        const opt = document.createElement('option');
+                        opt.value = sim;
+                        opt.textContent = sim;
+                        opt.selected = data.selected.includes(sim);
+                        editSimNumbers.appendChild(opt);
+                    });
+
+                    updateNuOfDevices(editSimNumbers, editNuOfDevices, null);
+                    editModal.classList.remove("hidden");
+                })
+                .catch(error => {
+                    console.error(error);
+                    editModal.classList.add("hidden");
+                    showTransferError(
+                        (error && error.message && !/Failed to fetch|NetworkError|Unexpected token/i.test(error.message)) ?
+                        error.message :
+                        'Could not open the edit form. Check your connection, then refresh the page and try again.'
+                    );
+                });
+        }
+
+        function closeEditModal() {
+            editModal.classList.add("hidden");
+        }
+
+        document.querySelectorAll(".edit-transfer-btn").forEach(function(btn) {
+            btn.addEventListener("click", function() {
+                openEditModal(this.dataset.id);
+            });
+        });
+
+        editSimNumbers.addEventListener("change", function() {
+            updateNuOfDevices(editSimNumbers, editNuOfDevices, null);
+        });
+
+        document.getElementById("edit_modal_close").addEventListener("click", closeEditModal);
+        document.getElementById("edit_modal_cancel").addEventListener("click", closeEditModal);
+
     });
-
-    editSimNumbers.addEventListener("change", function () {
-        updateNuOfDevices(editSimNumbers, editNuOfDevices, null);
-    });
-
-    document.getElementById("edit_modal_close").addEventListener("click", closeEditModal);
-    document.getElementById("edit_modal_cancel").addEventListener("click", closeEditModal);
-
-});
 </script>

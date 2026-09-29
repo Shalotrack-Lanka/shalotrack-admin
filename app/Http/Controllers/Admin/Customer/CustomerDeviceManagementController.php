@@ -64,7 +64,9 @@ class CustomerDeviceManagementController extends Controller
             ->unique('vehicle_id')
             ->values();
 
-        $notActivatedDevices = SetupShalotrackDevice::where('status', DeviceStatus::NotActivated->value)
+        // Devices an admin may bind to a customer vehicle (name kept for the view):
+        // company-held activated devices, plus devices a dealer has sold.
+        $notActivatedDevices = SetupShalotrackDevice::bindableByAdmin()
             ->orderBy('imei_number')
             ->get(['shdevice_id', 'imei_number', 'sim_number', 'device_category']);
 
@@ -94,8 +96,8 @@ class CustomerDeviceManagementController extends Controller
         $validated = $this->validateDeviceForm($request);
 
         DB::transaction(function () use ($validated, $vehicle, $request) {
-            $device = SetupShalotrackDevice::where('imei_number', $validated['imei_number'])
-                ->where('status', DeviceStatus::NotActivated->value)
+            $device = SetupShalotrackDevice::bindableByAdmin()
+                ->where('imei_number', $validated['imei_number'])
                 ->lockForUpdate()
                 ->first();
 
@@ -103,7 +105,7 @@ class CustomerDeviceManagementController extends Controller
             // validation above and this locked read. Say so, instead of a bare 404.
             if (! $device) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'imei_number' => "This device is no longer available to activate: it may already be activated, assigned to a dealer's customer, or removed. Refresh the page and choose another device.",
+                    'imei_number' => "This device is no longer available to activate: it may not be activated yet, already on a customer account, sitting in a dealer's unsold stock, or removed. Refresh the page and choose another device.",
                 ]);
             }
 
@@ -142,7 +144,8 @@ class CustomerDeviceManagementController extends Controller
             $newImei = $validated['imei_number'];
 
             if ($newImei !== $oldImei) {
-                SetupShalotrackDevice::where('imei_number', $oldImei)->update(['status' => DeviceStatus::NotActivated->value]);
+                // The device the customer no longer uses returns to unsold, activated stock.
+                SetupShalotrackDevice::where('imei_number', $oldImei)->update(['status' => DeviceStatus::Activated->value]);
                 SetupShalotrackDevice::where('imei_number', $newImei)->update(['status' => DeviceStatus::Activated->value]);
             }
 
@@ -270,8 +273,11 @@ class CustomerDeviceManagementController extends Controller
                 'required',
                 'string',
                 Rule::exists('setup_shalotrack_devices', 'imei_number')->where(function ($query) use ($activatedDevice) {
-                    $query->where('status', DeviceStatus::NotActivated->value);
+                    $query->where(function ($q) {
+                        SetupShalotrackDevice::applyBindableConstraint($q);
+                    });
 
+                    // Editing keeps the device the row already has.
                     if ($activatedDevice) {
                         $query->orWhere('imei_number', $activatedDevice->imei_number);
                     }
@@ -282,7 +288,7 @@ class CustomerDeviceManagementController extends Controller
         }
 
         return $request->validate($rules, [
-            'imei_number.exists' => "This device is no longer available to activate: it may already be activated, assigned to a dealer's customer, or removed. Refresh the page and choose another device.",
+            'imei_number.exists' => "This device is no longer available to activate: it may not be activated yet, already on a customer account, sitting in a dealer's unsold stock, or removed. Refresh the page and choose another device.",
         ]);
     }
 

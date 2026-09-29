@@ -54,7 +54,7 @@
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                         <h2 class="font-bold text-gray-800 text-sm tracking-wide">Not Activated Devices</h2>
-                        <span class="font-normal text-gray-400 text-xs">— never assigned to a customer yet</span>
+                        <span class="font-normal text-gray-400 text-xs">— in company stock, waiting to be enabled on the platform</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
@@ -108,13 +108,19 @@
                                             <span class="inline-block bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold rounded-full px-3 py-1.5">Not Activated</span>
                                         </td>
                                         <td class="p-3">
-                                            {{-- Activation needs a customer, vehicle and subscription, so it lives in
-                                                 Customer Device Management. This button is a shortcut there. --}}
-                                            <a data-activate-link href="{{ route('admin.customer-device-management') }}"
-                                               title="Opens Customer Device Management, where the customer and subscription are attached"
-                                               class="inline-block px-3 py-1.5 rounded-lg bg-gray-800 text-white text-[11px] font-bold hover:bg-gray-900">
-                                                Activate
-                                            </a>
+                                            {{-- Activate = enabled on the platform, unsold. The customer and
+                                                 subscription are attached later in Customer Device Management. --}}
+                                            <form action="{{ route('admin.cancel_device.update', $device->shdevice_id) }}"
+                                                  method="POST"
+                                                  onsubmit="return confirm('Activate device {{ $device->imei_number }}?');">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="status" value="Activated">
+                                                <button type="submit" data-activate-button
+                                                        class="px-3 py-1.5 rounded-lg bg-gray-800 text-white text-[11px] font-bold hover:bg-gray-900">
+                                                    Activate
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                 @empty
@@ -172,6 +178,11 @@
                                     <tr class="hover:bg-gray-50 transition align-top">
                                         <td class="p-3 pt-4">
                                             {{ $device->imei_number }}
+                                            @if($bound = $boundCustomers->get($device->imei_number))
+                                                <span class="block text-[10px] font-normal text-gray-500">{{ $bound->customer_name }} &middot; {{ $bound->vehicle_number }}</span>
+                                            @else
+                                                <span class="block text-[10px] font-normal text-amber-600">Unsold</span>
+                                            @endif
                                             {{-- Empty form, lives in this one cell only. Fields in the other
                                                  cells attach to it via the HTML5 form="{{ $formId }}" attribute
                                                  instead of being nested inside it — a <form> can't legally span

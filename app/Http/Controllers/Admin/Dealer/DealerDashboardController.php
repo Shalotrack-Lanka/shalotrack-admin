@@ -75,8 +75,9 @@ class DealerDashboardController extends Controller
                 ])->all(),
             ]);
 
+            // Back to the state an unsold device has in dealer stock: Activated.
             SetupShalotrackDevice::whereIn('shdevice_id', $brokenAssignments->pluck('shdevice_id'))
-                ->update(['status' => DeviceStatus::NotActivated->value]);
+                ->update(['status' => DeviceStatus::Activated->value]);
         }
 
         $dealerLeads     = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
@@ -92,7 +93,13 @@ class DealerDashboardController extends Controller
         $assignedDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->whereNotNull('assigned_customer_id')
             ->where('assigned_customer_id', '>', 0)
-            ->where('status', DeviceStatus::AssignedToCustomer->value)
+            // Sold devices stay on the dealer's list after an admin binds them to the
+            // customer's vehicle (status becomes Activated / Temporarily Stopped).
+            ->whereIn('status', [
+                DeviceStatus::AssignedToCustomer->value,
+                DeviceStatus::Activated->value,
+                DeviceStatus::TemporarilyStopped->value,
+            ])
             ->get();
             
         $assignedDevicesCount = $assignedDevices->count();
@@ -216,6 +223,12 @@ class DealerDashboardController extends Controller
         return view('dealer.customer_list', compact('customerAds', 'search', 'availableDevices'));
     }
 
+    /** True when the device is bound to a customer's vehicle + subscription (an activated_devices row exists). */
+    private function isBound(SetupShalotrackDevice $device): bool
+    {
+        return \App\Models\ActivatedDevice::where('imei_number', $device->imei_number)->exists();
+    }
+
     public function assignNewDeviceFromList(Request $request)
     {
         $request->validate([
@@ -243,8 +256,10 @@ class DealerDashboardController extends Controller
         // Belt-and-suspenders: block it here too, not just at the transfer
         // entry point, since this is the last line of defense before a real
         // double-binding happens.
-        if ($device->status !== DeviceStatus::NotActivated->value) {
-            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be assigned -- its status is \"{$device->status}\", not \"Not Activated\". This usually means it's already in use elsewhere; do not assign it without checking why first."]);
+        // Company activates first, dealer sells after: only an Activated, unbound
+        // device can be sold. Anything else is refused with the reason.
+        if ($device->status !== DeviceStatus::Activated->value || $this->isBound($device)) {
+            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be assigned -- its status is \"{$device->status}\". Only activated devices that are not yet on a customer account can be sold. If it is \"Not Activated\", ask the admin to activate it first."]);
         }
 
         $customer = DealerCustomerAd::where('dealer_id', $dealerId)
@@ -295,8 +310,10 @@ class DealerDashboardController extends Controller
 
         // FIX: same guard as assignNewDeviceFromList() above -- see that
         // method's comment for why this matters.
-        if ($device->status !== DeviceStatus::NotActivated->value) {
-            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be assigned -- its status is \"{$device->status}\", not \"Not Activated\". This usually means it's already in use elsewhere; do not assign it without checking why first."]);
+        // Company activates first, dealer sells after: only an Activated, unbound
+        // device can be sold. Anything else is refused with the reason.
+        if ($device->status !== DeviceStatus::Activated->value || $this->isBound($device)) {
+            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be assigned -- its status is \"{$device->status}\". Only activated devices that are not yet on a customer account can be sold. If it is \"Not Activated\", ask the admin to activate it first."]);
         }
 
         $customer = DealerCustomerAd::where('dealer_id', $dealerId)
@@ -340,6 +357,10 @@ class DealerDashboardController extends Controller
             ->where('shdevice_id', $shdevice_id)
             ->firstOrFail();
 
+        if ($this->isBound($device)) {
+            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} is already active on the customer's account (vehicle and subscription). Ask the admin to release it before it is unassigned."]);
+        }
+
         $customerId = $device->assigned_customer_id;
 
         $device->status = DeviceStatus::PendingRepair->value;
@@ -381,7 +402,7 @@ class DealerDashboardController extends Controller
         $customerId = $device->assigned_customer_id;
 
         if (!$customerId) {
-            $device->status = DeviceStatus::NotActivated->value;
+            $device->status = DeviceStatus::Activated->value;
             $device->save();
             return back()->with('success', "Device moved to Available Stocks (no customer linked).");
         }
@@ -425,6 +446,10 @@ class DealerDashboardController extends Controller
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $shdevice_id)
             ->firstOrFail();
+
+        if ($this->isBound($device)) {
+            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} is already active on the customer's account. Ask the admin to release it before it is marked broken."]);
+        }
 
         $device->status = DeviceStatus::BrokenDevice->value;
         $device->save();
