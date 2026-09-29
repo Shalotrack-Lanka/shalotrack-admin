@@ -33,19 +33,71 @@ class SetupShalotrackDevice extends Model
     ];
 
     /**
-     * Devices a dealer can actually hand to a customer: theirs, not yet bound to
-     * a customer, and still 'Not Activated'. The assign actions require exactly
-     * that status, so every dealer stock list and count MUST use this scope;
-     * a looser filter shows devices (e.g. ones an admin already Activated) with an
-     * Assign button that can only fail.
+     * Lifecycle (company activates first, dealer sells after):
+     *
+     *   Not Activated -> (admin activates) -> Activated, unsold
+     *   Activated, unsold -> (admin transfers) -> in a dealer's stock
+     *   dealer assigns to their customer -> Assigned to Customer
+     *   admin binds it to the customer's vehicle + subscription in
+     *   Customer Device Management -> Activated, with an activated_devices row
+     *
+     * "Bound" therefore means "has an activated_devices row for this IMEI"; the
+     * status column alone cannot tell an unsold Activated device from a sold one.
+     */
+    protected static function notBound($query)
+    {
+        return $query->whereNotIn('imei_number', function ($sub) {
+            $sub->select('imei_number')->from('activated_devices');
+        });
+    }
+
+    /** Company stock an admin may transfer to a dealer: activated, unsold, with a SIM. */
+    public function scopeCompanyStockForTransfer($query)
+    {
+        return static::notBound(
+            $query->whereNull('dealer_id')
+                ->whereNotNull('sim_number')
+                ->where('status', DeviceStatus::Activated->value)
+        );
+    }
+
+    /**
+     * Devices a dealer can actually hand to a customer: theirs, activated, not yet
+     * assigned to a customer. The assign actions require exactly that, so every
+     * dealer stock list and count MUST use this scope; a looser filter shows
+     * devices with an Assign button that can only fail. A legacy 'Not Activated'
+     * device in dealer stock is NOT sellable until an admin activates it.
      */
     public function scopeAvailableForDealer($query, $dealerId)
     {
-        return $query->where('dealer_id', $dealerId)
-            ->where(function ($q) {
-                $q->whereNull('assigned_customer_id')->orWhere('assigned_customer_id', 0);
-            })
-            ->where('status', DeviceStatus::NotActivated->value);
+        return static::notBound(
+            $query->where('dealer_id', $dealerId)
+                ->where(function ($q) {
+                    $q->whereNull('assigned_customer_id')->orWhere('assigned_customer_id', 0);
+                })
+                ->where('status', DeviceStatus::Activated->value)
+        );
+    }
+
+    /**
+     * Constraint for devices an admin may bind to a customer vehicle in Customer
+     * Device Management: company-held activated devices that are not bound yet, or
+     * devices a dealer has sold ('Assigned to Customer'). A dealer's unsold stock
+     * is excluded: the dealer sells that. Works on Eloquent and query builders
+     * (used by the form's exists rule too).
+     */
+    public static function applyBindableConstraint($query)
+    {
+        return static::notBound($query->where(function ($q) {
+            $q->where(function ($q) {
+                $q->where('status', DeviceStatus::Activated->value)->whereNull('dealer_id');
+            })->orWhere('status', DeviceStatus::AssignedToCustomer->value);
+        }));
+    }
+
+    public function scopeBindableByAdmin($query)
+    {
+        return static::applyBindableConstraint($query);
     }
 
     public function dealer()

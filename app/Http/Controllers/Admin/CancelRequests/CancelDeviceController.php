@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\CancelRequests;
 
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
+use App\Models\ActivatedDevice;
 use App\Models\SetupShalotrackDevice;
 use App\Models\Dealer;
 use App\Traits\PushesDeviceToApi;
@@ -32,7 +33,14 @@ class CancelDeviceController extends Controller
 
         $dealers = Dealer::orderBy('full_name')->get();
 
-        return view('admin.cancel_requests.cancel_device', compact('activatedDevices', 'notActivatedDevices', 'dealers'));
+        // Activated no longer means "has a customer": it also covers devices the company has
+        // enabled but not sold. A device is bound to a customer only when an activated_devices
+        // row exists for its IMEI, so show that customer (or "Unsold") next to each one.
+        $boundCustomers = ActivatedDevice::whereIn('imei_number', $activatedDevices->pluck('imei_number'))
+            ->get(['imei_number', 'customer_name', 'vehicle_number'])
+            ->keyBy('imei_number');
+
+        return view('admin.cancel_requests.cancel_device', compact('activatedDevices', 'notActivatedDevices', 'dealers', 'boundCustomers'));
     }
 
     public function update(Request $request, SetupShalotrackDevice $device)
@@ -56,12 +64,6 @@ class CancelDeviceController extends Controller
         // the enum doesn't know (bad data) allows no move at all.
         $current = DeviceStatus::tryFrom((string) $device->status);
         $target  = DeviceStatus::from($validated['status']);
-
-        if ($current === DeviceStatus::NotActivated && $target === DeviceStatus::Activated) {
-            return redirect()->back()->withErrors([
-                'status' => "Device #{$device->shdevice_id} is activated from Customer Device Management, where the customer and subscription are attached. It cannot be activated from this page.",
-            ]);
-        }
 
         if (!$current || !$current->canAdminMoveTo($target)) {
             return redirect()->back()->withErrors([

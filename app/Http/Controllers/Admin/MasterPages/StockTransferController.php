@@ -17,18 +17,20 @@ class StockTransferController extends Controller
 {
     public function index()
     {
-        // FIX: no status filter here meant an already-Activated device
-        // (bound to a real customer via CustomerDeviceManagementController's
-        // direct-admin activation flow) could still show up as "available"
-        // stock and get transferred to a dealer as if it were fresh --
-        // letting the same physical device end up claimed by two unrelated
-        // customer records. Only genuinely unused stock is eligible.
-        $deviceCategories = SetupShalotrackDevice::whereNull('dealer_id')
-            ->whereNotNull('sim_number')
-            ->where('status', DeviceStatus::NotActivated->value)
+        // Only devices the company has ACTIVATED and not yet sold are transferable
+        // (company activates first, dealer sells after). Bound devices (an
+        // activated_devices row exists) are excluded by the scope, so the same
+        // physical device can never reach a dealer and a customer at once.
+        $deviceCategories = SetupShalotrackDevice::companyStockForTransfer()
             ->distinct()
             ->orderBy('device_category')
             ->pluck('device_category');
+
+        // Shown as a hint when the list is empty: stock exists but isn't activated yet.
+        $awaitingActivation = SetupShalotrackDevice::whereNull('dealer_id')
+            ->whereNotNull('sim_number')
+            ->where('status', DeviceStatus::NotActivated->value)
+            ->count();
 
         $dealers = Dealer::where('status', 'active')->orderBy('full_name')->get();
 
@@ -40,9 +42,7 @@ class StockTransferController extends Controller
             ->get();
 
         // 💡 අලුතින් එකතු කළ කොටස: සෑම Category එකකටම අදාළ SIM ටික Page එක Load වෙද්දිම ලබා ගැනීම
-        $simsByCategory = SetupShalotrackDevice::whereNull('dealer_id')
-            ->whereNotNull('sim_number')
-            ->where('status', DeviceStatus::NotActivated->value)
+        $simsByCategory = SetupShalotrackDevice::companyStockForTransfer()
             ->get(['device_category', 'sim_number'])
             ->groupBy('device_category')
             ->map(function ($items) {
@@ -52,7 +52,7 @@ class StockTransferController extends Controller
         return view(
             'admin.master_pages.stock_transfer',
             // simsByCategory යන්න compact එකට අනිවාර්යයෙන්ම එකතු කරන්න
-            compact('deviceCategories', 'dealers', 'transfers', 'allocatedDevices', 'simsByCategory')
+            compact('deviceCategories', 'dealers', 'transfers', 'allocatedDevices', 'simsByCategory', 'awaitingActivation')
         );
     }
 
@@ -68,23 +68,19 @@ class StockTransferController extends Controller
         try {
             DB::transaction(function () use ($validated) {
 
-                // FIX: enforced here too, not just in index() -- this is the
-                // query that actually performs the transfer, so it's the one
-                // that has to hold the line even if someone submits a stale
-                // form for a SIM that got activated in between page load and
-                // submit. whereNotIn count check below naturally catches an
-                // already-Activated SIM as "no longer available" instead of
-                // silently transferring it.
-                $devices = SetupShalotrackDevice::where('device_category', $validated['device_category'])
+                // The query that actually performs the transfer: it must hold the
+                // line even for a stale form (a SIM that got sold or de-activated
+                // between page load and submit). The count check below turns any
+                // such SIM into "no longer available" instead of transferring it.
+                $devices = SetupShalotrackDevice::companyStockForTransfer()
+                    ->where('device_category', $validated['device_category'])
                     ->whereIn('sim_number', $validated['sim_numbers'])
-                    ->whereNull('dealer_id')
-                    ->where('status', DeviceStatus::NotActivated->value)
                     ->lockForUpdate()
                     ->get();
 
                 if ($devices->count() < count($validated['sim_numbers'])) {
                     throw new \Exception(
-                        'Some selected SIM numbers are no longer available for transfer (already activated or already allocated). Please refresh and try again.'
+                        'Some selected SIM numbers are no longer available for transfer (not activated yet, already sold, or already allocated to a dealer). Please refresh and try again.'
                     );
                 }
 
@@ -161,10 +157,9 @@ class StockTransferController extends Controller
                 // Attach newly selected devices — must still be available and
                 // of the same device category as this ledger entry.
                 if (!empty($simsToAdd)) {
-                    $newDevices = SetupShalotrackDevice::where('device_category', $ledger->device_category)
+                    $newDevices = SetupShalotrackDevice::companyStockForTransfer()
+                        ->where('device_category', $ledger->device_category)
                         ->whereIn('sim_number', $simsToAdd)
-                        ->whereNull('dealer_id')
-                        ->where('status', DeviceStatus::NotActivated->value)
                         ->lockForUpdate()
                         ->get();
 
@@ -216,10 +211,8 @@ class StockTransferController extends Controller
 
     public function getSimNumbers($category)
     {
-        $simNumbers = SetupShalotrackDevice::where('device_category', $category)
-            ->whereNull('dealer_id')
-            ->whereNotNull('sim_number')
-            ->where('status', DeviceStatus::NotActivated->value)
+        $simNumbers = SetupShalotrackDevice::companyStockForTransfer()
+            ->where('device_category', $category)
             ->orderBy('sim_number')
             ->pluck('sim_number');
 
@@ -232,10 +225,8 @@ class StockTransferController extends Controller
             ->orderBy('sim_number')
             ->pluck('sim_number');
 
-        $available = SetupShalotrackDevice::where('device_category', $ledger->device_category)
-            ->whereNull('dealer_id')
-            ->whereNotNull('sim_number')
-            ->where('status', DeviceStatus::NotActivated->value)
+        $available = SetupShalotrackDevice::companyStockForTransfer()
+            ->where('device_category', $ledger->device_category)
             ->orderBy('sim_number')
             ->pluck('sim_number');
 
