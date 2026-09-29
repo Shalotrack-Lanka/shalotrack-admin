@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\MasterPages;
 
+use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\SetupShalotrackDevice;
 use App\Models\DeviceType;
@@ -120,7 +121,7 @@ class AddDeviceController extends Controller
 
                 'sim_number' => $validated['sim_number'] ?? null,
 
-                'status' => 'Not Activated',
+                'status' => DeviceStatus::NotActivated->value,
 
                 'dealer_id' => null,
             ]);

@@ -2,29 +2,23 @@
 
 namespace App\Http\Controllers\Admin\CancelRequests;
 
+use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\SetupShalotrackDevice;
 use App\Models\Dealer;
 use App\Traits\PushesDeviceToApi;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CancelDeviceController extends Controller
 {
     use PushesDeviceToApi;
 
-    // Mirrors your flow diagram exactly. Anything not listed here is rejected,
-    // regardless of what the dropdown on the page allowed the user to pick.
-    private const ALLOWED_TRANSITIONS = [
-        'Not Activated'       => ['Activated'],
-        'Activated'           => ['Temporarily Stopped'],
-        'Temporarily Stopped' => ['Activated'],
-    ];
-
     public function index()
     {
         $activatedDevices = SetupShalotrackDevice::with('dealer')
-            ->whereIn('status', ['Activated', 'Temporarily Stopped'])
+            ->whereIn('status', DeviceStatus::inServiceValues())
             ->latest('shdevice_id')
             ->get();
 
@@ -32,7 +26,7 @@ class CancelDeviceController extends Controller
         // is still in company stock) so a device already transferred to a
         // dealer isn't mistaken for unassigned stock.
         $notActivatedDevices = SetupShalotrackDevice::with('dealer')
-            ->where('status', 'Not Activated')
+            ->where('status', DeviceStatus::NotActivated->value)
             ->latest('shdevice_id')
             ->get();
 
@@ -44,8 +38,8 @@ class CancelDeviceController extends Controller
     public function update(Request $request, SetupShalotrackDevice $device)
     {
         $validated = $request->validate([
-            'status'        => 'required|in:Not Activated,Activated,Temporarily Stopped',
-            'cancel_reason' => 'nullable|required_if:status,Temporarily Stopped|string|max:500',
+            'status'        => ['required', Rule::in(DeviceStatus::adminSelectableValues())],
+            'cancel_reason' => 'nullable|required_if:status,' . DeviceStatus::TemporarilyStopped->value . '|string|max:500',
             'dealer_id'     => 'nullable|exists:dealers,id',
         ], [
             'cancel_reason.required_if' => 'Please provide a reason for stopping this device.',
@@ -57,19 +51,23 @@ class CancelDeviceController extends Controller
             ]);
         }
 
-        $allowedNext = self::ALLOWED_TRANSITIONS[$device->status] ?? [];
+        // Transition rules live in DeviceStatus::adminNext(); anything not
+        // listed is rejected whatever the dropdown offered. A stored status
+        // the enum doesn't know (bad data) allows no move at all.
+        $current = DeviceStatus::tryFrom((string) $device->status);
+        $target  = DeviceStatus::from($validated['status']);
 
-        if (!in_array($validated['status'], $allowedNext, true)) {
+        if (!$current || !$current->canAdminMoveTo($target)) {
             return redirect()->back()->withErrors([
                 'status' => "Cannot move a device from \"{$device->status}\" to \"{$validated['status']}\" directly.",
             ]);
         }
 
         $device->status        = $validated['status'];
-        $device->cancel_reason = $validated['status'] === 'Temporarily Stopped' ? $validated['cancel_reason'] : null;
-        $device->canceled_date = $validated['status'] === 'Temporarily Stopped' ? now() : null;
+        $device->cancel_reason = $validated['status'] === DeviceStatus::TemporarilyStopped->value ? $validated['cancel_reason'] : null;
+        $device->canceled_date = $validated['status'] === DeviceStatus::TemporarilyStopped->value ? now() : null;
 
-        if ($validated['status'] === 'Activated' && $request->filled('dealer_id')) {
+        if ($validated['status'] === DeviceStatus::Activated->value && $request->filled('dealer_id')) {
             $device->dealer_id = $validated['dealer_id'];
         }
 
@@ -89,7 +87,7 @@ class CancelDeviceController extends Controller
 
     public function exportNotActivated()
     {
-        $devices = SetupShalotrackDevice::where('status', 'Not Activated')
+        $devices = SetupShalotrackDevice::where('status', DeviceStatus::NotActivated->value)
             ->latest('shdevice_id')
             ->get();
 
@@ -103,7 +101,7 @@ class CancelDeviceController extends Controller
     public function exportActivated()
     {
         $devices = SetupShalotrackDevice::with('dealer')
-            ->whereIn('status', ['Activated', 'Temporarily Stopped'])
+            ->whereIn('status', DeviceStatus::inServiceValues())
             ->latest('shdevice_id')
             ->get();
 

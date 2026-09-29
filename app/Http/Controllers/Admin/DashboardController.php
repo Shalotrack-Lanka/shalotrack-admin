@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\SetupShalotrackDevice;
 use App\Models\Supplier;
@@ -109,7 +110,7 @@ class DashboardController extends Controller
             }
         }
 
-        $notActivatedDevices = SetupShalotrackDevice::where('status', 'Not Activated')->count();
+        $notActivatedDevices = SetupShalotrackDevice::where('status', DeviceStatus::NotActivated->value)->count();
 
         $stockUnitsAvailable = (int) Stock::sum('company_available_stock');
 
@@ -191,7 +192,7 @@ class DashboardController extends Controller
 
         $data = [
             'totalDevices'          => SetupShalotrackDevice::count(),
-            'activatedDevices'      => SetupShalotrackDevice::where('status', 'Activated')->count(),
+            'activatedDevices'      => SetupShalotrackDevice::where('status', DeviceStatus::Activated->value)->count(),
             'notActivatedDevices'   => $notActivatedDevices,
             'totalSuppliers'        => Supplier::count(),
             'activeSuppliers'       => $activeSuppliers,

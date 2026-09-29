@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\MasterPages;
 
+use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Dealer;
 use App\Models\DealerTransferLedger;
@@ -24,7 +25,7 @@ class StockTransferController extends Controller
         // customer records. Only genuinely unused stock is eligible.
         $deviceCategories = SetupShalotrackDevice::whereNull('dealer_id')
             ->whereNotNull('sim_number')
-            ->where('status', 'Not Activated')
+            ->where('status', DeviceStatus::NotActivated->value)
             ->distinct()
             ->orderBy('device_category')
             ->pluck('device_category');
@@ -41,7 +42,7 @@ class StockTransferController extends Controller
         // 💡 අලුතින් එකතු කළ කොටස: සෑම Category එකකටම අදාළ SIM ටික Page එක Load වෙද්දිම ලබා ගැනීම
         $simsByCategory = SetupShalotrackDevice::whereNull('dealer_id')
             ->whereNotNull('sim_number')
-            ->where('status', 'Not Activated')
+            ->where('status', DeviceStatus::NotActivated->value)
             ->get(['device_category', 'sim_number'])
             ->groupBy('device_category')
             ->map(function ($items) {
@@ -77,7 +78,7 @@ class StockTransferController extends Controller
                 $devices = SetupShalotrackDevice::where('device_category', $validated['device_category'])
                     ->whereIn('sim_number', $validated['sim_numbers'])
                     ->whereNull('dealer_id')
-                    ->where('status', 'Not Activated')
+                    ->where('status', DeviceStatus::NotActivated->value)
                     ->lockForUpdate()
                     ->get();
 
@@ -163,7 +164,7 @@ class StockTransferController extends Controller
                     $newDevices = SetupShalotrackDevice::where('device_category', $ledger->device_category)
                         ->whereIn('sim_number', $simsToAdd)
                         ->whereNull('dealer_id')
-                        ->where('status', 'Not Activated')
+                        ->where('status', DeviceStatus::NotActivated->value)
                         ->lockForUpdate()
                         ->get();
 
@@ -218,7 +219,7 @@ class StockTransferController extends Controller
         $simNumbers = SetupShalotrackDevice::where('device_category', $category)
             ->whereNull('dealer_id')
             ->whereNotNull('sim_number')
-            ->where('status', 'Not Activated')
+            ->where('status', DeviceStatus::NotActivated->value)
             ->orderBy('sim_number')
             ->pluck('sim_number');
 
@@ -234,7 +235,7 @@ class StockTransferController extends Controller
         $available = SetupShalotrackDevice::where('device_category', $ledger->device_category)
             ->whereNull('dealer_id')
             ->whereNotNull('sim_number')
-            ->where('status', 'Not Activated')
+            ->where('status', DeviceStatus::NotActivated->value)
             ->orderBy('sim_number')
             ->pluck('sim_number');
 
