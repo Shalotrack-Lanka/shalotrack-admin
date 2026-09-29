@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DeviceStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class SetupShalotrackDevice extends Model
@@ -30,6 +31,22 @@ class SetupShalotrackDevice extends Model
         'canceled_date' => 'datetime',
         'allocated_at'  => 'datetime',
     ];
+
+    /**
+     * Devices a dealer can actually hand to a customer: theirs, not yet bound to
+     * a customer, and still 'Not Activated'. The assign actions require exactly
+     * that status, so every dealer stock list and count MUST use this scope;
+     * a looser filter shows devices (e.g. ones an admin already Activated) with an
+     * Assign button that can only fail.
+     */
+    public function scopeAvailableForDealer($query, $dealerId)
+    {
+        return $query->where('dealer_id', $dealerId)
+            ->where(function ($q) {
+                $q->whereNull('assigned_customer_id')->orWhere('assigned_customer_id', 0);
+            })
+            ->where('status', DeviceStatus::NotActivated->value);
+    }
 
     public function dealer()
     {

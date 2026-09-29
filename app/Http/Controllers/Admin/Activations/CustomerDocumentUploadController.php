@@ -8,6 +8,6 @@ class CustomerDocumentUploadController extends Controller
 {
     public function index()
     {
-        return view('admin.activations.customer_document_upload');
+        return view('admin.Activations.customer_document_upload');
     }
 }

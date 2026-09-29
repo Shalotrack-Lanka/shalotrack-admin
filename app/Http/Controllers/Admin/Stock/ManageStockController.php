@@ -206,7 +206,9 @@ class ManageStockController extends Controller
             return response()->json(['success' => true, 'products' => $productsData]);
 
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+            \Illuminate\Support\Facades\Log::error('getSupplierProducts failed', ['supplier_id' => $id, 'error' => $e->getMessage()]);
+            // Never return the raw exception text (can contain SQL / paths).
+            return response()->json(['success' => false, 'message' => 'Could not load this supplier\'s products.'], 500);
         }
     }
 }

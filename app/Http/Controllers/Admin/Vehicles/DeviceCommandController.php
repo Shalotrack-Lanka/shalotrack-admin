@@ -19,9 +19,12 @@ class DeviceCommandController extends Controller
 
     public function __construct()
     {
-        $this->gatewayUrl = config('services.gateway.command_url', 'http://gateway.shalotrack.internal:8001');
-        $this->apiBaseUrl = config('services.shalotrack_api.base_url', 'https://api.shalotrack.com');
-        $this->apiSyncKey = config('services.shalotrack_api.sync_key', '');
+        // (string) casts: config() returns null (not the default) when the key
+        // exists but its env var is unset, and assigning null to these typed
+        // properties would 500 every request to this controller.
+        $this->gatewayUrl = (string) config('services.gateway.command_url', 'http://gateway.shalotrack.internal:8001');
+        $this->apiBaseUrl = (string) config('services.shalotrack_api.base_url', 'https://api.shalotrack.com');
+        $this->apiSyncKey = (string) config('services.shalotrack_api.sync_key', '');
     }
 
     public function index()
@@ -65,8 +68,7 @@ class DeviceCommandController extends Controller
      */
     public function dealerIndex()
     {
-        $user = auth()->user();
-        $dealer = $user->dealer ?? (\App\Models\Dealer::find($user->dealer_id) ?? null);
+        $dealer = $this->resolveDealer(auth()->user());
 
         if (!$dealer) {
             return redirect()->back()->with('error', 'Dealer profile not found.');
@@ -86,34 +88,9 @@ class DeviceCommandController extends Controller
             Log::warning('Gateway /devices unreachable for dealer view: ' . $e->getMessage());
         }
 
-        // 1. Dealer ගේ Customers ලාගේ Emails සහ Phone numbers ලබා ගැනීම
-        $dealerLeads = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
-
-        $emails = $dealerLeads->pluck('email')->filter()->map(fn($e) => strtolower(trim($e)))->toArray();
-        $phones = $dealerLeads->pluck('contact')->filter()->map(function($p) {
-            $digits = preg_replace('/[^0-9]/', '', $p);
-            return strlen($digits) >= 9 ? substr($digits, -9) : $digits;
-        })->toArray();
-
-        // 2. ඒ අයට අදාළ App Account Customer IDs සොයා ගැනීම
-        $customerIds = CustomerAd::query()
-            ->where(function ($q) use ($emails, $phones) {
-                if (!empty($emails)) {
-                    $q->whereIn(DB::raw('LOWER(email)'), $emails);
-                }
-                foreach ($phones as $phone) {
-                    $q->orWhere('phone_number', 'LIKE', '%' . $phone);
-                }
-            })
-            ->pluck('customer_id')
-            ->toArray();
-
-        // 3. Dealer ගේ Customers ලාගේ Vehicles පමණක් Fetch කර ගැනීම
-        $vehicles = VehicleAd::whereIn('customer_id', $customerIds)
-            ->whereNotNull('imei')
-            ->where('imei', '!=', '')
-            ->orderBy('vehicle_number')
-            ->get();
+        // Only vehicles of customers this dealer registered (same rule that
+        // sendCommand/deviceStatus/commandHistory enforce server-side).
+        $vehicles = $this->dealerVehicles($dealer);
 
         $onlineImeis = $connectedDevices->pluck('imei')->toArray();
         $vehicles = $vehicles->map(function ($vehicle) use ($onlineImeis, $connectedDevices) {
@@ -136,6 +113,20 @@ class DeviceCommandController extends Controller
             'imei'    => ['required', 'string', 'regex:/^\d{15}$/'],
             'command' => ['required', 'string', 'in:' . implode(',', $this->allowedCommands())],
             'params'  => ['sometimes', 'array'],
+        ]);
+
+        // Server-side ownership check. The UI only lists a dealer's own devices,
+        // but the endpoint is reachable by any signed-in user, so it must decide.
+        if ($denied = $this->denyUnlessMayControl($validated['imei'], null)) {
+            return $denied;
+        }
+
+        Log::info('Device command requested', [
+            'user_id' => auth()->id(),
+            'role'    => auth()->user()?->role,
+            'imei'    => $validated['imei'],
+            'command' => $validated['command'],
+            'ip'      => $request->ip(),
         ]);
 
         $payload = [
@@ -179,6 +170,10 @@ class DeviceCommandController extends Controller
 
     public function deviceStatus(string $imei)
     {
+        if ($denied = $this->denyUnlessMayControl($imei, null)) {
+            return $denied;
+        }
+
         try {
             $response = Http::timeout(3)->get("{$this->gatewayUrl}/devices");
             if ($response->successful()) {
@@ -199,6 +194,10 @@ class DeviceCommandController extends Controller
 
     public function commandHistory(Request $request, string $vehicleId)
     {
+        if ($denied = $this->denyUnlessMayControl(null, $vehicleId)) {
+            return $denied;
+        }
+
         try {
             $response = Http::timeout(5)
                 ->withHeaders(['X-Admin-Sync-Key' => $this->apiSyncKey])
@@ -218,6 +217,68 @@ class DeviceCommandController extends Controller
             Log::warning('Command history fetch failed: ' . $e->getMessage());
             return response()->json(['history' => [], 'count' => 0]);
         }
+    }
+
+    private function resolveDealer($user): ?\App\Models\Dealer
+    {
+        if (!$user) {
+            return null;
+        }
+
+        return $user->dealer ?? \App\Models\Dealer::find($user->dealer_id);
+    }
+
+    /**
+     * Vehicles (with a device IMEI) belonging to customers this dealer registered.
+     * Single source of truth for both the dealer's page and the ownership checks.
+     */
+    private function dealerVehicles(\App\Models\Dealer $dealer)
+    {
+        return app(\App\Services\DealerCustomerScope::class)->gpsVehicles($dealer);
+    }
+
+    /**
+     * Who may command / inspect a device? ADMIN: any. DEALER: only devices of
+     * their own customers. Every other role (FINANCE, TECHNICIAN, SUPPLIER…): none.
+     * Returns null when allowed, otherwise the 403 JSON response to send back.
+     * Comparison is strict on purpose: "0123" must never match "123".
+     */
+    private function denyUnlessMayControl(?string $imei, ?string $vehicleId): ?\Illuminate\Http\JsonResponse
+    {
+        $user = auth()->user();
+        $role = $user?->role;
+
+        if ($role === 'ADMIN') {
+            return null;
+        }
+
+        if ($role === 'DEALER' && ($dealer = $this->resolveDealer($user))) {
+            $owned = $this->dealerVehicles($dealer);
+
+            $ok = $owned->contains(function ($v) use ($imei, $vehicleId) {
+                return ($imei !== null && (string) $v->imei === $imei)
+                    || ($vehicleId !== null && (string) $v->vehicle_id === $vehicleId);
+            });
+
+            if ($ok) {
+                return null;
+            }
+        }
+
+        Log::warning('Device command access denied', [
+            'user_id'    => auth()->id(),
+            'role'       => $role,
+            'imei'       => $imei,
+            'vehicle_id' => $vehicleId,
+            'ip'         => request()->ip(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'You do not have access to that device.',
+            'history' => [],
+            'count'   => 0,
+        ], 403);
     }
 
     private function allowedCommands(): array

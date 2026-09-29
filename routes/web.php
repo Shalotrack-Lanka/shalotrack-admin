@@ -544,7 +544,9 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     Route::get('/complaints/resolved', [DealerComplaintController::class, 'resolved'])->name('complaints.resolved');
 });
 
-Route::get('/admin/get-supplier-products/{supplier_id}', [\App\Http\Controllers\Admin\Stock\ManageStockController::class, 'getSupplierProducts']);
-Route::get('/api/supplier-products-list/{id}', [\App\Http\Controllers\Admin\Stock\ManageStockController::class, 'getSupplierProducts']);
+// Removed: two unauthenticated duplicates of admin.get-supplier-products
+// (/admin/get-supplier-products/{id} and /api/supplier-products-list/{id}) that let
+// anyone on the internet list a supplier's products. No page calls them; the
+// authenticated route inside the admin/stock group is the only one kept.
 
 require __DIR__ . '/auth.php';

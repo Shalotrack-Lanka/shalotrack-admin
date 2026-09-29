@@ -336,7 +336,7 @@
                 <h2 class="font-bold text-gray-800 text-sm mb-2">Quick Links</h2>
                 <a href="{{ route('admin.stock-in-report') }}" class="block text-xs text-cyan-600 hover:underline mb-1.5">→ Stock In Report</a>
                 <a href="{{ route('admin.credit-invoice-report') }}" class="block text-xs text-cyan-600 hover:underline mb-1.5">→ Credit Invoice Report</a>
-                <a href="{{ route('admin.dealer.stock_transfer') }}" class="block text-xs text-cyan-600 hover:underline">→ Stock Transfer</a>
+                <a href="{{ route('admin.stock_transfer') }}" class="block text-xs text-cyan-600 hover:underline">→ Stock Transfer</a>
             </div>
         </div>
 

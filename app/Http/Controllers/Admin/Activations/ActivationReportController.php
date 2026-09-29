@@ -8,6 +8,6 @@ class ActivationReportController extends Controller
 {
     public function index()
     {
-        return view('admin.activations.activation_report');
+        return view('admin.Activations.activation_report');
     }
 }

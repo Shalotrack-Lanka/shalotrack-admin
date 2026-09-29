@@ -9,6 +9,6 @@ class TroubleshootController extends Controller
 {
     public function index()
     {
-        return view('admin.complains_Enquiries.troubleshoot');
+        return view('admin.complaints.troubleshoot');
     }
 }

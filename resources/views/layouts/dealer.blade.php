@@ -388,31 +388,39 @@
         }
     }
 
-    // සෑම තත්පර 15 කට වරක්ම ඩීලර් කෙනෙකුට අලුත් complain එකක් ඇවිදැයි බැලීම
-    setInterval(() => {
-        fetch('/dealer/check-new-complaints')
-            .then(res => res.json())
-            .then(data => {
-                if (data.has_new) {
-                    showToast("You've Received a Complaint!");
-                }
-            })
-            .catch(err => console.error("Dealer complaint notification error:", err));
-    }, 1000);
+    // Polls an endpoint on a fixed interval. Skips while the tab is hidden or
+    // the previous call is still running, so a slow API can never pile up
+    // requests, and treats a non-2xx (expired session, 5xx) as "nothing new".
+    function pollEvery(url, everyMs, handle, label) {
+        let inFlight = false;
+        setInterval(() => {
+            if (document.hidden || inFlight) return;
+            inFlight = true;
+            fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(handle)
+                .catch(err => console.warn(label + ' poll failed:', err.message))
+                .finally(() => { inFlight = false; });
+        }, everyMs);
+    }
 
-    // සෑම තත්පර 20 කට වරක්ම Admin reply කළාදැයි බැලීම
-    // (15s interval ට stagger කර ඇති නිසා API hits overlap නොවේ)
-    setInterval(() => {
-        fetch('/dealer/check-new-replies')
-            .then(res => res.json())
-            .then(data => {
-                if (data.has_new_reply) {
-                    const who = data.author_name || 'ShaloTrack Support';
-                    showToast(who + " reply කර ඇත!");
-                }
-            })
-            .catch(err => console.error("Dealer reply notification error:", err));
-    }, 2000);
+    // Every 15 s: has a new complaint arrived?
+    pollEvery('/dealer/check-new-complaints', 15000, data => {
+        if (data.has_new) {
+            showToast("You've Received a Complaint!");
+        }
+    }, "Dealer complaints");
+
+    // Every 20 s (staggered from the 15 s poll): did anyone reply to an open complaint?
+    pollEvery('/dealer/check-new-replies', 20000, data => {
+        if (data.has_new_reply) {
+            const who = data.author_name || 'ShaloTrack Support';
+            showToast(who + " reply කර ඇත!");
+        }
+    }, "Dealer replies");
 </script>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>

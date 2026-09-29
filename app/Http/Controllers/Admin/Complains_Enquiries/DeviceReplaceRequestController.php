@@ -8,6 +8,6 @@ class DeviceReplaceRequestController extends Controller
 {
     public function index()
     {
-        return view('admin.Complains_Enquiries.device_replace_request');
+        return view('admin.complaints.device_replace_request');
     }
 }
