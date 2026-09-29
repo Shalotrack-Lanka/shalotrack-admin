@@ -75,6 +75,13 @@ class DealerDashboardController extends Controller
                 ])->all(),
             ]);
 
+            // The sale no longer exists, so any commission earned for it must be reversed too,
+            // otherwise the dealer keeps money for a device that isn't sold (ledger stays
+            // append-only: recordReversed adds a negative row, it never deletes).
+            foreach ($brokenAssignments as $orphan) {
+                $this->commission->recordReversed($orphan, 'orphaned_assignment_corrected');
+            }
+
             // Back to the state an unsold device has in dealer stock: Activated.
             SetupShalotrackDevice::whereIn('shdevice_id', $brokenAssignments->pluck('shdevice_id'))
                 ->update(['status' => DeviceStatus::Activated->value]);
@@ -404,6 +411,8 @@ class DealerDashboardController extends Controller
         if (!$customerId) {
             $device->status = DeviceStatus::Activated->value;
             $device->save();
+            // Back in stock with no sale: reverse any commission still active for it.
+            $this->commission->recordReversed($device, 'returned_to_stock_without_customer');
             return back()->with('success', "Device moved to Available Stocks (no customer linked).");
         }
 
