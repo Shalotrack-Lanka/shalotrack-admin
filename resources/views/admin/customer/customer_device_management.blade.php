@@ -61,6 +61,8 @@
                                 <th class="p-3">Model</th>
                                 <th class="p-3">GPS Device</th>
                                 <th class="p-3">Vehicle ID</th>
+                                <th class="p-3">Payment</th>
+                                <th class="p-3">Subscription Ends</th>
                                 <th class="p-3 text-center">Status</th>
                             </tr>
                         </thead>
@@ -89,6 +91,12 @@
                                 <td class="p-3">{{ $d->model }}</td>
                                 <td class="p-3">{{ $d->has_gps_device ? 'Yes' : 'No' }}</td>
                                 <td class="p-3 font-mono text-xs" title="{{ $d->vehicle_id }}">{{ $d->vehicle_id }}</td>
+                                <td class="p-3">
+                                    <span data-payment-badge class="text-xs font-bold {{ $d->payment_status === 'Paid' ? 'text-green-600' : 'text-amber-600' }}">{{ $d->payment_status }}</span>
+                                </td>
+                                <td class="p-3 text-xs" data-subscription-ends>
+                                    {{ $d->subscription_end_date ? $d->subscription_end_date->format('Y-m-d') : '—' }}
+                                </td>
                                 <td class="p-3 text-center">
                                     <div class="inline-flex items-center gap-2">
                                         <span class="text-xs font-bold text-green-600">{{ $d->status }}</span>
@@ -104,7 +112,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="7" class="p-6 text-center text-gray-400">No active devices yet.</td></tr>
+                            <tr><td colspan="9" class="p-6 text-center text-gray-400">No active devices yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -307,6 +315,9 @@
                     <option value="not-Paid">not-Paid</option>
                     <option value="Paid">Paid</option>
                 </select>
+                <p x-show="$store.deviceMgmt.form.payment_status === 'Paid'" class="text-[11px] text-gray-400 mt-1">
+                    Paid needs a subscription model, a start date and a new bank invoice number.
+                </p>
             </div>
 
             <template x-if="$store.deviceMgmt.form.payment_status === 'Paid'">
@@ -332,13 +343,12 @@
                                class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
                     </div>
 
-                    <template x-if="$store.deviceMgmt.mode === 'edit'">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Subscription Ending Date</label>
-                            <input type="date" disabled x-model="$store.deviceMgmt.subscriptionEndDate"
-                                   class="w-full rounded-lg border-gray-300 bg-gray-100 text-sm shadow-sm cursor-not-allowed">
-                        </div>
-                    </template>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Subscription Ending Date <span class="font-normal text-gray-400">(calculated)</span></label>
+                        <input type="date" disabled data-end-preview
+                               :value="$store.deviceMgmt.endPreview || $store.deviceMgmt.subscriptionEndDate"
+                               class="w-full rounded-lg border-gray-300 bg-gray-100 text-sm shadow-sm cursor-not-allowed">
+                    </div>
 
                     <template x-if="$store.deviceMgmt.mode === 'reactivate'">
                         <div>
@@ -381,7 +391,13 @@ document.addEventListener('alpine:init', () => {
     const updateUrlTemplate     = "{{ route('admin.customer-device-management.update', ['activatedDevice' => '__ID__']) }}";
     const reactivateUrlTemplate = "{{ route('admin.customer-device-management.reactivate', ['expiredDevice' => '__ID__']) }}";
 
-    const todayDateString = () => new Date().toISOString().slice(0, 10);
+    // Local calendar date (toISOString() is UTC and gives yesterday between 00:00 and 05:30 in Sri Lanka).
+    const pad2 = n => String(n).padStart(2, '0');
+    const localDateString = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    const todayDateString = () => localDateString(new Date());
+
+    // Same day counts as CustomerDeviceManagementController::SUBSCRIPTION_DAYS (30 days per month).
+    const SUBSCRIPTION_DAYS = {'3 Months': 90, '6 Months': 180, '1 Year': 360, '2 Year': 720, '3 Year': 1080};
 
     Alpine.store('deviceMgmt', {
         open: false,
@@ -414,6 +430,16 @@ document.addEventListener('alpine:init', () => {
             if (this.mode === 'edit') return 'Save Changes';
             if (this.mode === 'reactivate') return 'Activate Device';
             return 'Activate Device';
+        },
+
+        // What the server will store: start date + the model's days. Shown live so the admin
+        // sees the result before saving.
+        get endPreview() {
+            const days = SUBSCRIPTION_DAYS[this.form.subscription_model];
+            const start = this.form.subscription_start_date;
+            if (!days || !/^\d{4}-\d{2}-\d{2}$/.test(start || '')) return '';
+            const [y, m, d] = start.split('-').map(Number);
+            return localDateString(new Date(y, m - 1, d + days));
         },
 
         get imeiOptions() {
