@@ -8,6 +8,7 @@ use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
 use App\Http\Requests\DealerStoreCustomerAdRequest;
 use App\Services\CustomerLinkService;
+use App\Services\DealerCommissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,10 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class DealerDashboardController extends Controller
 {
+    public function __construct(private DealerCommissionService $commission)
+    {
+    }
+
     public function index()
     {
         $user = auth()->user();
@@ -47,13 +52,31 @@ class DealerDashboardController extends Controller
         }
 
         // AUTO-FIX: Customer nathi ewa stock ekata gannawa
-        SetupShalotrackDevice::where('dealer_id', $dealer->id)
+        // LOGGED as of 2026-09-29 -- this correction should be impossible given
+        // the assign/unassign/reassign code paths in this controller, so if it
+        // keeps firing in production logs, something outside this app is writing
+        // bad rows into setup_shalotrack_devices. Do not remove this log until
+        // that's confirmed one way or the other.
+        $brokenAssignments = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->where(function ($q) {
                 $q->whereNull('assigned_customer_id')
                   ->orWhere('assigned_customer_id', 0);
             })
             ->where('status', 'Assigned to Customer')
-            ->update(['status' => 'Not Activated']);
+            ->get(['shdevice_id', 'imei_number']);
+
+        if ($brokenAssignments->isNotEmpty()) {
+            \Log::warning('Dealer dashboard auto-corrected orphaned "Assigned to Customer" device(s) with no linked customer', [
+                'dealer_id' => $dealer->id,
+                'devices'   => $brokenAssignments->map(fn($d) => [
+                    'shdevice_id' => $d->shdevice_id,
+                    'imei'        => $d->imei_number,
+                ])->all(),
+            ]);
+
+            SetupShalotrackDevice::whereIn('shdevice_id', $brokenAssignments->pluck('shdevice_id'))
+                ->update(['status' => 'Not Activated']);
+        }
 
         $dealerLeads     = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
         $dealerCustomers = $dealerLeads;
@@ -83,13 +106,6 @@ class DealerDashboardController extends Controller
             
         $assignedDevicesCount = $assignedDevices->count();
 
-        // 💡 අලුතින් එකතු කළ කොටස: 'Assigned' සහ 'Temporarily Stopped' කියන දෙකම ගන්නවා
-        $totalSoldDevicesCount = SetupShalotrackDevice::where('dealer_id', $dealer->id)
-            ->whereNotNull('assigned_customer_id')
-            ->where('assigned_customer_id', '>', 0)
-            ->whereIn('status', ['Assigned to Customer', 'Temporarily Stopped'])
-            ->count();
-
         $pendingDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->where('status', 'Pending Repair')
             ->latest()
@@ -100,7 +116,16 @@ class DealerDashboardController extends Controller
             ->latest()
             ->get();
 
-        $earnedCommission = $totalSoldDevicesCount * 1000;
+        // FIX: was a live "current assigned count * 1000" formula --
+        // recalculated on every page load, so a device later going broken
+        // or being unassigned silently reduced a dealer's PAST earnings.
+        // Now reads the immutable ledger total (DealerCommissionService).
+        //
+        // ⚠️ NOT PRODUCTION READY: this figure has no payment-status gate
+        // and no historical backfill -- both are open client-dependent
+        // decisions. See DealerCommissionService's class docblock before
+        // treating this number as final or deploying it to real dealers.
+        $earnedCommission = $this->commission->currentTotal($dealer);
         $totalCustomers = $dealerLeads->count();
 
         $customerIds = \App\Models\CustomerAd::query()
@@ -132,8 +157,7 @@ class DealerDashboardController extends Controller
             'assignedDevicesCount',
             'earnedCommission',
             'pendingDevices',
-            'brokenDevices',
-            'totalSoldDevicesCount'
+            'brokenDevices'
         ));
     }
 
@@ -227,7 +251,8 @@ class DealerDashboardController extends Controller
             'customer_id' => 'required|exists:dealer_customer_ads,id',
         ]);
 
-        $dealerId = auth()->user()->dealer->id ?? null;
+        $dealer   = auth()->user()->dealer;
+        $dealerId = $dealer->id ?? null;
 
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $request->shdevice_id)
@@ -244,6 +269,10 @@ class DealerDashboardController extends Controller
         $device->assigned_customer_id = $customer->id;
         $device->status               = 'Assigned to Customer';
         $device->save();
+
+        if ($dealer) {
+            $this->commission->recordEarned($device, $dealer, 'device_assigned');
+        }
 
         $currentImeis = $customer->imei_numbers ?? [];
         if (!is_array($currentImeis)) {
@@ -268,7 +297,8 @@ class DealerDashboardController extends Controller
             'customer_id' => 'required|exists:dealer_customer_ads,id',
         ]);
 
-        $dealerId = auth()->user()->dealer->id ?? null;
+        $dealer   = auth()->user()->dealer;
+        $dealerId = $dealer->id ?? null;
 
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $request->shdevice_id)
@@ -289,6 +319,10 @@ class DealerDashboardController extends Controller
         $device->assigned_customer_id = $customer->id;
         $device->status               = 'Assigned to Customer';
         $device->save();
+
+        if ($dealer) {
+            $this->commission->recordEarned($device, $dealer, 'device_assigned');
+        }
 
         $currentImeis = $customer->imei_numbers ?? [];
         if (!is_array($currentImeis)) {
@@ -320,6 +354,11 @@ class DealerDashboardController extends Controller
         $device->status = 'Pending Repair';
         $device->save();
 
+        // Device is leaving the "sold" state -- reverse whatever commission
+        // was earned for it. No-ops safely if it had none (e.g. was never
+        // actually assigned in the first place).
+        $this->commission->recordReversed($device, 'device_unassigned');
+
         // Customer ge App account eken device eka ain karanawa, eyaata aluth ekak denna puluwan wenna
         if ($customerId) {
             $customer = DealerCustomerAd::find($customerId);
@@ -341,7 +380,8 @@ class DealerDashboardController extends Controller
     // 💡 2. REASSIGN: Status -> Assigned. (Parana customer tama apahu denawa)
     public function reassignDevice($shdevice_id)
     {
-        $dealerId = auth()->user()->dealer->id ?? null;
+        $dealer   = auth()->user()->dealer;
+        $dealerId = $dealer->id ?? null;
 
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $shdevice_id)
@@ -357,6 +397,14 @@ class DealerDashboardController extends Controller
 
         $device->status = 'Assigned to Customer';
         $device->save();
+
+        // Device is back in the "sold" state -- recordEarned() is
+        // idempotent, so this only actually writes a row if there isn't
+        // already an active one (e.g. this device was previously unassigned
+        // and reversed, and is now genuinely being re-sold).
+        if ($dealer) {
+            $this->commission->recordEarned($device, $dealer, 'device_reassigned');
+        }
 
         // Customer ge App eke list ekata apahu add karanawa
         $customer = DealerCustomerAd::find($customerId);
@@ -389,6 +437,11 @@ class DealerDashboardController extends Controller
 
         $device->status = 'Broken Device';
         $device->save();
+
+        // Same reversal as unassignDevice() -- a device that's now broken
+        // is no longer a completed sale. No-op if it had no active
+        // commission entry (e.g. was broken before ever being assigned).
+        $this->commission->recordReversed($device, 'device_broken');
 
         return back()->with('success', "Device IMEI {$device->imei_number} marked as Broken.");
     }
