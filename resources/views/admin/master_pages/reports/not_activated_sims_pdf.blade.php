@@ -68,7 +68,7 @@
     <div class="header">
         <h1>ShaloTrack — Not Activated SIMs Report</h1>
         <div class="meta">
-            Generated on {{ now()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total: {{ $sims->count() }} SIMs
+            Generated on {{ now()->local()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total: {{ $sims->count() }} SIMs
         </div>
     </div>
 

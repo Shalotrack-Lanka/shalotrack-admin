@@ -125,7 +125,7 @@
     <div class="header">
         <h1>ShaloTrack — Not Activated Devices Report</h1>
         <div class="meta">
-            Generated on {{ now()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total: {{ $devices->count() }} devices
+            Generated on {{ now()->local()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total: {{ $devices->count() }} devices
         </div>
     </div>
 
@@ -146,7 +146,7 @@
                     <td>{{ $device->imei_number }}</td>
                     <td>{{ $device->device_category }}</td>
                     <td>{{ $device->sim_number ?? '-' }}</td>
-                    <td>{{ $device->created_at->format('Y-m-d H:i') }}</td>
+                    <td>{{ $device->created_at->local()->format('Y-m-d H:i') }}</td>
                 </tr>
             @empty
                 <tr><td colspan="5" style="text-align: center; color: #999;">No devices pending activation.</td></tr>

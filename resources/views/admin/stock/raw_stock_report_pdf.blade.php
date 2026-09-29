@@ -51,7 +51,7 @@
                     <div style="color: #64748b; font-size: 9px; margin-top: 2px;">ShaloTrack Admin Portal</div>
                 </td>
                 <td class="date">
-                    Generated Date: {{ date('Y-m-d H:i A') }}
+                    Generated Date: {{ now()->local()->format('Y-m-d h:i A') }}
                 </td>
             </tr>
         </table>
@@ -75,7 +75,7 @@
                         <td>#{{ $stock->id }}</td>
                         <td><strong>{{ $stock->device_category_type }}</strong></td>
                         <td class="text-right" style="color: #16a34a; font-weight: bold;">{{ $stock->company_available_stock }}</td>
-                        <td>{{ optional($stock->updated_at)->format('Y-m-d H:i') }}</td>
+                        <td>{{ $stock->updated_at?->local()?->format('Y-m-d H:i') }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 15px;">No stock recorded yet.</td></tr>

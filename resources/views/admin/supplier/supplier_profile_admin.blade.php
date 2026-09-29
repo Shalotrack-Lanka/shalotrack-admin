@@ -225,7 +225,7 @@
                     </div>
                     <div>
                         <div class="text-xs text-gray-400 uppercase font-bold">Member Since</div>
-                        <div class="text-gray-700">{{ $supplier->created_at->format('d M Y') }}</div>
+                        <div class="text-gray-700">{{ $supplier->created_at->local()->format('d M Y') }}</div>
                     </div>
                 </div>
             </div>
@@ -310,7 +310,7 @@
                             @forelse($stockHistory as $entry)
                                 <tr>
                                     <td class="p-2 whitespace-nowrap">
-                                        {{ optional($entry->created_at)->format('d M Y') }}
+                                        {{ $entry->created_at?->local()?->format('d M Y') }}
                                     </td>
                                     <td class="p-2">{{ $entry->device_category_type ?? '—' }}</td>
                                     <td class="p-2 text-right font-bold text-gray-700">{{ $entry->stock_in }}</td>

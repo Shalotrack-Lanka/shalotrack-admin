@@ -334,7 +334,7 @@
                                                 </span>
                                             </td>
                                             <td class="px-4 py-3 text-xs text-gray-500">{{ $dealer->created_by }}</td>
-                                            <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{{ $dealer->created_at->format('d M Y') }}</td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{{ $dealer->created_at->local()->format('d M Y') }}</td>
                                         </tr>
                                     @empty
                                         <tr><td colspan="6" class="p-8 text-center text-gray-400 flex-col items-center justify-center">
@@ -375,7 +375,7 @@
                                                 </span>
                                             </td>
                                             <td class="px-4 py-3 text-xs">{{ $dealer->created_by }}</td>
-                                            <td class="px-4 py-3 whitespace-nowrap text-xs">{{ $dealer->created_at->format('d M Y') }}</td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-xs">{{ $dealer->created_at->local()->format('d M Y') }}</td>
                                         </tr>
                                     @empty
                                         <tr><td colspan="6" class="p-8 text-center text-gray-400">Nothing archived yet.</td></tr>

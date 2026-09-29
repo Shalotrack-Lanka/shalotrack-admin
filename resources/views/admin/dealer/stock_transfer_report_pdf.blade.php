@@ -63,7 +63,7 @@
                     <div style="color: #64748b; font-size: 8.5px; margin-top: 2px;">ShaloTrack Admin Portal</div>
                 </td>
                 <td class="date">
-                    Generated Date: {{ date('Y-m-d H:i A') }}
+                    Generated Date: {{ now()->local()->format('Y-m-d h:i A') }}
                 </td>
             </tr>
         </table>
@@ -85,7 +85,7 @@
             @forelse($transfers as $index => $transfer)
                 <tr>
                     <td>{{ $index + 1 }}</td>
-                    <td>{{ $transfer->created_at->format('Y-m-d h:i A') }}</td>
+                    <td>{{ $transfer->created_at->local()->format('Y-m-d h:i A') }}</td>
                     <td><strong>{{ $transfer->dealer->full_name ?? '-' }}</strong></td>
                     <td>{{ $transfer->device_category }}</td>
                     <td style="text-align: center; font-weight: bold; color: #1d4ed8;">{{ $transfer->quantity }}</td>
@@ -124,7 +124,7 @@
                     </td>
                     <td><strong>{{ $device->dealer->full_name ?? '-' }}</strong></td>
                     <td><span class="badge">{{ $device->status }}</span></td>
-                    <td>{{ $device->allocated_at ? $device->allocated_at->format('d M Y, h:i A') : 'Not recorded' }}</td>
+                    <td>{{ $device->allocated_at ? $device->allocated_at->local()->format('d M Y, h:i A') : 'Not recorded' }}</td>
                 </tr>
             @empty
                 <tr><td colspan="7" style="text-align: center; color: #94a3b8;">No devices have been transferred to a dealer yet.</td></tr>

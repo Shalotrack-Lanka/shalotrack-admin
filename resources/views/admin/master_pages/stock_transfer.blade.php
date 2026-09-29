@@ -122,7 +122,7 @@
                     <tbody class="divide-y divide-gray-200 bg-white text-sm font-medium text-gray-700">
                         @forelse($transfers as $transfer)
                         <tr class="hover:bg-gray-50 transition">
-                            <td class="p-4 text-xs text-gray-500">{{ $transfer->created_at->format('Y-m-d h:i A') }}</td>
+                            <td class="p-4 text-xs text-gray-500">{{ $transfer->created_at->local()->format('Y-m-d h:i A') }}</td>
                             <td class="p-4 font-bold">{{ $transfer->dealer->full_name ?? '-' }}</td>
                             <td class="p-4">{{ $transfer->device_category }}</td>
                             <td class="p-4 text-center font-bold text-blue-600 bg-blue-50">{{ $transfer->quantity }}</td>
@@ -196,7 +196,7 @@
                             </td>
                             <td class="p-4 text-xs text-gray-500">
                                 @if($device->allocated_at)
-                                {{ $device->allocated_at->format('d M Y, h:i A') }}
+                                {{ $device->allocated_at->local()->format('d M Y, h:i A') }}
                                 @else
                                 <span class="text-gray-400 italic">Not recorded</span>
                                 @endif

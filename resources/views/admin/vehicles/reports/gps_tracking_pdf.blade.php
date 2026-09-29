@@ -56,7 +56,7 @@
                     <div style="color: #64748b; font-size: 8.5px; margin-top: 2px;">ShaloTrack Vehicle Tracking History</div>
                 </td>
                 <td class="meta">
-                    Generated: {{ now()->format('d M Y, h:i A') }}<br>
+                    Generated: {{ now()->local()->format('d M Y, h:i A') }}<br>
                     @if($fromDate || $toDate)
                         Range: {{ $fromDate ?? 'Start' }} to {{ $toDate ?? 'Now' }}
                     @endif
@@ -190,7 +190,7 @@
                     <div style="color: #64748b; font-size: 8.5px; margin-top: 2px;">ShaloTrack Vehicle Tracking History</div>
                 </td>
                 <td class="meta">
-                    Generated: {{ now()->format('d M Y, h:i A') }}<br>
+                    Generated: {{ now()->local()->format('d M Y, h:i A') }}<br>
                     @if($fromDate || $toDate)
                         Range: {{ $fromDate ?? 'Start' }} to {{ $toDate ?? 'Now' }}
                     @endif

@@ -121,7 +121,7 @@
                                         <td class="p-3 text-gray-400 font-mono">{{ $stock->id }}</td>
                                         <td class="p-3">{{ $stock->device_category_type }}</td>
                                         <td class="p-3 text-right font-bold text-green-600 font-mono tabular-nums">{{ $stock->company_available_stock }}</td>
-                                        <td class="p-3 text-gray-400 font-mono text-[11px] whitespace-nowrap">{{ optional($stock->updated_at)->format('Y-m-d H:i') }}</td>
+                                        <td class="p-3 text-gray-400 font-mono text-[11px] whitespace-nowrap">{{ $stock->updated_at?->local()?->format('Y-m-d H:i') }}</td>
                                     </tr>
                                 @empty
                                     <tr><td colspan="4" class="p-6 text-center text-gray-400 font-medium italic">No stock recorded yet.</td></tr>

@@ -143,7 +143,7 @@
 
                             {{-- Date --}}
                             <td class="px-4 py-3 text-slate-400 text-[10px] whitespace-nowrap">
-                                {{ $ad->created_at?->format('d M Y') }}
+                                {{ $ad->created_at?->local()?->format('d M Y') }}
                             </td>
                         </tr>
                     @empty

@@ -184,7 +184,7 @@
                     @if($customer->address)
                         <div class="mt-4"><span class="font-bold text-slate-600">Address:</span> {{ $customer->address }}</div>
                     @endif
-                    <div class="text-slate-400 text-[10px]">Added {{ $customer->created_at?->format('d M Y') }}</div>
+                    <div class="text-slate-400 text-[10px]">Added {{ $customer->created_at?->local()?->format('d M Y') }}</div>
                 </div>
 
                 <div class="p-4 text-xs">
