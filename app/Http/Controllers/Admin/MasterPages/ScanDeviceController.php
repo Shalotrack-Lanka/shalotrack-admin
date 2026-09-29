@@ -29,8 +29,9 @@ class ScanDeviceController extends Controller
     public function index()
     {
         $deviceTypes = DeviceType::orderBy('device_category')->orderBy('model')->get();
+        $simTypes = Sim::query()->distinct()->orderBy('sim_type')->pluck('sim_type');
 
-        return view('admin.master_pages.scan_device', compact('deviceTypes'));
+        return view('admin.master_pages.scan_device', compact('deviceTypes', 'simTypes'));
     }
 
     /**
@@ -151,10 +152,63 @@ class ScanDeviceController extends Controller
         ]);
     }
 
+    /**
+     * One-off SIM registration from the scan page, for a scanned ICCID that
+     * isn't in the SIM list yet. Same rules as AddSimController::store(), but
+     * the SIM is saved as Activated, so the admin must explicitly confirm the
+     * carrier has activated it (`confirm_activated`). For a full box of SIMs
+     * the bulk import on the Add SIM page is the better route.
+     */
+    public function quickAddSim(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'iccid'             => ['required', 'digits_between:19,20', 'unique:sims,iccid'],
+            'sim_number'        => ['required', 'digits:10', 'unique:sims,sim_number'],
+            'imsi'              => ['required', 'digits:15', 'unique:sims,imsi'],
+            'sim_type'          => ['required', 'string', 'max:255'],
+            'confirm_activated' => ['accepted'],
+        ], [
+            'iccid.digits_between'      => 'ICCID must be 19 or 20 digits.',
+            'iccid.unique'              => 'This ICCID is already registered.',
+            'sim_number.digits'         => 'SIM number must be exactly 10 digits.',
+            'sim_number.unique'         => 'This SIM number is already registered.',
+            'imsi.digits'               => 'IMSI must be exactly 15 digits.',
+            'imsi.unique'               => 'This IMSI is already registered.',
+            'confirm_activated.accepted' => 'Confirm that the carrier has activated this SIM.',
+        ]);
+
+        try {
+            $sim = Sim::create([
+                'sim_number'          => $data['sim_number'],
+                'sim_type'            => trim($data['sim_type']),
+                'imsi'                => $data['imsi'],
+                'iccid'               => $data['iccid'],
+                'activation_required' => false,
+                'sim_status'          => 'Activated',
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // The UNIQUE indexes are the real guard if someone else added it a moment ago.
+            Log::warning('Scan intake SIM quick-add rejected by database', ['iccid' => $data['iccid'], 'error' => $e->getMessage()]);
+
+            return response()->json([
+                'message' => 'This SIM could not be saved.',
+                'errors'  => ['iccid' => ['This SIM (or its number/IMSI) was just registered by someone else.']],
+            ], 422);
+        }
+
+        Log::info('SIM registered from scan intake', [
+            'admin_id' => $request->user()?->getAuthIdentifier(),
+            'iccid'    => $sim->iccid,
+            'ip'       => $request->ip(),
+        ]);
+
+        return response()->json(['ok' => true, 'sim_number' => $sim->sim_number, 'iccid' => $sim->iccid], 201);
+    }
+
     private function checkIccid(string $iccid): array
     {
         if (! preg_match('/^\d{19,20}$/', $iccid)) {
-            return ['ok' => false, 'message' => 'Not a valid SIM ICCID (19–20 digits) — rescan.'];
+            return ['ok' => false, 'reason' => 'invalid', 'message' => 'Not a valid SIM ICCID (19–20 digits) — rescan.'];
         }
 
         $sim = Sim::where('iccid', $iccid)->first();
@@ -163,13 +217,13 @@ class ScanDeviceController extends Controller
             // Either already consumed by a device, or never added to the SIM master.
             $onDevice = SetupShalotrackDevice::where('iccid', $iccid)->exists();
 
-            return ['ok' => false, 'message' => $onDevice
-                ? 'This SIM is already attached to a registered device.'
-                : 'This SIM is not registered. Add it under Add SIM first.'];
+            return $onDevice
+                ? ['ok' => false, 'reason' => 'in_use', 'message' => 'This SIM is already attached to a registered device.']
+                : ['ok' => false, 'reason' => 'not_registered', 'message' => 'This SIM is not registered yet.'];
         }
 
         if ($sim->sim_status !== 'Activated') {
-            return ['ok' => false, 'message' => 'This SIM is registered but not Activated yet.'];
+            return ['ok' => false, 'reason' => 'not_activated', 'message' => 'This SIM is registered but not Activated yet.'];
         }
 
         return ['ok' => true, 'sim_number' => $sim->sim_number];

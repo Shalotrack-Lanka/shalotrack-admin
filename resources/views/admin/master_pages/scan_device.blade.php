@@ -31,6 +31,7 @@
                   checkUrl:  @js(route('admin.device.scan.check')),
                   commitUrl: @js(route('admin.device.scan.commit')),
                   listUrl:   @js(route('admin.setup-device')),
+                  simUrl:    @js(route('admin.device.scan.sim')),
               })"
                 x-init="init()">
 
@@ -65,7 +66,7 @@
                                 <label class="block mb-1">Scan here <span class="font-normal text-gray-400">(click the box, then pull the scanner trigger)</span></label>
                                 <input type="text" x-ref="scanInput" x-model="input"
                                     @keydown.enter.prevent="onScan()"
-                                    :disabled="!deviceTypeId || committing"
+                                    :disabled="!deviceTypeId || committing || simForm.open"
                                     autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="numeric"
                                     placeholder="Waiting for a scan…"
                                     class="w-full rounded-lg border-gray-300 h-10 shadow-sm font-mono disabled:bg-gray-100">
@@ -82,6 +83,74 @@
                             </svg>
                             <span x-text="flash.text"></span>
                         </div>
+                        <!-- QUICK-ADD SIM (opens when a scanned ICCID isn't registered) -->
+                        <div x-show="simForm.open" x-cloak class="border border-blue-200 bg-blue-50/40 rounded-xl p-4 space-y-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="font-bold text-gray-800 text-sm">Register this SIM now</p>
+                                    <p class="font-normal text-gray-500 mt-0.5">
+                                        For a whole box of SIMs, import the carrier's list instead:
+                                        <a href="{{ route('admin.add-sim') }}" target="_blank" rel="noopener" class="text-blue-600 font-bold hover:underline">Bulk SIM import (opens Add SIM)</a>.
+                                    </p>
+                                </div>
+                                <button type="button" @click="closeSimForm()" :disabled="simForm.saving" class="text-gray-400 hover:text-gray-700 font-bold">Cancel</button>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block mb-1">ICCID (scanned)</label>
+                                    <input type="text" x-model="simForm.iccid" readonly class="w-full rounded-lg border-gray-300 h-10 shadow-sm font-mono bg-gray-100">
+                                    <p class="text-red-600 mt-1" x-text="simForm.errors.iccid"></p>
+                                </div>
+                                <div>
+                                    <label class="block mb-1">SIM Number (10 digits)</label>
+                                    <input type="text" x-ref="simNumberInput" x-model="simForm.sim_number" maxlength="10" inputmode="numeric" autocomplete="off"
+                                        @input="simForm.sim_number = simForm.sim_number.replace(/\D/g, '')"
+                                        class="w-full rounded-lg border-gray-300 h-10 shadow-sm font-mono">
+                                    <p class="text-red-600 mt-1" x-text="simForm.errors.sim_number"></p>
+                                </div>
+                                <div>
+                                    <label class="block mb-1">IMSI (15 digits)</label>
+                                    <input type="text" x-model="simForm.imsi" maxlength="15" inputmode="numeric" autocomplete="off"
+                                        @input="simForm.imsi = simForm.imsi.replace(/\D/g, '')"
+                                        class="w-full rounded-lg border-gray-300 h-10 shadow-sm font-mono">
+                                    <p class="text-red-600 mt-1" x-text="simForm.errors.imsi"></p>
+                                </div>
+                                <div>
+                                    <label class="block mb-1">SIM Type</label>
+                                    <input type="text" x-model="simForm.sim_type" list="simTypeList" maxlength="255" autocomplete="off"
+                                        class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                                    <datalist id="simTypeList">
+                                        @foreach($simTypes as $simType)
+                                        <option value="{{ $simType }}"></option>
+                                        @endforeach
+                                    </datalist>
+                                    <p class="text-red-600 mt-1" x-text="simForm.errors.sim_type"></p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="flex items-start gap-2 cursor-pointer">
+                                    <input type="checkbox" x-model="simForm.confirm" class="mt-0.5 rounded border-gray-300">
+                                    <span>I confirm the carrier has <strong>activated</strong> this SIM. It will be saved as Activated and paired to the device.</span>
+                                </label>
+                                <p class="text-red-600 mt-1" x-text="simForm.errors.confirm_activated"></p>
+                            </div>
+
+                            <p x-show="simForm.errorText" x-cloak class="text-red-600 font-bold" x-text="simForm.errorText"></p>
+
+                            <div class="flex items-center gap-2">
+                                <button type="button" @click="saveSim()" :disabled="simForm.saving || !simForm.confirm"
+                                    class="bg-[#17a2b8] hover:bg-[#138496] disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-bold shadow-sm transition inline-flex items-center gap-2">
+                                    <svg x-show="simForm.saving" x-cloak class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                    </svg>
+                                    <span x-text="simForm.saving ? 'Saving…' : 'Save SIM & pair'"></span>
+                                </button>
+                            </div>
+                        </div>
+
                         <p x-show="!deviceTypeId" x-cloak class="text-gray-400 font-normal">Select a device type to enable scanning.</p>
                     </div>
                 </div>
@@ -198,6 +267,7 @@
                 checkUrl: cfg.checkUrl,
                 commitUrl: cfg.commitUrl,
                 listUrl: cfg.listUrl,
+                simUrl: cfg.simUrl,
                 deviceTypeId: '',
                 input: '',
                 rows: [],
@@ -209,6 +279,18 @@
                 doneCount: 0,
                 busy: false,
                 queue: [],
+                simForm: {
+                    open: false,
+                    saving: false,
+                    iccid: '',
+                    imei: '',
+                    sim_number: '',
+                    imsi: '',
+                    sim_type: '',
+                    confirm: false,
+                    errors: {},
+                    errorText: ''
+                },
 
                 // A row is "pending" while its server check is in flight.
                 get hasPending() {
@@ -391,12 +473,80 @@
                     }
 
                     target.checking = false;
-                    if (data.iccid && !data.iccid.ok) return this.fail('SIM ' + iccid + ': ' + data.iccid.message);
+                    if (data.iccid && !data.iccid.ok) {
+                        if (data.iccid.reason === 'not_registered') {
+                            this.openSimForm(iccid, target.imei);
+                            return this.fail('SIM ' + iccid + ' is not registered yet — fill in the form below to add it, or cancel.');
+                        }
+                        return this.fail('SIM ' + iccid + ': ' + data.iccid.message);
+                    }
                     target.iccid = iccid;
                     target.simNumber = data.iccid.sim_number;
                     this.save();
                     this.beep(true);
                     this.say('SIM ' + data.iccid.sim_number + ' paired with ' + target.imei + '.', true);
+                },
+
+                openSimForm(iccid, imei) {
+                    this.simForm = {
+                        open: true,
+                        saving: false,
+                        iccid,
+                        imei,
+                        sim_number: '',
+                        imsi: '',
+                        sim_type: '',
+                        confirm: false,
+                        errors: {},
+                        errorText: ''
+                    };
+                    this.queue = []; // drop scans queued behind it; they'd pair to the wrong device
+                    this.$nextTick(() => this.$refs.simNumberInput && this.$refs.simNumberInput.focus());
+                },
+                closeSimForm() {
+                    this.simForm.open = false;
+                    this.say('', true);
+                    this.focusInput();
+                },
+                async saveSim() {
+                    const f = this.simForm;
+                    if (f.saving || !f.confirm) return;
+                    f.saving = true;
+                    f.errors = {};
+                    f.errorText = '';
+                    try {
+                        const {
+                            status,
+                            data
+                        } = await this.post(this.simUrl, {
+                            iccid: f.iccid,
+                            sim_number: f.sim_number,
+                            imsi: f.imsi,
+                            sim_type: f.sim_type,
+                            confirm_activated: f.confirm,
+                        });
+                        if (status === 422) {
+                            const errs = data.errors || {};
+                            f.errors = Object.fromEntries(Object.entries(errs).map(([k, v]) => [k, v[0]]));
+                            if (!Object.keys(f.errors).length) f.errorText = data.message || 'The SIM was rejected.';
+                            return;
+                        }
+                        // Saved as Activated: pair it to the device it was scanned for (if that row still exists).
+                        const row = this.rows.find(r => r.imei === f.imei);
+                        if (row && !row.iccid) {
+                            row.iccid = f.iccid;
+                            row.simNumber = data.sim_number;
+                        }
+                        this.save();
+                        this.beep(true);
+                        this.say('SIM ' + data.sim_number + ' registered' + (row ? ' and paired with ' + f.imei + '.' : '.'), true);
+                        this.simForm.open = false;
+                        this.focusInput();
+                    } catch (e) {
+                        f.errorText = e.message;
+                    } finally {
+                        f.saving = false;
+                    }
                 },
 
                 removeRow(i) {
