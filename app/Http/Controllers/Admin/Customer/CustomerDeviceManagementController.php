@@ -8,16 +8,21 @@ use App\Models\ActivatedDevice;
 use App\Models\ExpiredDevice;
 use App\Models\SetupShalotrackDevice;
 use App\Models\VehicleAd;
+use App\Traits\PushesDeviceToApi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerDeviceManagementController extends Controller
 {
+    use PushesDeviceToApi;
+
     private const SUBSCRIPTION_MODELS = ['3 Months', '6 Months', '1 Year', '2 Year', '3 Year'];
 
     // 30 days per month, per the spec.
@@ -66,9 +71,27 @@ class CustomerDeviceManagementController extends Controller
 
         // Devices an admin may bind to a customer vehicle (name kept for the view):
         // company-held activated devices, plus devices a dealer has sold.
-        $notActivatedDevices = SetupShalotrackDevice::bindableByAdmin()
+        // A dealer-sold device carries who sold it and to whom, so the bind form can warn when the
+        // chosen vehicle belongs to someone else.
+        $bindable = SetupShalotrackDevice::bindableByAdmin()
             ->orderBy('imei_number')
-            ->get(['shdevice_id', 'imei_number', 'sim_number', 'device_category']);
+            ->get(['shdevice_id', 'imei_number', 'sim_number', 'device_category', 'dealer_id', 'assigned_customer_id']);
+
+        $soldTo = DB::table('dealer_customer_ads')
+            ->whereIn('id', $bindable->pluck('assigned_customer_id')->filter()->unique())
+            ->pluck('name', 'id');
+        $soldBy = DB::table('dealers')
+            ->whereIn('id', $bindable->pluck('dealer_id')->filter()->unique())
+            ->pluck('full_name', 'id');
+
+        $notActivatedDevices = $bindable->map(fn ($d) => [
+            'shdevice_id'     => $d->shdevice_id,
+            'imei_number'     => $d->imei_number,
+            'sim_number'      => $d->sim_number,
+            'device_category' => $d->device_category,
+            'sold_to'         => $d->assigned_customer_id ? ($soldTo[$d->assigned_customer_id] ?? null) : null,
+            'sold_by'         => $d->dealer_id ? ($soldBy[$d->dealer_id] ?? null) : null,
+        ])->values();
 
         $deviceCategories = SetupShalotrackDevice::whereNotNull('device_category')
             ->distinct()
@@ -93,7 +116,7 @@ class CustomerDeviceManagementController extends Controller
                 ->withErrors(['vehicle' => "A device is already activated for {$vehicle->vehicle_number}."]);
         }
 
-        $validated = $this->validateDeviceForm($request);
+        $validated = $this->validateDeviceForm($request, customerId: $vehicle->customer_id);
 
         DB::transaction(function () use ($validated, $vehicle, $request) {
             $device = SetupShalotrackDevice::bindableByAdmin()
@@ -137,7 +160,7 @@ class CustomerDeviceManagementController extends Controller
 
     public function update(Request $request, ActivatedDevice $activatedDevice)
     {
-        $validated = $this->validateDeviceForm($request, $activatedDevice);
+        $validated = $this->validateDeviceForm($request, $activatedDevice, customerId: $activatedDevice->customer_id);
 
         DB::transaction(function () use ($validated, $activatedDevice, $request) {
             if ($request->hasFile('bank_slip')) {
@@ -161,6 +184,125 @@ class CustomerDeviceManagementController extends Controller
     }
 
     /**
+     * Replaces a faulty bound device with another one. Payment and subscription belong to the
+     * vehicle's paid service, so the payment fields are left exactly as they are; only the physical
+     * device changes. The faulty one becomes Broken Device.
+     */
+    public function replace(Request $request, ActivatedDevice $activatedDevice)
+    {
+        $validated = $request->validate([
+            'new_imei_number' => [
+                'required',
+                'string',
+                Rule::exists('setup_shalotrack_devices', 'imei_number')->where(function ($query) {
+                    $query->where(function ($q) {
+                        SetupShalotrackDevice::applyBindableConstraint($q);
+                    });
+                }),
+            ],
+            'reason' => ['required', 'string', 'max:255'],
+        ], [
+            'new_imei_number.exists' => "This device is not available to bind: it may not be activated yet, already on a customer account, sitting in a dealer's unsold stock, or removed. Refresh the page and choose another device.",
+            'reason.required' => 'Say why the device is being replaced (for example: faulty, water damage).',
+        ]);
+
+        $oldImei = $activatedDevice->imei_number;
+
+        [$old, $new] = DB::transaction(function () use ($validated, $activatedDevice, $oldImei) {
+            $new = SetupShalotrackDevice::bindableByAdmin()
+                ->where('imei_number', $validated['new_imei_number'])
+                ->lockForUpdate()
+                ->first();
+
+            if (! $new) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'new_imei_number' => 'This device is no longer available. Refresh the page and choose another device.',
+                ]);
+            }
+
+            $old = SetupShalotrackDevice::where('imei_number', $oldImei)->lockForUpdate()->first();
+            $old?->update(['status' => DeviceStatus::BrokenDevice->value]);
+
+            $new->update(['status' => DeviceStatus::Activated->value]);
+
+            $activatedDevice->update([
+                'imei_number'     => $new->imei_number,
+                'sim_number'      => $new->sim_number,
+                'device_category' => $new->device_category,
+            ]);
+
+            return [$old, $new];
+        });
+
+        Log::info('device_replaced', [
+            'admin'         => auth()->id(),
+            'vehicle_id'    => $activatedDevice->vehicle_id,
+            'old_imei'      => $oldImei,
+            'new_imei'      => $new->imei_number,
+            'reason'        => $validated['reason'],
+            'payment_status'=> $activatedDevice->payment_status,
+        ]);
+
+        $synced = $this->syncReplacementToApi($old, $new->fresh(), $activatedDevice->fresh());
+
+        $message = "Device replaced for {$activatedDevice->vehicle_number}: {$oldImei} is now Broken Device and {$new->imei_number} took over. The subscription carried over.";
+        if (! $synced) {
+            $message .= ' The mobile API could not be updated right now; the change will be picked up at the next sync.';
+        }
+
+        return redirect()->route('admin.customer-device-management')->with('success', $message);
+    }
+
+    /** Tells the API about both devices (non-fatal; the change is already saved here). */
+    private function syncReplacementToApi(?SetupShalotrackDevice $old, SetupShalotrackDevice $new, ActivatedDevice $row): bool
+    {
+        $ok = true;
+        if ($old) {
+            $ok = $this->pushDeviceToApi($old) && $ok;
+        }
+        $ok = $this->pushDeviceToApi($new) && $ok;
+
+        try {
+            $response = Http::timeout(15)
+                ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+                ->acceptJson()
+                ->post(config('services.shalotrack_api.base_url') . '/api/internal/subscription-status-sync', [
+                    'devices' => array_values(array_filter([
+                        $old ? ['imei' => $old->imei_number, 'isActive' => false, 'expiresAt' => null] : null,
+                        [
+                            'imei'      => $row->imei_number,
+                            'isActive'  => $row->payment_status === 'Paid',
+                            'expiresAt' => optional($row->subscription_end_date)->toIso8601String(),
+                        ],
+                    ])),
+                ]);
+            $ok = $response->successful() && $ok;
+        } catch (\Throwable $e) {
+            Log::error('Replacement subscription sync failed', ['error' => $e->getMessage()]);
+            $ok = false;
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Streams a bank slip to a signed-in admin or finance user. Slips are payment documents, so they
+     * are not served from a public /storage URL.
+     */
+    public function bankSlip(ActivatedDevice $activatedDevice)
+    {
+        abort_unless(in_array(auth()->user()?->role, ['ADMIN', 'FINANCE'], true), 403);
+
+        $path = $activatedDevice->bank_slip;
+        abort_unless($path && Storage::disk('public')->exists($path), 404, 'This bank slip is no longer stored on the server.');
+
+        return Storage::disk('public')->response($path, null, [
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control'          => 'private, max-age=300',
+        ]);
+    }
+
+    /**
      * Move an expired_devices row back into activated_devices. IMEI, SIM and
      * device category are carried over from the expired record itself — they
      * are not editable from this form.
@@ -181,7 +323,7 @@ class CustomerDeviceManagementController extends Controller
                 ->withErrors(['vehicle' => "{$expiredDevice->vehicle_number} already has an active device record -- use Edit on it to process the renewal instead of Reactivate."]);
         }
 
-        $validated = $this->validateDeviceForm($request, forReactivation: true);
+        $validated = $this->validateDeviceForm($request, forReactivation: true, customerId: $expiredDevice->customer_id);
 
         DB::transaction(function () use ($validated, $expiredDevice) {
             ActivatedDevice::create([
@@ -243,7 +385,7 @@ class CustomerDeviceManagementController extends Controller
         return Carbon::parse($startDate)->startOfDay()->addDays($days);
     }
 
-    private function validateDeviceForm(Request $request, ?ActivatedDevice $activatedDevice = null, bool $forReactivation = false): array
+    private function validateDeviceForm(Request $request, ?ActivatedDevice $activatedDevice = null, bool $forReactivation = false, ?string $customerId = null): array
     {
         $rules = [
             'payment_status'          => ['required', Rule::in(['Paid', 'not-Paid'])],
@@ -253,7 +395,17 @@ class CustomerDeviceManagementController extends Controller
                 'nullable',
                 'required_if:payment_status,Paid',
                 'string',
-                Rule::unique('activated_devices', 'bank_invoice')->ignore($activatedDevice?->activated_device_id, 'activated_device_id'),
+                // One payment per device is the norm, but an owner may pay several of their own devices
+                // with one bank invoice. The same invoice on a different owner's device is still refused.
+                Rule::unique('activated_devices', 'bank_invoice')
+                    ->ignore($activatedDevice?->activated_device_id, 'activated_device_id')
+                    ->where(function ($query) use ($customerId) {
+                        if ($customerId) {
+                            $query->where(function ($q) use ($customerId) {
+                                $q->whereNull('customer_id')->orWhere('customer_id', '!=', $customerId);
+                            });
+                        }
+                    }),
             ],
             'bank_slip' => ['nullable', 'image', 'max:2048'],
         ];
@@ -277,6 +429,7 @@ class CustomerDeviceManagementController extends Controller
         }
 
         return $request->validate($rules, [
+            'bank_invoice.unique' => 'This bank invoice number is already used for another customer. One invoice can only cover devices of the same owner.',
             'imei_number.in' => "A device's IMEI cannot be changed here: its payment and subscription belong to this device.",
             'imei_number.exists' => "This device is no longer available to activate: it may not be activated yet, already on a customer account, sitting in a dealer's unsold stock, or removed. Refresh the page and choose another device.",
         ]);

@@ -70,7 +70,7 @@
                                     <th class="p-3">GPS Device</th>
                                     <th class="p-3">Vehicle ID</th>
                                     <th class="p-3">Payment</th>
-                                    <th class="p-3">Subscription Ends</th>
+                                    <th class="p-3">Subscription / Warranty Ends</th>
                                     <th class="p-3 text-center">Status</th>
                                 </tr>
                             </thead>
@@ -89,7 +89,7 @@
                                 'subscription_start_date' => optional($d->subscription_start_date)->format('Y-m-d'),
                                 'subscription_end_date' => optional($d->subscription_end_date)->format('Y-m-d'),
                                 'bank_invoice' => $d->bank_invoice,
-                                'bank_slip_url' => $d->bank_slip ? asset('storage/' . $d->bank_slip) : null,
+                                'bank_slip_url' => $d->bank_slip ? route('admin.customer-device-management.bank-slip', $d->activated_device_id) : null,
                                 ];
                                 @endphp
                                 <tr>
@@ -114,6 +114,14 @@
                                                 class="text-gray-500 hover:text-blue-600">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button type="button" data-replace-button
+                                                title="Replace faulty device"
+                                                @click='$store.deviceMgmt.openReplace(@json($editPayload))'
+                                                class="text-gray-500 hover:text-amber-600">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -299,10 +307,12 @@
                                     class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
                                     <option value="" disabled>-- Select IMEI --</option>
                                     <template x-for="opt in $store.deviceMgmt.imeiOptions" :key="opt.imei_number">
-                                        <option :value="opt.imei_number" x-text="opt.imei_number"></option>
+                                        <option :value="opt.imei_number" x-text="$store.deviceMgmt.optionLabel(opt)"></option>
                                     </template>
                                 </select>
                             </template>
+                            <p x-show="$store.deviceMgmt.soldToWarning" x-text="$store.deviceMgmt.soldToWarning" data-sold-to-warning
+                                class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mt-1.5"></p>
                         </div>
 
                         <div>
@@ -367,7 +377,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Subscription Ending Date <span class="font-normal text-gray-400">(calculated)</span></label>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Subscription / Warranty Ending Date <span class="font-normal text-gray-400">(calculated)</span></label>
                             <input type="date" disabled data-end-preview
                                 :value="$store.deviceMgmt.endPreview || $store.deviceMgmt.subscriptionEndDate"
                                 class="w-full rounded-lg border-gray-300 bg-gray-100 text-sm shadow-sm cursor-not-allowed">
@@ -411,10 +421,54 @@
         </div>
     </div>
 
+
+    {{-- ===================== REPLACE FAULTY DEVICE MODAL ===================== --}}
+    <div x-show="$store.deviceMgmt.replaceOpen" x-cloak data-replace-modal
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        @keydown.escape.window="$store.deviceMgmt.closeReplace()">
+        <div @click.outside="$store.deviceMgmt.closeReplace()" class="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">Replace Faulty Device</h3>
+                    <p class="text-xs text-gray-500" x-text="$store.deviceMgmt.replaceLabel"></p>
+                </div>
+                <button type="button" @click="$store.deviceMgmt.closeReplace()" class="text-gray-400 hover:text-gray-600">&#10005;</button>
+            </div>
+            <form :action="$store.deviceMgmt.replaceUrl" method="POST" class="p-5 space-y-4">
+                @csrf
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+                    Current device: <span class="font-mono font-semibold text-gray-800" x-text="$store.deviceMgmt.replaceOldImei"></span>.
+                    It becomes <span class="font-semibold">Broken Device</span>. Payment and the subscription end date carry over to the new device.
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">New device (IMEI)</label>
+                    <select name="new_imei_number" x-model="$store.deviceMgmt.replaceNewImei" required
+                        class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                        <option value="" disabled>-- Select IMEI --</option>
+                        <template x-for="opt in $store.deviceMgmt.notActivated" :key="opt.imei_number">
+                            <option :value="opt.imei_number" x-text="$store.deviceMgmt.optionLabel(opt)"></option>
+                        </template>
+                    </select>
+                    <p x-show="!$store.deviceMgmt.notActivated.length" class="text-[11px] text-amber-700 mt-1">No device is available to bind. Activate one on Cancel Device first.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Reason</label>
+                    <input type="text" name="reason" x-model="$store.deviceMgmt.replaceReason" maxlength="255" required
+                        placeholder="e.g. faulty, water damage"
+                        class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                </div>
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors">
+                    Replace Device
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('alpine:init', () => {
             const activateUrlTemplate = "{{ route('admin.customer-device-management.activate', ['vehicleId' => '__ID__']) }}";
             const updateUrlTemplate = "{{ route('admin.customer-device-management.update', ['activatedDevice' => '__ID__']) }}";
+            const replaceUrlTemplate = "{{ route('admin.customer-device-management.replace', ['activatedDevice' => '__ID__']) }}";
             const reactivateUrlTemplate = "{{ route('admin.customer-device-management.reactivate', ['expiredDevice' => '__ID__']) }}";
 
             // Local calendar date (toISOString() is UTC and gives yesterday between 00:00 and 05:30 in Sri Lanka).
@@ -442,6 +496,13 @@
                 subscriptionEndDate: '',
                 expiredDate: '',
                 slipError: '',
+                vehicleCustomer: '',
+                replaceOpen: false,
+                replaceUrl: '',
+                replaceLabel: '',
+                replaceOldImei: '',
+                replaceNewImei: '',
+                replaceReason: '',
                 notActivated: @json($notActivatedDevices),
                 form: {
                     imei_number: '',
@@ -488,6 +549,24 @@
                     this.slipError = '';
                 },
 
+                // "IMEI — sold by <dealer> to <customer>" for dealer-sold devices.
+                optionLabel(opt) {
+                    return opt.sold_to
+                        ? opt.imei_number + ' — sold by ' + (opt.sold_by || 'a dealer') + ' to ' + opt.sold_to
+                        : opt.imei_number;
+                },
+
+                // Amber warning when the device was sold to a different person than the vehicle's owner.
+                get soldToWarning() {
+                    if (this.mode !== 'activate') return '';
+                    const opt = this.notActivated.find(o => o.imei_number === this.form.imei_number);
+                    if (!opt || !opt.sold_to) return '';
+                    const norm = v => (v || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                    if (norm(opt.sold_to) === norm(this.vehicleCustomer)) return '';
+                    return 'This device was sold by ' + (opt.sold_by || 'a dealer') + ' to ' + opt.sold_to
+                        + ', but this vehicle belongs to ' + (this.vehicleCustomer || 'another customer') + '. Check before binding.';
+                },
+
                 get imeiOptions() {
                     // Editing is locked to the row's own device; only a new binding chooses from the list.
                     if (this.mode === 'edit') {
@@ -515,6 +594,7 @@
                     this.actionUrl = activateUrlTemplate.replace('__ID__', vehicle.vehicle_id);
                     this.methodField = 'POST';
                     this.vehicleLabel = vehicle.customer_name + ' — ' + vehicle.vehicle_number;
+                    this.vehicleCustomer = vehicle.customer_name || '';
                     this.editExtraOption = null;
                     this.currentBankSlipUrl = null;
                     this.subscriptionEndDate = '';
@@ -577,6 +657,19 @@
                         bank_invoice: '',
                     };
                     this.open = true;
+                },
+
+                openReplace(device) {
+                    this.replaceUrl = replaceUrlTemplate.replace('__ID__', device.activated_device_id);
+                    this.replaceLabel = device.customer_name + ' — ' + device.vehicle_number;
+                    this.replaceOldImei = device.imei_number;
+                    this.replaceNewImei = '';
+                    this.replaceReason = '';
+                    this.replaceOpen = true;
+                },
+
+                closeReplace() {
+                    this.replaceOpen = false;
                 },
 
                 close() {
