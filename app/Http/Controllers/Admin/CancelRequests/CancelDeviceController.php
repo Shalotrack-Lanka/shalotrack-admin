@@ -63,6 +63,17 @@ class CancelDeviceController extends Controller
             ]);
         }
 
+        // A device sitting in a dealer's stock is activated by the dealer assigning it
+        // to a customer. Activating it here would leave it in service with no customer
+        // and take it out of the dealer's stock lists (the "limbo" devices).
+        if ($target === DeviceStatus::Activated
+            && $current === DeviceStatus::NotActivated
+            && $device->dealer_id) {
+            return redirect()->back()->withErrors([
+                'status' => "Device #{$device->shdevice_id} is in a dealer's stock. The dealer must assign it to a customer first; it cannot be activated from here.",
+            ]);
+        }
+
         $device->status        = $validated['status'];
         $device->cancel_reason = $validated['status'] === DeviceStatus::TemporarilyStopped->value ? $validated['cancel_reason'] : null;
         $device->canceled_date = $validated['status'] === DeviceStatus::TemporarilyStopped->value ? now() : null;
