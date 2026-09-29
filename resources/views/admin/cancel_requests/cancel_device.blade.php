@@ -107,8 +107,14 @@
                                         <td class="p-3">
                                             <span class="inline-block bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold rounded-full px-3 py-1.5">Not Activated</span>
                                         </td>
-                                        <td class="p-3 text-[10px] text-gray-400 font-normal">
-                                            Activate in Customer Device Management
+                                        <td class="p-3">
+                                            {{-- Activation needs a customer, vehicle and subscription, so it lives in
+                                                 Customer Device Management. This button is a shortcut there. --}}
+                                            <a data-activate-link href="{{ route('admin.customer-device-management') }}"
+                                               title="Opens Customer Device Management, where the customer and subscription are attached"
+                                               class="inline-block px-3 py-1.5 rounded-lg bg-gray-800 text-white text-[11px] font-bold hover:bg-gray-900">
+                                                Activate
+                                            </a>
                                         </td>
                                     </tr>
                                 @empty
