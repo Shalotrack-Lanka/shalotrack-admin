@@ -11,11 +11,16 @@ trait PushesDeviceToApi
     /**
      * Pushes a device's current state to the API's setup-devices-sync
      * endpoint, so the mobile side knows about it for activation purposes.
+     *
      * Deliberately non-fatal: the device is already saved locally in
-     * Admin's own database, so a push failure here shouldn't block the
-     * Admin user's workflow — it's logged instead.
+     * Admin's own database, so a push failure must not block or undo the
+     * Admin user's work. It IS reported back (return value) so the caller
+     * can tell the user -- previously a failure was only written to the log
+     * and the screen still said "success".
+     *
+     * @return bool true if the API accepted the device, false otherwise
      */
-    private function pushDeviceToApi(SetupShalotrackDevice $device): void
+    private function pushDeviceToApi(SetupShalotrackDevice $device): bool
     {
         try {
             $response = Http::timeout(10)
@@ -41,12 +46,18 @@ trait PushesDeviceToApi
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
+
+                return false;
             }
+
+            return true;
         } catch (\Throwable $e) {
             Log::error('Device push to API threw an exception', [
                 'imei'  => $device->imei_number,
                 'error' => $e->getMessage(),
             ]);
+
+            return false;
         }
     }
 }

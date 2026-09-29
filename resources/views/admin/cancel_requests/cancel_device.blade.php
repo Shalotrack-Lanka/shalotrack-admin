@@ -191,8 +191,13 @@
                                             </form>
                                         </td>
                                         <td class="p-3 pt-4">
+                                            {{-- The dealer is only applied when a device is being (re)activated,
+                                                 so this control is locked otherwise. Before, it looked editable but
+                                                 Save just answered "already Activated". --}}
                                             <select name="dealer_id" form="{{ $formId }}"
-                                                    class="w-32 rounded-lg border-gray-300 text-[11px] shadow-sm">
+                                                    disabled
+                                                    title="{{ $device->status === 'Activated' ? 'The dealer can only be set when a device is activated or reactivated.' : 'Choose Reactivate to set the dealer.' }}"
+                                                    class="w-32 rounded-lg border-gray-300 text-[11px] shadow-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed">
                                                 <option value="">-- No Dealer --</option>
                                                 @foreach($dealers as $dealer)
                                                     <option value="{{ $dealer->id }}" {{ $device->dealer_id == $dealer->id ? 'selected' : '' }}>
@@ -210,6 +215,7 @@
                                                 </select>
                                             @else
                                                 <select name="status" form="{{ $formId }}" required
+                                                        onchange="this.closest('tr').querySelector('select[name=dealer_id]').disabled = (this.value !== 'Activated');"
                                                         class="appearance-none bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer">
                                                     <option value="Temporarily Stopped" selected>Temporarily Stopped</option>
                                                     <option value="Activated">Reactivate</option>

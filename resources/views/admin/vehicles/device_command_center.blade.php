@@ -273,6 +273,7 @@
             <div id="history-empty" class="hidden text-center py-8 text-slate-400 font-medium text-sm">
                 No command history found for this device.
             </div>
+            <div id="history-error" class="hidden text-center py-8 text-red-600 font-medium text-sm"></div>
             <div id="history-list" class="hidden space-y-3"></div>
         </div>
     </div>
@@ -331,10 +332,33 @@
             },
             body: JSON.stringify({ imei: imei, command: command, params: params }),
         })
-        .then(function(res) { return res.json(); })
-        .then(function(data) { showResponse(data.message, data.success); })
-        .catch(function() { showResponse('Network error. Please try again.', false); })
+        .then(readJson)
+        .then(function(r) {
+            if (r.ok && r.data.success) {
+                showResponse(r.data.message, true);
+            } else {
+                showResponse(httpFailureText(r.status, r.data), false);
+            }
+        })
+        .catch(function() { showResponse('Network error. The command may not have been delivered. Please try again.', false); })
         .finally(function() { indicator.classList.add('hidden'); });
+    }
+
+    // Reads a JSON body without throwing on HTML error pages (419/5xx), and keeps
+    // the HTTP status so a failure is never mistaken for "no data".
+    function readJson(res) {
+        return res.json().catch(function() { return {}; }).then(function(data) {
+            return { ok: res.ok, status: res.status, data: data || {} };
+        });
+    }
+
+    function httpFailureText(status, data) {
+        if (data && data.message) return data.message;
+        if (status === 419) return 'Your session expired. Refresh the page and sign in again.';
+        if (status === 401) return 'You are signed out. Sign in again.';
+        if (status === 403) return 'You do not have access to that device.';
+        if (status === 429) return 'Too many requests. Wait a moment and try again.';
+        return 'The server had a problem (error ' + status + '). The command may not have been delivered.';
     }
 
     function showResponse(message, success) {
@@ -355,16 +379,25 @@
         document.getElementById('history-loading').classList.remove('hidden');
         document.getElementById('history-empty').classList.add('hidden');
         document.getElementById('history-list').classList.add('hidden');
+        document.getElementById('history-error').classList.add('hidden');
         document.getElementById('history-modal').classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
 
         fetch(HISTORY_BASE + '/' + vehicleId + '?limit=20', {
             headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' }
         })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
+        .then(readJson)
+        .then(function(r) {
             document.getElementById('history-loading').classList.add('hidden');
-            var history = data.history || [];
+
+            if (!r.ok) {
+                var err = document.getElementById('history-error');
+                err.textContent = httpFailureText(r.status, r.data).replace(' The command may not have been delivered.', '');
+                err.classList.remove('hidden');
+                return;
+            }
+
+            var history = r.data.history || [];
 
             if (history.length === 0) {
                 document.getElementById('history-empty').classList.remove('hidden');
@@ -377,7 +410,7 @@
             history.forEach(function(item) {
                 var date         = item.createdAt ? new Date(item.createdAt).toLocaleString() : '—';
                 var commandBadge = '<span class="px-2 py-0.5 rounded-lg text-[11px] font-black bg-blue-100 text-blue-700">'
-                                 + (item.command || 'UNKNOWN') + '</span>';
+                                 + escapeHtml(item.command || 'UNKNOWN') + '</span>';
                 var responseText = item.rawResponse
                     ? '<p class="mt-2 text-[11px] text-slate-600 font-mono bg-slate-50 rounded-lg p-2.5 break-all leading-relaxed">' + escapeHtml(item.rawResponse) + '</p>'
                     : '<p class="mt-1 text-[11px] text-slate-400 italic">No response received yet</p>';
@@ -396,7 +429,9 @@
         })
         .catch(function() {
             document.getElementById('history-loading').classList.add('hidden');
-            document.getElementById('history-empty').classList.remove('hidden');
+            var err = document.getElementById('history-error');
+            err.textContent = 'Could not load the history (network problem). Close this and try again.';
+            err.classList.remove('hidden');
         });
     }
 

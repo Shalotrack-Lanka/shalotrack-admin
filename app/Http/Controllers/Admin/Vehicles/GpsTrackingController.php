@@ -98,34 +98,9 @@ class GpsTrackingController extends Controller
             return redirect()->back()->with('error', 'Dealer profile not found.');
         }
 
-        // 1. Dealer Customer Leads
-        $dealerLeads = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
-
-        $emails = $dealerLeads->pluck('email')->filter()->map(fn($e) => strtolower(trim($e)))->toArray();
-        $phones = $dealerLeads->pluck('contact')->filter()->map(function($p) {
-            $digits = preg_replace('/[^0-9]/', '', $p);
-            return strlen($digits) >= 9 ? substr($digits, -9) : $digits;
-        })->toArray();
-
-        // 2. Customer Account IDs
-        $customerIds = CustomerAd::query()
-            ->where(function ($q) use ($emails, $phones) {
-                if (!empty($emails)) {
-                    $q->whereIn(DB::raw('LOWER(email)'), $emails);
-                }
-                foreach ($phones as $phone) {
-                    $q->orWhere('phone_number', 'LIKE', '%' . $phone);
-                }
-            })
-            ->pluck('customer_id')
-            ->toArray();
-
-        // 3. Vehicles with GPS belonging to this Dealer
-        $vehicles = VehicleAd::whereIn('customer_id', $customerIds)
-            ->whereNotNull('imei')
-            ->where('imei', '!=', '')
-            ->orderBy('vehicle_number')
-            ->get();
+        // Vehicles with GPS belonging to this dealer's customers (fails closed
+        // when the dealer has no identifiable customers).
+        $vehicles = app(\App\Services\DealerCustomerScope::class)->gpsVehicles($dealer);
 
         $selectedVehicleId = $request->input('vehicle_id');
         $selectedVehicle   = null;

@@ -82,18 +82,8 @@ class DealerDashboardController extends Controller
         $dealerLeads     = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
         $dealerCustomers = $dealerLeads;
 
-        $emails = $dealerLeads->pluck('email')->filter()->map(fn($e) => strtolower(trim($e)))->toArray();
-        $phones = $dealerLeads->pluck('contact')->filter()->map(function($p) {
-            $digits = preg_replace('/[^0-9]/', '', $p);
-            return strlen($digits) >= 9 ? substr($digits, -9) : $digits;
-        })->toArray();
-
-        $allocatedDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
-            ->where(function ($q) {
-                $q->whereNull('assigned_customer_id')
-                  ->orWhere('assigned_customer_id', 0);
-            })
-            ->whereNotIn('status', DeviceStatus::dealerSideValues())
+        // Only devices the dealer can really assign (see scopeAvailableForDealer).
+        $allocatedDevices = SetupShalotrackDevice::availableForDealer($dealer->id)
             ->latest()
             ->get();
             
@@ -129,18 +119,8 @@ class DealerDashboardController extends Controller
         $earnedCommission = $this->commission->currentTotal($dealer);
         $totalCustomers = $dealerLeads->count();
 
-        $customerIds = \App\Models\CustomerAd::query()
-            ->where(function ($q) use ($emails, $phones) {
-                if (!empty($emails)) {
-                    $q->whereIn(DB::raw('LOWER(email)'), $emails);
-                }
-                foreach ($phones as $phone) {
-                    $q->orWhere('phone_number', 'LIKE', '%' . $phone);
-                }
-            })
-            ->pluck('customer_id')
-            ->toArray();
-        
+        $customerIds = app(\App\Services\DealerCustomerScope::class)->customerIds($dealer);
+
         $vehicles          = \App\Models\VehicleAd::whereIn('customer_id', $customerIds)->get();
         $totalVehicles     = $vehicles->count();
         $activeGpsVehicles = $vehicles->whereNotNull('imei')->where('imei', '!=', '')->count();
@@ -173,12 +153,7 @@ class DealerDashboardController extends Controller
         $hasDevice       = $request->boolean('has_device');
         $requiredDevices = $hasDevice ? (int) $request->input('no_of_devices', 0) : 0;
 
-        $availableStock = SetupShalotrackDevice::where('dealer_id', $dealerId)
-            ->where(function ($q) {
-                $q->whereNull('assigned_customer_id')->orWhere('assigned_customer_id', 0);
-            })
-            ->where('status', '!=', DeviceStatus::AssignedToCustomer->value)
-            ->count();
+        $availableStock = SetupShalotrackDevice::availableForDealer($dealerId)->count();
 
         $customer = DealerCustomerAd::create([
             'dealer_id'     => $dealerId,
@@ -234,11 +209,7 @@ class DealerDashboardController extends Controller
 
         $customerAds = CustomerLinkService::enrichLeads($customerAds);
 
-        $availableDevices = SetupShalotrackDevice::where('dealer_id', $dealerId)
-            ->where(function ($q) {
-                $q->whereNull('assigned_customer_id')->orWhere('assigned_customer_id', 0);
-            })
-            ->whereNotIn('status', DeviceStatus::dealerSideValues())
+        $availableDevices = SetupShalotrackDevice::availableForDealer($dealerId)
             ->latest()
             ->get();
 
