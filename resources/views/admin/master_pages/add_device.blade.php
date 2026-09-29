@@ -67,6 +67,22 @@
                 </div>
             @endif
 
+            <!-- SCAN INTAKE -->
+            @if(auth()->user()?->role === 'ADMIN')
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-5 py-3 flex items-center justify-between">
+                    <div class="text-xs">
+                        <span class="font-bold text-gray-800 text-sm">Scan Intake (barcode scanner)</span>
+                        <p class="text-gray-400 font-normal mt-1">Scan the IMEI (and SIM) barcodes to register a batch of devices quickly, with check-digit validation.</p>
+                    </div>
+                    <a href="{{ route('admin.device.scan') }}"
+                       class="bg-[#17a2b8] hover:bg-[#138496] text-white px-5 py-2 rounded-lg text-xs font-bold shadow-sm transition whitespace-nowrap">
+                        Open Scan Intake
+                    </a>
+                </div>
+            </div>
+            @endif
+
             <!-- BULK IMPORT -->
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
