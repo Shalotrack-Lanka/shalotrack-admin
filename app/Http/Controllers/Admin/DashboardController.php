@@ -64,6 +64,9 @@ class DashboardController extends Controller
         $devicesOfflineNow    = max($totalTrackedVehicles - $devicesOnlineNow, 0);
 
         $openComplaints = [];
+        // True when the complaints service could not be reached: the dashboard
+        // then says so, instead of showing a reassuring (and false) "0".
+        $complaintsUnavailable = false;
 
         try {
             $openComplaints = Cache::remember('dashboard_open_complaints', 30, function () {
@@ -72,7 +75,9 @@ class DashboardController extends Controller
                     ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
 
                 if (!$response->successful()) {
-                    return [];
+                    // Throwing (not returning []) so a failure is neither cached
+                    // for 30s nor mistaken for "no complaints".
+                    throw new \RuntimeException('Complaints API returned HTTP ' . $response->status());
                 }
 
                 $complaints = $response->json('data') ?? [];
@@ -81,6 +86,7 @@ class DashboardController extends Controller
                 return $complaints;
             });
         } catch (\Throwable $e) {
+            $complaintsUnavailable = true;
             Log::warning('Dashboard: complaints fetch failed: ' . $e->getMessage());
         }
 
@@ -122,9 +128,14 @@ class DashboardController extends Controller
                     ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
                     ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin/resolved');
 
-                return $response->successful() ? ($response->json('data') ?? []) : [];
+                if (!$response->successful()) {
+                    throw new \RuntimeException('Resolved complaints API returned HTTP ' . $response->status());
+                }
+
+                return $response->json('data') ?? [];
             });
         } catch (\Throwable $e) {
+            $complaintsUnavailable = true;
             Log::warning('Dashboard: resolved complaints fetch failed: ' . $e->getMessage());
         }
 
@@ -208,6 +219,7 @@ class DashboardController extends Controller
             'staleDevicesCount'     => $staleDevicesCount,
 
             'openComplaintsCount'      => $openComplaintsCount,
+            'complaintsUnavailable'    => $complaintsUnavailable,
             'resolvedComplaintsCount'  => $resolvedComplaintsCount,
             'recentComplaints'         => $recentComplaints,
             'avgResolutionHours'       => $avgResolutionHours,

@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Admin\CancelRequests;
 use App\Http\Controllers\Controller;
 use App\Models\SetupShalotrackDevice;
 use App\Models\Dealer;
+use App\Traits\PushesDeviceToApi;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CancelDeviceController extends Controller
 {
+    use PushesDeviceToApi;
+
     // Mirrors your flow diagram exactly. Anything not listed here is rejected,
     // regardless of what the dropdown on the page allowed the user to pick.
     private const ALLOWED_TRANSITIONS = [
@@ -25,7 +28,11 @@ class CancelDeviceController extends Controller
             ->latest('shdevice_id')
             ->get();
 
-        $notActivatedDevices = SetupShalotrackDevice::where('status', 'Not Activated')
+        // with('dealer'): the page now shows who holds each device (or that it
+        // is still in company stock) so a device already transferred to a
+        // dealer isn't mistaken for unassigned stock.
+        $notActivatedDevices = SetupShalotrackDevice::with('dealer')
+            ->where('status', 'Not Activated')
             ->latest('shdevice_id')
             ->get();
 
@@ -69,11 +76,15 @@ class CancelDeviceController extends Controller
         $device->save();
 
         // NEW: push this device's updated state to the API
-        $this->pushDeviceToApi($device);
+        $synced = $this->pushDeviceToApi($device);
 
         // 💡 මෙතන තමයි පරණ Route එක තිබුණේ, එය admin.cancel_device.index ලෙස නිවැරදි කර ඇත.
-        return redirect()->route('admin.cancel_device.index')
+        $redirect = redirect()->route('admin.cancel_device.index')
             ->with('success', "Device #{$device->shdevice_id} updated to \"{$device->status}\".");
+
+        return $synced
+            ? $redirect
+            : $redirect->with('warning', 'Saved, but the new status could not be synced to the app server just now. Ask your developer to re-run the device sync (devices:backfill).');
     }
 
     public function exportNotActivated()
@@ -101,40 +112,5 @@ class CancelDeviceController extends Controller
         $filename = 'activated_devices_' . now()->format('Y-m-d_His') . '.pdf';
 
         return $pdf->download($filename);
-    }
-
-    private function pushDeviceToApi(\App\Models\SetupShalotrackDevice $device): void
-    {
-        try {
-            $response = \Illuminate\Support\Facades\Http::timeout(10)
-                ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                ->acceptJson()
-                ->post(config('services.shalotrack_api.base_url') . '/api/internal/setup-devices-sync', [
-                    'id'             => $device->shdevice_id,
-                    'deviceCategory' => $device->device_category,
-                    'imeiNumber'     => $device->imei_number,
-                    'simNumber'      => $device->sim_number,
-                    'status'         => $device->status,
-                    'cancelReason'   => $device->cancel_reason,
-                    'canceledDate'   => $device->canceled_date,
-                    'dealerId'       => $device->dealer_id,
-                    'deviceTypeId'   => $device->device_type_id,
-                    'createdAt'      => $device->created_at,
-                    'updatedAt'      => $device->updated_at,
-                ]);
-
-            if (!$response->successful()) {
-                \Illuminate\Support\Facades\Log::error('Device push to API failed', [
-                    'imei'   => $device->imei_number,
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Device push to API threw an exception', [
-                'imei'  => $device->imei_number,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 }

@@ -105,6 +105,9 @@
                 if (!$gatewayOnline) {
                 $alerts[] = ['level' => 'critical', 'text' => 'Gateway is unreachable — live device data is stale until it recovers.'];
                 }
+                if ($complaintsUnavailable) {
+                $alerts[] = ['level' => 'warning', 'text' => "Complaints could not be loaded from the app server, so the complaint numbers on this page are not reliable right now."];
+                }
                 if ($openComplaintsCount > 0) {
                 $alerts[] = ['level' => 'warning', 'text' => $openComplaintsCount . ' ' . Str::plural('complaint', $openComplaintsCount) . ' waiting on admin action.', 'href' => route('admin.complaints.index')];
                 }
@@ -241,8 +244,13 @@
                         </span>
                         <div class="min-w-0">
                             <p class="st-section-label">Open Complaints</p>
+                            @if($complaintsUnavailable)
+                            <p class="st-num text-lg font-extrabold text-slate-400">&mdash;</p>
+                            <p class="text-[10px] text-amber-600 font-semibold mt-0.5">unavailable right now</p>
+                            @else
                             <p class="st-num text-lg font-extrabold {{ $openComplaintsCount > 0 ? 'text-red-600' : 'text-slate-900' }}">{{ $openComplaintsCount }}</p>
                             <div class="mt-0.5">{!! $renderTrend($trends['openComplaints'], 'down') !!}</div>
+                            @endif
                         </div>
                     </a>
 

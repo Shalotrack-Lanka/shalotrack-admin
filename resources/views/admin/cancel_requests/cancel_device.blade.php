@@ -26,6 +26,12 @@
                 </div>
             @endif
 
+            @if(session('warning'))
+                <div class="p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-xs font-bold">
+                    {{ session('warning') }}
+                </div>
+            @endif
+
             @if ($errors->any())
                 <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg shadow-xs">
                     <div class="flex items-center gap-2 mb-2">
@@ -78,6 +84,7 @@
                                     <th class="p-3">IMEI</th>
                                     <th class="p-3">Model</th>
                                     <th class="p-3">SIM</th>
+                                    <th class="p-3">Dealer</th>
                                     <th class="p-3">Status</th>
                                     <th class="p-3"></th>
                                 </tr>
@@ -88,6 +95,15 @@
                                         <td class="p-3">{{ $device->imei_number }}</td>
                                         <td class="p-3">{{ $device->device_category }}</td>
                                         <td class="p-3">{{ $device->sim_number ?? '-' }}</td>
+                                        <td class="p-3">
+                                            @if($device->dealer)
+                                                <span class="font-bold text-gray-800">{{ $device->dealer->full_name }}</span>
+                                            @elseif($device->dealer_id)
+                                                <span class="text-red-600 font-bold">Unknown dealer #{{ $device->dealer_id }}</span>
+                                            @else
+                                                <span class="text-gray-400 font-normal">Company stock</span>
+                                            @endif
+                                        </td>
                                         <td class="p-3">
                                             <form action="{{ route('admin.cancel_device.update', $device->shdevice_id) }}"
                                                   method="POST"
@@ -108,7 +124,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="p-6 text-center text-gray-400">No devices pending activation.</td></tr>
+                                    <tr><td colspan="6" class="p-6 text-center text-gray-400">No devices pending activation.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

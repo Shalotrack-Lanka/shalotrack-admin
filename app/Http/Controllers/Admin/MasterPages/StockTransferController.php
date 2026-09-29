@@ -110,6 +110,14 @@ class StockTransferController extends Controller
                 . ' device(s) successfully transferred to ' . $dealer->full_name . '.'
             );
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            // A database error's message contains SQL and table names: log it,
+            // show the admin a plain sentence. The transaction has rolled back.
+            \Illuminate\Support\Facades\Log::error('Stock transfer database error', ['error' => $e->getMessage()]);
+
+            return back()
+                ->withErrors(['transfer' => 'The transfer could not be saved because of a database problem. Nothing was changed. Please try again, and tell your developer if it keeps happening.'])
+                ->withInput();
         } catch (\Exception $e) {
             return back()
                 ->withErrors(['transfer' => $e->getMessage()])
@@ -185,6 +193,10 @@ class StockTransferController extends Controller
 
             return back()->with('success', 'Transfer record updated successfully.');
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Illuminate\Support\Facades\Log::error('Stock transfer edit database error', ['error' => $e->getMessage()]);
+
+            return back()->withErrors(['transfer_edit' => 'The change could not be saved because of a database problem. Nothing was changed. Please try again, and tell your developer if it keeps happening.']);
         } catch (\Exception $e) {
             return back()->withErrors(['transfer_edit' => $e->getMessage()]);
         }

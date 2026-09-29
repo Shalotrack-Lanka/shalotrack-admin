@@ -96,7 +96,15 @@ class CustomerDeviceManagementController extends Controller
             $device = SetupShalotrackDevice::where('imei_number', $validated['imei_number'])
                 ->where('status', 'Not Activated')
                 ->lockForUpdate()
-                ->firstOrFail();
+                ->first();
+
+            // Someone else can activate/assign this IMEI between the form
+            // validation above and this locked read. Say so, instead of a bare 404.
+            if (! $device) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'imei_number' => "This device is no longer available to activate: it may already be activated, assigned to a dealer's customer, or removed. Refresh the page and choose another device.",
+                ]);
+            }
 
             if ($request->hasFile('bank_slip')) {
                 $validated['bank_slip'] = $request->file('bank_slip')->store('bank_slips', 'public');
@@ -272,7 +280,9 @@ class CustomerDeviceManagementController extends Controller
             $rules['device_category'] = ['required', 'string'];
         }
 
-        return $request->validate($rules);
+        return $request->validate($rules, [
+            'imei_number.exists' => "This device is no longer available to activate: it may already be activated, assigned to a dealer's customer, or removed. Refresh the page and choose another device.",
+        ]);
     }
 
     public function generateReport(Request $request)

@@ -8,6 +8,7 @@ use App\Models\DeviceType;
 use App\Models\Sim;
 use App\Models\Stock;
 use App\Imports\DevicesImport;
+use App\Traits\PushesDeviceToApi;
 use App\Exports\DeviceImportTemplateExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,10 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class AddDeviceController extends Controller
 {
+    use PushesDeviceToApi;
+
+    private const SYNC_WARNING = 'Saved, but the device could not be synced to the app server just now. Nothing is lost: ask your developer to re-run the device sync (devices:backfill).';
+
     public function index()
     {
         // Once a device is transferred to a dealer (dealer_id set), it no
@@ -133,14 +138,16 @@ class AddDeviceController extends Controller
 
         // NEW: push this newly registered device to the API so the mobile
         // side knows about it for activation purposes.
-        $this->pushDeviceToApi($device);
+        $synced = $this->pushDeviceToApi($device);
 
-        return redirect()
+        $redirect = redirect()
             ->route('admin.setup-device')
             ->with(
                 'success',
                 'Device Setup Completed Successfully!'
             );
+
+        return $synced ? $redirect : $redirect->with('warning', self::SYNC_WARNING);
     }
 
     public function list()
@@ -195,55 +202,20 @@ class AddDeviceController extends Controller
         // Same push-to-API step store() already does for a single device,
         // just looped — bulk import shouldn't silently skip the sync step
         // just because it's now happening for many devices at once.
+        $syncFailed = 0;
         foreach ($import->created as $device) {
-            $this->pushDeviceToApi($device);
+            if (!$this->pushDeviceToApi($device)) {
+                $syncFailed++;
+            }
         }
 
         return redirect()
             ->route('admin.setup-device')
             ->with([
                 'import_success_count' => count($import->created),
+                'import_sync_failed'   => $syncFailed,
                 'import_failures'      => $import->failures(),
                 'import_errors'        => $import->errors(),
             ]);
-    }
-
-    private function pushDeviceToApi(\App\Models\SetupShalotrackDevice $device): void
-    {
-        try {
-            $response = \Illuminate\Support\Facades\Http::timeout(10)
-                ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                ->acceptJson()
-                ->post(config('services.shalotrack_api.base_url') . '/api/internal/setup-devices-sync', [
-                    'id'             => $device->shdevice_id,
-                    'deviceCategory' => $device->device_category,
-                    'imeiNumber'     => $device->imei_number,
-                    'simNumber'      => $device->sim_number,
-                    'status'         => $device->status,
-                    'cancelReason'   => $device->cancel_reason,
-                    'canceledDate'   => $device->canceled_date,
-                    'dealerId'       => $device->dealer_id,
-                    'deviceTypeId'   => $device->device_type_id,
-                    'createdAt'      => $device->created_at,
-                    'updatedAt'      => $device->updated_at,
-                ]);
-
-            if (!$response->successful()) {
-                \Illuminate\Support\Facades\Log::error('Device push to API failed', [
-                    'imei'   => $device->imei_number,
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
-                // Deliberately non-fatal — the device is already saved locally
-                // in Admin's own database; the mobile-side push failing shouldn't
-                // block the Admin user's workflow. Worth a retry/alerting
-                // mechanism later if this needs to be more reliable.
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Device push to API threw an exception', [
-                'imei'  => $device->imei_number,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 }

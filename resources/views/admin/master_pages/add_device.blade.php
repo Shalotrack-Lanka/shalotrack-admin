@@ -39,6 +39,18 @@
                 </div>
             @endif
 
+            @if(session('warning'))
+                <div class="p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-xs font-bold">
+                    {{ session('warning') }}
+                </div>
+            @endif
+
+            @if(session('import_sync_failed'))
+                <div class="p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-xs font-bold">
+                    {{ session('import_sync_failed') }} imported device(s) are saved but could not be synced to the app server just now. Ask your developer to re-run the device sync (devices:backfill).
+                </div>
+            @endif
+
             @if(session('import_success_count') !== null)
                 <div class="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs font-bold">
                     {{ session('import_success_count') }} device(s) imported successfully.
@@ -172,6 +184,7 @@
                         Refresh
                     </button>
                 </div>
+                <div id="refreshError" class="hidden px-5 py-2 text-xs font-bold text-red-700 bg-red-50 border-b border-red-200"></div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-xs text-left">
                         <thead class="bg-gray-50 text-gray-500 uppercase text-[10px]">
@@ -212,8 +225,14 @@ document.getElementById('refreshBtn').addEventListener('click', function () {
     const body = document.getElementById('deviceTableBody');
     icon.classList.add('animate-spin');
 
+    const refreshError = document.getElementById('refreshError');
+    refreshError.classList.add('hidden');
+
     fetch("{{ route('admin.device.list') }}", { headers: { 'Accept': 'application/json' } })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
         .then(devices => {
             if (!devices.length) {
                 body.innerHTML = `<tr><td colspan="5" class="px-5 py-6 text-center text-gray-400">No devices setup yet.</td></tr>`;
@@ -229,7 +248,12 @@ document.getElementById('refreshBtn').addEventListener('click', function () {
                 </tr>
             `).join('');
         })
-        .catch(err => console.error('Refresh failed:', err))
+        .catch(err => {
+            console.error('Refresh failed:', err);
+            // Keep the rows already on screen; just say the refresh didn't happen.
+            refreshError.textContent = "Couldn't refresh the list, so what you see may be out of date. Check your connection and press Refresh again.";
+            refreshError.classList.remove('hidden');
+        })
         .finally(() => setTimeout(() => icon.classList.remove('animate-spin'), 300));
 });
 </script>

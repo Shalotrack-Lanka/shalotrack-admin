@@ -17,6 +17,9 @@
         </div>
     @endif
 
+    {{-- Filled by the page's JavaScript when the Edit form can't be opened. --}}
+    <div id="transfer_js_error" class="hidden p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-bold"></div>
+
     <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
         <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <div class="flex justify-between items-center mb-4">
@@ -329,11 +332,35 @@ document.addEventListener("DOMContentLoaded", function () {
     const editSimNumbers = document.getElementById("edit_sim_numbers");
     const editNuOfDevices = document.getElementById("edit_nu_of_devices");
 
-    function openEditModal(id) {
-        editForm.action = '/admin/dealer/stock-transfer/' + id;
+    // URLs come from the named routes (the previous hard-coded
+    // /admin/dealer/... paths don't exist, so Edit silently did nothing).
+    const editDataUrlTemplate = @json(route('admin.stock_transfer.edit-data', ['ledger' => '__ID__']));
+    const updateUrlTemplate   = @json(route('admin.stock_transfer.update', ['ledger' => '__ID__']));
+    const transferJsError     = document.getElementById("transfer_js_error");
 
-        fetch('/admin/dealer/stock-transfer/' + id + '/edit-data')
-            .then(response => response.json())
+    function showTransferError(message) {
+        transferJsError.textContent = message;
+        transferJsError.classList.remove("hidden");
+    }
+
+    function clearTransferError() {
+        transferJsError.classList.add("hidden");
+        transferJsError.textContent = "";
+    }
+
+    function openEditModal(id) {
+        clearTransferError();
+        editForm.action = updateUrlTemplate.replace('__ID__', id);
+
+        fetch(editDataUrlTemplate.replace('__ID__', id), { headers: { 'Accept': 'application/json' } })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(response.status === 404
+                        ? 'This transfer record no longer exists. Refresh the page.'
+                        : 'The server could not load this transfer (error ' + response.status + ').');
+                }
+                return response.json();
+            })
             .then(data => {
                 editDeviceCategory.value = data.device_category;
                 editDealer.value = data.dealer_id;
@@ -350,7 +377,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 updateNuOfDevices(editSimNumbers, editNuOfDevices, null);
                 editModal.classList.remove("hidden");
             })
-            .catch(error => console.error(error));
+            .catch(error => {
+                console.error(error);
+                editModal.classList.add("hidden");
+                showTransferError(
+                    (error && error.message && !/Failed to fetch|NetworkError|Unexpected token/i.test(error.message))
+                        ? error.message
+                        : 'Could not open the edit form. Check your connection, then refresh the page and try again.'
+                );
+            });
     }
 
     function closeEditModal() {

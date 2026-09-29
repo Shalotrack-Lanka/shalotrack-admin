@@ -3,7 +3,7 @@
         <input type="checkbox"
                class="peer sr-only"
                {{ $c->cus_status === 'verified' ? 'checked' : '' }}
-               @change="toggleStatus('{{ $c->customer_id }}', $event.target.checked)">
+               @change="toggleStatus('{{ $c->customer_id }}', $event.target.checked, $event.target)">
         <span class="h-full w-1/2 bg-white transition-colors duration-200 peer-checked:bg-green-500"></span>
         <span class="h-full w-1/2 bg-red-600 transition-colors duration-200 peer-checked:bg-white"></span>
     </label>
