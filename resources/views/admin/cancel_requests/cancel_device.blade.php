@@ -105,27 +105,10 @@
                                             @endif
                                         </td>
                                         <td class="p-3">
-                                            <form action="{{ route('admin.cancel_device.update', $device->shdevice_id) }}"
-                                                  method="POST"
-                                                  onsubmit="return confirm('Activate device {{ $device->imei_number }}?');"
-                                                  class="flex items-center gap-2">
-                                                @csrf
-                                                @method('PATCH')
-                                                @php $dealerHeld = (bool) $device->dealer_id; @endphp
-                                                <select name="status" required @disabled($dealerHeld)
-                                                        @if($dealerHeld) title="In a dealer's stock. The dealer assigns it to a customer." @endif
-                                                        class="appearance-none bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
-                                                    <option value="Not Activated" selected>Not Activated</option>
-                                                    <option value="Activated">Activate</option>
-                                                </select>
-                                                <button type="submit" @disabled($dealerHeld)
-                                                        class="px-3 py-1.5 rounded-lg bg-gray-800 text-white text-[11px] font-bold hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed">
-                                                    Save
-                                                </button>
-                                                @if($dealerHeld)
-                                                    <span class="text-[10px] text-gray-400 font-normal">Dealer assigns</span>
-                                                @endif
-                                            </form>
+                                            <span class="inline-block bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold rounded-full px-3 py-1.5">Not Activated</span>
+                                        </td>
+                                        <td class="p-3 text-[10px] text-gray-400 font-normal">
+                                            Activate in Customer Device Management
                                         </td>
                                     </tr>
                                 @empty
