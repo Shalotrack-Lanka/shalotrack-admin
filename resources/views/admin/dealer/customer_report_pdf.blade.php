@@ -55,7 +55,7 @@
                     <div style="color: #64748b; font-size: 9px; margin-top: 2px;">ShaloTrack Admin Portal</div>
                 </td>
                 <td class="date">
-                    Generated Date: {{ date('Y-m-d H:i A') }}
+                    Generated Date: {{ now()->local()->format('Y-m-d h:i A') }}
                 </td>
             </tr>
         </table>
@@ -87,7 +87,7 @@
                     </td>
                     <td>#{{ $customer->dealer_id ?? 'N/A' }}</td>
                     <td>{{ $customer->dealer->name  ?? $customer->dealer->full_name ?? $customer->dealer->user->name ?? $customer->dealer->user->full_name ?? 'N/A' }}</td>
-                    <td>{{ $customer->created_at ? $customer->created_at->format('12 Aug 2026, h:i A') : 'N/A' }}</td>
+                    <td>{{ $customer->created_at ? $customer->created_at->local()->format('d M Y, h:i A') : 'N/A' }}</td>
                 </tr>
             @empty
                 <tr>

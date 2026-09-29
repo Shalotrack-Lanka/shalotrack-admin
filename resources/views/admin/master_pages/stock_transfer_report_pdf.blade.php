@@ -81,7 +81,7 @@
     <div class="header">
         <h1>{{ $title }}</h1>
         <div class="meta">
-            Generated on {{ \Carbon\Carbon::now()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total Transfers: {{ $transfers->count() }}
+            Generated on {{ \Carbon\Carbon::now()->local()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total Transfers: {{ $transfers->count() }}
         </div>
     </div>
 
@@ -99,7 +99,7 @@
         <tbody>
             @forelse($transfers as $transfer)
                 <tr>
-                    <td>{{ $transfer->created_at->format('Y-m-d h:i A') }}</td>
+                    <td>{{ $transfer->created_at->local()->format('Y-m-d h:i A') }}</td>
                     <td><strong>{{ $transfer->dealer->full_name ?? '-' }}</strong></td>
                     <td>{{ $transfer->device_category }}</td>
                     <td class="text-center"><strong>{{ $transfer->quantity }}</strong></td>
@@ -138,7 +138,7 @@
                     </td>
                     <td><strong>{{ $device->dealer->full_name ?? '-' }}</strong></td>
                     <td>{{ $device->status }}</td>
-                    <td>{{ $device->allocated_at ? $device->allocated_at->format('d M Y, h:i A') : '-' }}</td>
+                    <td>{{ $device->allocated_at ? $device->allocated_at->local()->format('d M Y, h:i A') : '-' }}</td>
                 </tr>
             @empty
                 <tr>

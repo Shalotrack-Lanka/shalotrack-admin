@@ -57,7 +57,7 @@
                     <div style="color: #64748b; font-size: 8.5px; margin-top: 2px;">ShaloTrack Admin Portal</div>
                 </td>
                 <td class="date">
-                    Generated Date: {{ date('Y-m-d H:i A') }}
+                    Generated Date: {{ now()->local()->format('Y-m-d h:i A') }}
                 </td>
             </tr>
         </table>

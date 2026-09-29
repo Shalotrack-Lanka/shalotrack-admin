@@ -315,7 +315,7 @@
                     </div>
                     <div>
                         <div class="text-xs text-gray-400 uppercase font-bold">Member Since</div>
-                        <div class="text-gray-700">{{ $dealer->created_at->format('d M Y') }}</div>
+                        <div class="text-gray-700">{{ $dealer->created_at->local()->format('d M Y') }}</div>
                     </div>
                 </div>
             </div>
@@ -369,7 +369,7 @@
                                         </span>
                                     </td>
                                     <td class="p-2 text-gray-400 whitespace-nowrap">
-                                        {{ optional($device->allocated_at)->format('d M Y') ?? optional($device->created_at)->format('d M Y') }}
+                                        {{ $device->allocated_at?->local()?->format('d M Y') ?? $device->created_at?->local()?->format('d M Y') }}
                                     </td>
                                 </tr>
                             @empty
@@ -398,7 +398,7 @@
                         <tbody class="divide-y divide-gray-100">
                             @forelse($transfers as $transfer)
                                 <tr>
-                                    <td class="p-2 whitespace-nowrap">{{ $transfer->created_at->format('d M Y') }}</td>
+                                    <td class="p-2 whitespace-nowrap">{{ $transfer->created_at->local()->format('d M Y') }}</td>
                                     <td class="p-2">{{ $transfer->device_category }}</td>
                                     <td class="p-2 text-right font-bold text-gray-700">{{ $transfer->quantity }}</td>
                                 </tr>

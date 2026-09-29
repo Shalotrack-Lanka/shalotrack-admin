@@ -76,7 +76,7 @@
                                 </td>
                                 <td class="p-4 text-xs text-gray-500">
                                     @if($device->allocated_at)
-                                        {{ $device->allocated_at->format('d M Y, h:i A') }}
+                                        {{ $device->allocated_at->local()->format('d M Y, h:i A') }}
                                     @else
                                         <span class="text-gray-400 italic">Not recorded (allocated before tracking was added)</span>
                                     @endif

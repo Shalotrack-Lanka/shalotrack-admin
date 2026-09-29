@@ -91,7 +91,7 @@
                             {{ $devicesOnlineNow }} / {{ $totalTrackedVehicles }} devices live
                         </span>
                         <span class="text-[11px] text-slate-400 font-medium px-1">
-                            Updated {{ now()->format('h:i A') }}
+                            Updated {{ now()->local()->format('h:i A') }}
                         </span>
                     </div>
                 </div>

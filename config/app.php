@@ -67,6 +67,9 @@ return [
 
     'timezone' => 'UTC',
 
+    // Only for showing times to users (see Carbon::local() in AppServiceProvider). Never used for storage.
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Colombo'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

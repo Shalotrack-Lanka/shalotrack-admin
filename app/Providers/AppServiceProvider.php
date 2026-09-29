@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use App\Models\Dealer;
+use Illuminate\Support\Carbon;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +29,13 @@ class AppServiceProvider extends ServiceProvider
 
    public function boot(): void
     {
+        // Timestamps are stored and computed in UTC (config('app.timezone')). Screens and reports for
+        // people in Sri Lanka show them through ->local(), which only changes how a time is displayed.
+        Carbon::macro('local', function () {
+            /** @var Carbon $this */
+            return $this->clone()->setTimezone(config('app.display_timezone'));
+        });
+
         // FIX: mixed-content bug. route()/url() were emitting http:// absolute
         // URLs in production (erp.shalotrack.com, served over HTTPS) even
         // though trustProxies(at: '*') is already set in bootstrap/app.php --

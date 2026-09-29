@@ -397,7 +397,7 @@
                         @forelse($pendingDevices as $device)
                             <tr class="hover:bg-slate-50/80 transition">
                                 <td class="p-4 font-bold text-orange-700">{{ $device->assignedCustomer->name ?? 'N/A' }}</td>
-                                <td class="p-4 text-xs">{{ $device->updated_at->format('d M Y, H:i') }}</td>
+                                <td class="p-4 text-xs">{{ $device->updated_at->local()->format('d M Y, H:i') }}</td>
                                 <td class="p-4 font-mono text-xs text-blue-600 font-bold">{{ $device->imei_number }}</td>
                                 <td class="p-4 font-bold text-slate-900">{{ $device->device_category }}</td>
                                 <td class="p-4 text-center space-x-2">
@@ -457,7 +457,7 @@
                     <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
                         @forelse($brokenDevices as $device)
                             <tr class="hover:bg-slate-50/80 transition">
-                                <td class="p-4 text-xs">{{ $device->updated_at->format('d M Y, H:i') }}</td>
+                                <td class="p-4 text-xs">{{ $device->updated_at->local()->format('d M Y, H:i') }}</td>
                                 <td class="p-4 font-mono text-xs text-blue-600 font-bold">{{ $device->imei_number }}</td>
                                 <td class="p-4 font-bold text-slate-900">{{ $device->device_category }}</td>
                                 <td class="p-4 font-mono text-xs">{{ $device->sim_number ?? 'N/A' }}</td>

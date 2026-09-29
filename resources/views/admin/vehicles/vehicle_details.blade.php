@@ -43,7 +43,7 @@
                                 <span class="px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 text-xs font-bold">None</span>
                             @endif
                         </td>
-                        <td class="px-6 py-4">{{ $vehicle->last_synced_at?->format('Y-m-d H:i') ?? '-' }}</td>
+                        <td class="px-6 py-4">{{ $vehicle->last_synced_at?->local()?->format('Y-m-d H:i') ?? '-' }}</td>
                     </tr>
                     @empty
                     <tr>

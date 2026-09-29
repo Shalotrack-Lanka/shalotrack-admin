@@ -133,7 +133,7 @@
     <div class="header">
         <h1>ShaloTrack — Activated Devices Report</h1>
         <div class="meta">
-            Generated on {{ now()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total: {{ $devices->count() }} devices
+            Generated on {{ now()->local()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total: {{ $devices->count() }} devices
         </div>
     </div>
 
@@ -162,7 +162,7 @@
                         @endif
                     </td>
                     <td>{{ $device->cancel_reason ?? '-' }}</td>
-                    <td>{{ $device->canceled_date?->format('Y-m-d H:i') ?? '-' }}</td>
+                    <td>{{ $device->canceled_date?->local()?->format('Y-m-d H:i') ?? '-' }}</td>
                 </tr>
             @empty
                 <tr><td colspan="6" style="text-align: center; color: #999;">No activated devices yet.</td></tr>
