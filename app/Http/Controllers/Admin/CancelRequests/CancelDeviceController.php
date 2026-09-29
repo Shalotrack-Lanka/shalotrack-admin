@@ -57,20 +57,15 @@ class CancelDeviceController extends Controller
         $current = DeviceStatus::tryFrom((string) $device->status);
         $target  = DeviceStatus::from($validated['status']);
 
-        if (!$current || !$current->canAdminMoveTo($target)) {
+        if ($current === DeviceStatus::NotActivated && $target === DeviceStatus::Activated) {
             return redirect()->back()->withErrors([
-                'status' => "Cannot move a device from \"{$device->status}\" to \"{$validated['status']}\" directly.",
+                'status' => "Device #{$device->shdevice_id} is activated from Customer Device Management, where the customer and subscription are attached. It cannot be activated from this page.",
             ]);
         }
 
-        // A device sitting in a dealer's stock is activated by the dealer assigning it
-        // to a customer. Activating it here would leave it in service with no customer
-        // and take it out of the dealer's stock lists (the "limbo" devices).
-        if ($target === DeviceStatus::Activated
-            && $current === DeviceStatus::NotActivated
-            && $device->dealer_id) {
+        if (!$current || !$current->canAdminMoveTo($target)) {
             return redirect()->back()->withErrors([
-                'status' => "Device #{$device->shdevice_id} is in a dealer's stock. The dealer must assign it to a customer first; it cannot be activated from here.",
+                'status' => "Cannot move a device from \"{$device->status}\" to \"{$validated['status']}\" directly.",
             ]);
         }
 
