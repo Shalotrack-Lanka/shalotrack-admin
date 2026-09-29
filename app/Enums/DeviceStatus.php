@@ -48,7 +48,12 @@ enum DeviceStatus: string
     }
 
     /**
-     * Moves the ADMIN Cancel Device page may make. Anything not listed is
+     * Moves the ADMIN Cancel Device page may make. Not Activated -> Activated is
+     * deliberately NOT here: activation happens only in Customer Device Management,
+     * which attaches the customer, vehicle and subscription. Activating from Cancel
+     * Device left devices in service with no customer and no way to fix them.
+     *
+     * Anything not listed is
      * rejected server-side whatever the dropdown offered. Dealer-side moves
      * (assign / unassign / broken / retest) are enforced in the dealer
      * controller and are intentionally not part of this map.
@@ -58,7 +63,7 @@ enum DeviceStatus: string
     public function adminNext(): array
     {
         return match ($this) {
-            self::NotActivated       => [self::Activated],
+            self::NotActivated       => [],
             self::Activated          => [self::TemporarilyStopped],
             self::TemporarilyStopped => [self::Activated],
             default                  => [],
