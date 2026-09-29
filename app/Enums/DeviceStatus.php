@@ -28,17 +28,21 @@ enum DeviceStatus: string
     {
         return match ($this) {
             self::NotActivated =>
-                'Registered but not yet in service. It is either in company stock (no dealer) '
-                . 'or in a dealer\'s stock (dealer_id set) waiting to be assigned to a customer.',
+                'Registered in company stock but not yet enabled on the platform. It cannot be '
+                . 'transferred to a dealer or sold until an admin activates it. (A device still in a '
+                . 'dealer\'s stock with this status was transferred before the rule changed.)',
             self::Activated =>
-                'In service. Subscription expiry does NOT change this status; it only marks '
-                . 'the payment as not-Paid, which is synced to the API.',
+                'Enabled on the platform. Unsold (company or dealer stock) unless an '
+                . 'activated_devices row exists for its IMEI, which means it is bound to a customer\'s '
+                . 'vehicle and subscription. Subscription expiry does NOT change this status; it only '
+                . 'marks the payment as not-Paid, which is synced to the API.',
             self::TemporarilyStopped =>
                 'Stopped by an admin on the Cancel Device page. A reason is required. '
                 . 'It is never set automatically (e.g. not by expiry or non-payment).',
             self::AssignedToCustomer =>
-                'A dealer has assigned it to a customer. A device in this status with no '
-                . 'linked customer is auto-corrected back to Not Activated on the dealer dashboard.',
+                'A dealer sold it to a customer. It waits for an admin to bind it to the customer\'s '
+                . 'vehicle and subscription in Customer Device Management. A device in this status with '
+                . 'no linked customer is auto-corrected back to Activated on the dealer dashboard.',
             self::PendingRepair =>
                 'Holding state before testing: a dealer unassigned it from a customer, or moved '
                 . 'a broken device back for testing. It does not prove a repair happened.',
@@ -48,12 +52,9 @@ enum DeviceStatus: string
     }
 
     /**
-     * Moves the ADMIN Cancel Device page may make. Not Activated -> Activated is
-     * deliberately NOT here: activation happens only in Customer Device Management,
-     * which attaches the customer, vehicle and subscription. Activating from Cancel
-     * Device left devices in service with no customer and no way to fix them.
-     *
-     * Anything not listed is
+     * Moves the ADMIN Cancel Device page may make. Activating here means "enabled on the
+     * platform, unsold"; binding a customer and subscription happens in Customer Device
+     * Management. Anything not listed is
      * rejected server-side whatever the dropdown offered. Dealer-side moves
      * (assign / unassign / broken / retest) are enforced in the dealer
      * controller and are intentionally not part of this map.
@@ -63,7 +64,7 @@ enum DeviceStatus: string
     public function adminNext(): array
     {
         return match ($this) {
-            self::NotActivated       => [],
+            self::NotActivated       => [self::Activated],
             self::Activated          => [self::TemporarilyStopped],
             self::TemporarilyStopped => [self::Activated],
             default                  => [],
