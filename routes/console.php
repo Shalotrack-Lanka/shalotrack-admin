@@ -15,6 +15,14 @@ Schedule::command('customers:sync')->everyFiveMinutes();
 
 Schedule::command('devices:expire-subscriptions')->everyMinute();
 
+// Pushes subscription status to the C# API so it can gate live tracking /
+// tracking history for devices requiring renewal (see
+// SyncSubscriptionStatusToApi for why this direction and this mechanism).
+// Runs right after devices:expire-subscriptions each minute so a freshly
+// lapsed subscription reaches the API within the same minute it lapses,
+// not up to 5 minutes later.
+Schedule::command('subscriptions:sync-to-api')->everyMinute();
+
 // Feeds the admin dashboard's week-over-week trend indicators. Runs late in
 // the day (23:55) so the snapshot reflects the day's activity, not its
 // first hour. See App\Console\Commands\SnapshotDashboardMetrics.

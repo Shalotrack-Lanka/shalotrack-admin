@@ -262,6 +262,19 @@ class DealerDashboardController extends Controller
             return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} is already assigned to another customer!"]);
         }
 
+        // FIX: nothing here previously checked device status before handing
+        // it to a customer. A device that ended up in this dealer's stock
+        // while already 'Activated' (e.g. via the stock-transfer gap fixed
+        // separately in StockTransferController, or any future path that
+        // produces the same bad state) would get silently assigned to a
+        // dealer customer on top of whatever it was already bound to.
+        // Belt-and-suspenders: block it here too, not just at the transfer
+        // entry point, since this is the last line of defense before a real
+        // double-binding happens.
+        if ($device->status !== 'Not Activated') {
+            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be assigned -- its status is \"{$device->status}\", not \"Not Activated\". This usually means it's already in use elsewhere; do not assign it without checking why first."]);
+        }
+
         $customer = DealerCustomerAd::where('dealer_id', $dealerId)
             ->where('id', $request->customer_id)
             ->firstOrFail();
@@ -306,6 +319,12 @@ class DealerDashboardController extends Controller
 
         if (!empty($device->assigned_customer_id) && $device->assigned_customer_id > 0) {
             return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} is already assigned to another customer!"]);
+        }
+
+        // FIX: same guard as assignNewDeviceFromList() above -- see that
+        // method's comment for why this matters.
+        if ($device->status !== 'Not Activated') {
+            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be assigned -- its status is \"{$device->status}\", not \"Not Activated\". This usually means it's already in use elsewhere; do not assign it without checking why first."]);
         }
 
         $customer = DealerCustomerAd::where('dealer_id', $dealerId)
