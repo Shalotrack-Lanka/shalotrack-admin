@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Enums\DeviceStatus;
 use App\Models\SetupShalotrackDevice;
 use App\Models\DeviceType;
 use App\Models\Sim;
@@ -59,7 +60,7 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
                 'device_category' => $deviceCategoryLabel,
                 'imei_number'     => trim((string)$row['imei_number']),
                 'sim_number'      => $simNumber,
-                'status'          => 'Not Activated',
+                'status'          => DeviceStatus::NotActivated->value,
                 'dealer_id'       => null,
             ]);
 

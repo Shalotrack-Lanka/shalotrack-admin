@@ -164,8 +164,10 @@
                             class="text-xs font-bold text-gray-500 hover:text-red-600">Clear all</button>
                     </div>
 
-                    <div x-show="simMismatch" x-cloak class="mx-5 mt-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-xs font-bold">
-                        Some devices have a SIM and some don't. If that's not intended, scan the missing SIM barcodes before registering.
+                    <div x-show="noSimCount > 0" x-cloak class="mx-5 mt-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-xs font-bold">
+                        <span x-text="noSimCount"></span> device<span x-show="noSimCount !== 1">s have</span><span x-show="noSimCount === 1"> has</span> no SIM.
+                        Stock Transfer picks devices by SIM number, so a device without a SIM can't be transferred to a dealer.
+                        If that's not intended, scan the missing SIM barcodes before registering.
                     </div>
 
                     <div class="overflow-x-auto">
@@ -299,9 +301,8 @@
                 get canCommit() {
                     return !this.committing && !this.hasPending && this.rows.length > 0 && !!this.deviceTypeId;
                 },
-                get simMismatch() {
-                    const withSim = this.rows.filter(r => r.iccid).length;
-                    return withSim > 0 && withSim < this.rows.length;
+                get noSimCount() {
+                    return this.rows.filter(r => !r.iccid).length;
                 },
 
                 init() {
@@ -591,7 +592,11 @@
                         }));
                         this.doneCount += data.created;
                         this.save();
-                        if (data.failed) this.fail(data.created + ' registered, ' + data.failed + ' need attention (shown in red). Remove them or fix and rescan.');
+                        const syncNote = data.sync_failed ?
+                            ' ' + data.sync_failed + ' device(s) are saved but could not be synced to the app server just now — ask your developer to re-run devices:backfill.' :
+                            '';
+                        if (data.failed) this.fail(data.created + ' registered, ' + data.failed + ' need attention (shown in red). Remove them or fix and rescan.' + syncNote);
+                        else if (syncNote) this.fail(data.created + ' device(s) registered.' + syncNote);
                         else {
                             this.say(data.created + ' device(s) registered successfully.', true);
                             this.beep(true);

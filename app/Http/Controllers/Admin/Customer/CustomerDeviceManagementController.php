@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Customer;
 
+use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ActivatedDevice;
 use App\Models\ExpiredDevice;
@@ -63,7 +64,7 @@ class CustomerDeviceManagementController extends Controller
             ->unique('vehicle_id')
             ->values();
 
-        $notActivatedDevices = SetupShalotrackDevice::where('status', 'Not Activated')
+        $notActivatedDevices = SetupShalotrackDevice::where('status', DeviceStatus::NotActivated->value)
             ->orderBy('imei_number')
             ->get(['shdevice_id', 'imei_number', 'sim_number', 'device_category']);
 
@@ -94,9 +95,17 @@ class CustomerDeviceManagementController extends Controller
 
         DB::transaction(function () use ($validated, $vehicle, $request) {
             $device = SetupShalotrackDevice::where('imei_number', $validated['imei_number'])
-                ->where('status', 'Not Activated')
+                ->where('status', DeviceStatus::NotActivated->value)
                 ->lockForUpdate()
-                ->firstOrFail();
+                ->first();
+
+            // Someone else can activate/assign this IMEI between the form
+            // validation above and this locked read. Say so, instead of a bare 404.
+            if (! $device) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'imei_number' => "This device is no longer available to activate: it may already be activated, assigned to a dealer's customer, or removed. Refresh the page and choose another device.",
+                ]);
+            }
 
             if ($request->hasFile('bank_slip')) {
                 $validated['bank_slip'] = $request->file('bank_slip')->store('bank_slips', 'public');
@@ -112,11 +121,11 @@ class CustomerDeviceManagementController extends Controller
                 'imei_number'        => $validated['imei_number'],
                 'sim_number'         => $validated['sim_number'],
                 'device_category'    => $validated['device_category'],
-                'status'             => 'Activated',
+                'status'             => DeviceStatus::Activated->value,
                 ...$this->subscriptionFields($validated),
             ]);
 
-            $device->status = 'Activated';
+            $device->status = DeviceStatus::Activated->value;
             $device->save();
         });
 
@@ -133,8 +142,8 @@ class CustomerDeviceManagementController extends Controller
             $newImei = $validated['imei_number'];
 
             if ($newImei !== $oldImei) {
-                SetupShalotrackDevice::where('imei_number', $oldImei)->update(['status' => 'Not Activated']);
-                SetupShalotrackDevice::where('imei_number', $newImei)->update(['status' => 'Activated']);
+                SetupShalotrackDevice::where('imei_number', $oldImei)->update(['status' => DeviceStatus::NotActivated->value]);
+                SetupShalotrackDevice::where('imei_number', $newImei)->update(['status' => DeviceStatus::Activated->value]);
             }
 
             if ($request->hasFile('bank_slip')) {
@@ -192,7 +201,7 @@ class CustomerDeviceManagementController extends Controller
                 'imei_number'        => $expiredDevice->imei_number,
                 'sim_number'         => $expiredDevice->sim_number,
                 'device_category'    => $expiredDevice->device_category,
-                'status'             => 'Activated',
+                'status'             => DeviceStatus::Activated->value,
                 ...$this->subscriptionFields($validated),
             ]);
 
@@ -261,7 +270,7 @@ class CustomerDeviceManagementController extends Controller
                 'required',
                 'string',
                 Rule::exists('setup_shalotrack_devices', 'imei_number')->where(function ($query) use ($activatedDevice) {
-                    $query->where('status', 'Not Activated');
+                    $query->where('status', DeviceStatus::NotActivated->value);
 
                     if ($activatedDevice) {
                         $query->orWhere('imei_number', $activatedDevice->imei_number);
@@ -272,7 +281,9 @@ class CustomerDeviceManagementController extends Controller
             $rules['device_category'] = ['required', 'string'];
         }
 
-        return $request->validate($rules);
+        return $request->validate($rules, [
+            'imei_number.exists' => "This device is no longer available to activate: it may already be activated, assigned to a dealer's customer, or removed. Refresh the page and choose another device.",
+        ]);
     }
 
     public function generateReport(Request $request)

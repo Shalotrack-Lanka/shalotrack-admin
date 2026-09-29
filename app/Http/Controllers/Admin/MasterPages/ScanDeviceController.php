@@ -141,13 +141,17 @@ class ScanDeviceController extends Controller
         ]);
 
         // Same non-fatal sync to the API that manual setup and bulk import do.
+        $syncFailed = 0;
         foreach ($created as $device) {
-            $this->pushDeviceToApi($device);
+            if (!$this->pushDeviceToApi($device)) {
+                $syncFailed++;
+            }
         }
 
         return response()->json([
             'created' => count($created),
             'failed'  => count($results) - count($created),
+            'sync_failed' => $syncFailed,
             'results' => $results,
         ]);
     }

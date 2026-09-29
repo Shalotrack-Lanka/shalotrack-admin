@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DeviceStatus;
 use App\Models\DeviceType;
 use App\Models\SetupShalotrackDevice;
 use App\Models\Sim;
@@ -85,7 +86,7 @@ class DeviceRegistrationService
                 'imsi'            => $sim?->imsi,
                 'registered_by'   => $adminId,
                 'intake_source'   => $source,
-                'status'          => 'Not Activated',
+                'status'          => DeviceStatus::NotActivated->value,
                 'dealer_id'       => null,
             ]);
 

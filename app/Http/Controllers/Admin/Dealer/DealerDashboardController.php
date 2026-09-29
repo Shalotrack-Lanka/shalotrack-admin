@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\DealerCustomerAd;
 use App\Models\DealerTransferLedger;
@@ -62,7 +63,7 @@ class DealerDashboardController extends Controller
                 $q->whereNull('assigned_customer_id')
                   ->orWhere('assigned_customer_id', 0);
             })
-            ->where('status', 'Assigned to Customer')
+            ->where('status', DeviceStatus::AssignedToCustomer->value)
             ->get(['shdevice_id', 'imei_number']);
 
         if ($brokenAssignments->isNotEmpty()) {
@@ -75,7 +76,7 @@ class DealerDashboardController extends Controller
             ]);
 
             SetupShalotrackDevice::whereIn('shdevice_id', $brokenAssignments->pluck('shdevice_id'))
-                ->update(['status' => 'Not Activated']);
+                ->update(['status' => DeviceStatus::NotActivated->value]);
         }
 
         $dealerLeads     = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
@@ -92,7 +93,7 @@ class DealerDashboardController extends Controller
                 $q->whereNull('assigned_customer_id')
                   ->orWhere('assigned_customer_id', 0);
             })
-            ->whereNotIn('status', ['Assigned to Customer', 'Pending Repair', 'Broken Device'])
+            ->whereNotIn('status', DeviceStatus::dealerSideValues())
             ->latest()
             ->get();
             
@@ -101,18 +102,18 @@ class DealerDashboardController extends Controller
         $assignedDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
             ->whereNotNull('assigned_customer_id')
             ->where('assigned_customer_id', '>', 0)
-            ->where('status', 'Assigned to Customer')
+            ->where('status', DeviceStatus::AssignedToCustomer->value)
             ->get();
             
         $assignedDevicesCount = $assignedDevices->count();
 
         $pendingDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
-            ->where('status', 'Pending Repair')
+            ->where('status', DeviceStatus::PendingRepair->value)
             ->latest()
             ->get();
 
         $brokenDevices = SetupShalotrackDevice::where('dealer_id', $dealer->id)
-            ->where('status', 'Broken Device')
+            ->where('status', DeviceStatus::BrokenDevice->value)
             ->latest()
             ->get();
 
@@ -176,7 +177,7 @@ class DealerDashboardController extends Controller
             ->where(function ($q) {
                 $q->whereNull('assigned_customer_id')->orWhere('assigned_customer_id', 0);
             })
-            ->where('status', '!=', 'Assigned to Customer')
+            ->where('status', '!=', DeviceStatus::AssignedToCustomer->value)
             ->count();
 
         $customer = DealerCustomerAd::create([
@@ -237,7 +238,7 @@ class DealerDashboardController extends Controller
             ->where(function ($q) {
                 $q->whereNull('assigned_customer_id')->orWhere('assigned_customer_id', 0);
             })
-            ->whereNotIn('status', ['Assigned to Customer', 'Pending Repair', 'Broken Device'])
+            ->whereNotIn('status', DeviceStatus::dealerSideValues())
             ->latest()
             ->get();
 
@@ -271,7 +272,7 @@ class DealerDashboardController extends Controller
         // Belt-and-suspenders: block it here too, not just at the transfer
         // entry point, since this is the last line of defense before a real
         // double-binding happens.
-        if ($device->status !== 'Not Activated') {
+        if ($device->status !== DeviceStatus::NotActivated->value) {
             return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be assigned -- its status is \"{$device->status}\", not \"Not Activated\". This usually means it's already in use elsewhere; do not assign it without checking why first."]);
         }
 
@@ -280,7 +281,7 @@ class DealerDashboardController extends Controller
             ->firstOrFail();
 
         $device->assigned_customer_id = $customer->id;
-        $device->status               = 'Assigned to Customer';
+        $device->status               = DeviceStatus::AssignedToCustomer->value;
         $device->save();
 
         if ($dealer) {
@@ -323,7 +324,7 @@ class DealerDashboardController extends Controller
 
         // FIX: same guard as assignNewDeviceFromList() above -- see that
         // method's comment for why this matters.
-        if ($device->status !== 'Not Activated') {
+        if ($device->status !== DeviceStatus::NotActivated->value) {
             return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be assigned -- its status is \"{$device->status}\", not \"Not Activated\". This usually means it's already in use elsewhere; do not assign it without checking why first."]);
         }
 
@@ -336,7 +337,7 @@ class DealerDashboardController extends Controller
         }
 
         $device->assigned_customer_id = $customer->id;
-        $device->status               = 'Assigned to Customer';
+        $device->status               = DeviceStatus::AssignedToCustomer->value;
         $device->save();
 
         if ($dealer) {
@@ -370,7 +371,7 @@ class DealerDashboardController extends Controller
 
         $customerId = $device->assigned_customer_id;
 
-        $device->status = 'Pending Repair';
+        $device->status = DeviceStatus::PendingRepair->value;
         $device->save();
 
         // Device is leaving the "sold" state -- reverse whatever commission
@@ -409,12 +410,12 @@ class DealerDashboardController extends Controller
         $customerId = $device->assigned_customer_id;
 
         if (!$customerId) {
-            $device->status = 'Not Activated';
+            $device->status = DeviceStatus::NotActivated->value;
             $device->save();
             return back()->with('success', "Device moved to Available Stocks (no customer linked).");
         }
 
-        $device->status = 'Assigned to Customer';
+        $device->status = DeviceStatus::AssignedToCustomer->value;
         $device->save();
 
         // Device is back in the "sold" state -- recordEarned() is
@@ -454,7 +455,7 @@ class DealerDashboardController extends Controller
             ->where('shdevice_id', $shdevice_id)
             ->firstOrFail();
 
-        $device->status = 'Broken Device';
+        $device->status = DeviceStatus::BrokenDevice->value;
         $device->save();
 
         // Same reversal as unassignDevice() -- a device that's now broken
@@ -474,7 +475,7 @@ class DealerDashboardController extends Controller
             ->where('shdevice_id', $shdevice_id)
             ->firstOrFail();
 
-        $device->status = 'Pending Repair';
+        $device->status = DeviceStatus::PendingRepair->value;
         $device->save();
 
         return back()->with('success', "Device IMEI {$device->imei_number} moved back to Pending Repair for testing!");
