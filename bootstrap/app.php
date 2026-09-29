@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register the custom middleware aliases
         $middleware->alias([
             'auth.adminsync' => \App\Http\Middleware\VerifyAdminSyncKey::class,
+            'role'           => \App\Http\Middleware\EnsureRole::class,
         ]);
 
     })

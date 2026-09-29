@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\DashboardController;
 
 use App\Http\Controllers\Admin\MasterPages\AddDeviceController;
+use App\Http\Controllers\Admin\MasterPages\ScanDeviceController;
 use App\Http\Controllers\Admin\MasterPages\AddSimController;
 use App\Http\Controllers\Admin\MasterPages\CancelDeviceController;
 use App\Http\Controllers\Admin\MasterPages\CancelSimController;
@@ -124,6 +125,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/setup-device', [AddDeviceController::class, 'index'])->name('admin.setup-device');
         Route::post('/setup-device', [AddDeviceController::class, 'store'])->name('admin.device.store');
         Route::get('/setup-device/list', [AddDeviceController::class, 'list'])->name('admin.device.list');
+
+        // Barcode-scanner intake (ADMIN role only; checked again server-side on commit)
+        Route::middleware('role:ADMIN')->prefix('/setup-device/scan')->group(function () {
+            Route::get('/', [ScanDeviceController::class, 'index'])->name('admin.device.scan');
+            Route::post('/check', [ScanDeviceController::class, 'check'])
+                ->middleware('throttle:120,1')->name('admin.device.scan.check');
+            Route::post('/commit', [ScanDeviceController::class, 'commit'])
+                ->middleware('throttle:20,1')->name('admin.device.scan.commit');
+        });
 
         //add new device type
         Route::get('/add-device-type', [AddDeviceTypeController::class, 'index'])->name('admin.add-device-type');
