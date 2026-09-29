@@ -43,7 +43,25 @@ class CustomerDeviceManagementController extends Controller
 
         $activeDevices = ActivatedDevice::orderByDesc('activated_device_id')->get();
 
-        $expiredDevices = ExpiredDevice::orderByDesc('expired_device_id')->get();
+        // FIX 2026-09-29: expired_devices is now a permanent append-only log
+        // (devices:expire-subscriptions no longer deletes the live
+        // activated_devices row -- see that command for why). Showing every
+        // historical row here would list a device forever, even after the
+        // customer already renewed via Edit, with a "Reactivate" button
+        // that -- now that the live row still exists -- would create a
+        // second activated_devices row for the same vehicle. Only show a
+        // log entry when that vehicle's current activated_devices row is
+        // still un-renewed, and collapse to one row per vehicle (the most
+        // recent lapse) since a vehicle can accumulate one log row per
+        // renewal cycle over time.
+        $vehiclesStillNeedingRenewal = ActivatedDevice::where('payment_status', '!=', 'Paid')
+            ->pluck('vehicle_id');
+
+        $expiredDevices = ExpiredDevice::whereIn('vehicle_id', $vehiclesStillNeedingRenewal)
+            ->orderByDesc('expired_device_id')
+            ->get()
+            ->unique('vehicle_id')
+            ->values();
 
         $notActivatedDevices = SetupShalotrackDevice::where('status', 'Not Activated')
             ->orderBy('imei_number')
@@ -147,6 +165,20 @@ class CustomerDeviceManagementController extends Controller
      */
     public function reactivate(Request $request, ExpiredDevice $expiredDevice)
     {
+        // FIX 2026-09-29: under the old (buggy) expiry behavior, a lapsed
+        // device's activated_devices row was deleted, so this path was the
+        // only way back. Now that expiry keeps the live row (see
+        // devices:expire-subscriptions), that row still exists for any
+        // *current* lapse -- creating another one here would double-bind
+        // the vehicle. This should now only ever fire on legacy expired_devices
+        // rows left over from before this fix, where no live row exists.
+        // Real, current renewals go through Edit (update()) on the
+        // existing activated_devices row instead.
+        if (ActivatedDevice::where('vehicle_id', $expiredDevice->vehicle_id)->exists()) {
+            return redirect()->route('admin.customer-device-management')
+                ->withErrors(['vehicle' => "{$expiredDevice->vehicle_number} already has an active device record -- use Edit on it to process the renewal instead of Reactivate."]);
+        }
+
         $validated = $this->validateDeviceForm($request, forReactivation: true);
 
         DB::transaction(function () use ($validated, $expiredDevice) {
