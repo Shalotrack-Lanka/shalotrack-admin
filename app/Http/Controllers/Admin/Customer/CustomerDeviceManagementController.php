@@ -140,15 +140,6 @@ class CustomerDeviceManagementController extends Controller
         $validated = $this->validateDeviceForm($request, $activatedDevice);
 
         DB::transaction(function () use ($validated, $activatedDevice, $request) {
-            $oldImei = $activatedDevice->imei_number;
-            $newImei = $validated['imei_number'];
-
-            if ($newImei !== $oldImei) {
-                // The device the customer no longer uses returns to unsold, activated stock.
-                SetupShalotrackDevice::where('imei_number', $oldImei)->update(['status' => DeviceStatus::Activated->value]);
-                SetupShalotrackDevice::where('imei_number', $newImei)->update(['status' => DeviceStatus::Activated->value]);
-            }
-
             if ($request->hasFile('bank_slip')) {
                 if ($activatedDevice->bank_slip) {
                     Storage::disk('public')->delete($activatedDevice->bank_slip);
@@ -159,7 +150,6 @@ class CustomerDeviceManagementController extends Controller
             }
 
             $activatedDevice->update([
-                'imei_number'      => $validated['imei_number'],
                 'sim_number'       => $validated['sim_number'],
                 'device_category'  => $validated['device_category'],
                 ...$this->subscriptionFields($validated, keepBankSlip: !$request->hasFile('bank_slip'), current: $activatedDevice),
@@ -265,29 +255,29 @@ class CustomerDeviceManagementController extends Controller
                 'string',
                 Rule::unique('activated_devices', 'bank_invoice')->ignore($activatedDevice?->activated_device_id, 'activated_device_id'),
             ],
-            'bank_slip' => ['nullable', 'image', 'max:4096'],
+            'bank_slip' => ['nullable', 'image', 'max:2048'],
         ];
 
         if (!$forReactivation) {
-            $rules['imei_number'] = [
-                'required',
-                'string',
-                Rule::exists('setup_shalotrack_devices', 'imei_number')->where(function ($query) use ($activatedDevice) {
-                    $query->where(function ($q) {
-                        SetupShalotrackDevice::applyBindableConstraint($q);
-                    });
-
-                    // Editing keeps the device the row already has.
-                    if ($activatedDevice) {
-                        $query->orWhere('imei_number', $activatedDevice->imei_number);
-                    }
-                }),
-            ];
+            // Payment and subscription belong to the physical device (one activated_devices row
+            // per IMEI), so a bound row's IMEI can never be swapped from the edit form.
+            $rules['imei_number'] = $activatedDevice
+                ? ['required', 'string', Rule::in([$activatedDevice->imei_number])]
+                : [
+                    'required',
+                    'string',
+                    Rule::exists('setup_shalotrack_devices', 'imei_number')->where(function ($query) {
+                        $query->where(function ($q) {
+                            SetupShalotrackDevice::applyBindableConstraint($q);
+                        });
+                    }),
+                ];
             $rules['sim_number']      = ['required', 'string'];
             $rules['device_category'] = ['required', 'string'];
         }
 
         return $request->validate($rules, [
+            'imei_number.in' => "A device's IMEI cannot be changed here: its payment and subscription belong to this device.",
             'imei_number.exists' => "This device is no longer available to activate: it may not be activated yet, already on a customer account, sitting in a dealer's unsold stock, or removed. Refresh the page and choose another device.",
         ]);
     }
