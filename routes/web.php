@@ -226,6 +226,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/device-management', [CustomerDeviceManagementController::class, 'index'])->name('admin.customer-device-management');
         Route::post('/device-management/{vehicleId}/activate', [CustomerDeviceManagementController::class, 'activate'])->name('admin.customer-device-management.activate');
         Route::patch('/device-management/{activatedDevice}', [CustomerDeviceManagementController::class, 'update'])->name('admin.customer-device-management.update');
+        Route::post('/device-management/{activatedDevice}/replace', [CustomerDeviceManagementController::class, 'replace'])->name('admin.customer-device-management.replace');
+        Route::get('/device-management/{activatedDevice}/bank-slip', [CustomerDeviceManagementController::class, 'bankSlip'])->name('admin.customer-device-management.bank-slip');
         Route::post('/device-management/{expiredDevice}/reactivate', [CustomerDeviceManagementController::class, 'reactivate'])->name('admin.customer-device-management.reactivate');
 
         // Report generation for Customer Setup and Customer Device Management
