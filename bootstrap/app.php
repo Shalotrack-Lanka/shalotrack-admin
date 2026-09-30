@@ -34,6 +34,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'role'           => \App\Http\Middleware\EnsureRole::class,
         ]);
 
+        // Check the role BEFORE route-model binding. Otherwise a wrong-role user hitting
+        // /admin/.../{device} triggers a database lookup and sees 404/500 instead of 403
+        // (and can probe which ids exist).
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            prepend: \App\Http\Middleware\EnsureRole::class,
+        );
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
 
