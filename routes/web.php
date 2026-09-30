@@ -9,7 +9,6 @@ use App\Http\Controllers\Admin\MasterPages\ScanDeviceController;
 use App\Http\Controllers\Admin\MasterPages\AddSimController;
 use App\Http\Controllers\Admin\MasterPages\CancelDeviceController;
 use App\Http\Controllers\Admin\MasterPages\CancelSimController;
-use App\Http\Controllers\Admin\MasterPages\FeatureController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupController;
 use App\Http\Controllers\Admin\MasterPages\PriceGroupDetailsController;
 use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
@@ -39,7 +38,6 @@ use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 use App\Http\Controllers\Admin\Customer\CustomerDeviceManagementController;
 
 use App\Http\Controllers\Admin\Complains_Enquiries\TroubleshootController;
-use App\Http\Controllers\Admin\Complains_Enquiries\ViewComplainsController;
 use App\Http\Controllers\Admin\Complains_Enquiries\FeedbackController;
 use App\Http\Controllers\Admin\Complains_Enquiries\DeviceReplaceRequestController;
 
