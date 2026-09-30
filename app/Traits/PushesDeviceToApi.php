@@ -60,4 +60,47 @@ trait PushesDeviceToApi
             return false;
         }
     }
+
+    /**
+     * Tells the API to move the vehicle from the replaced device to the new one
+     * (POST /api/internal/device-replacement-sync). The new device must already have been pushed
+     * as Activated, or the API refuses with 409. The API call is idempotent, so retrying is safe.
+     *
+     * Non-fatal like pushDeviceToApi(): the replacement is already saved here. The result is
+     * returned so the caller can warn the user instead of saying "success".
+     */
+    private function pushReplacementToApi(string $oldImei, string $newImei): bool
+    {
+        try {
+            $response = Http::timeout(15)
+                ->retry(3, 1000, throw: false)
+                ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+                ->acceptJson()
+                ->post(config('services.shalotrack_api.base_url') . '/api/internal/device-replacement-sync', [
+                    'oldImei' => $oldImei,
+                    'newImei' => $newImei,
+                ]);
+
+            if (! $response->successful()) {
+                Log::error('Device replacement push to API failed', [
+                    'old_imei' => $oldImei,
+                    'new_imei' => $newImei,
+                    'status'   => $response->status(),
+                    'body'     => $response->body(),
+                ]);
+
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Device replacement push to API threw an exception', [
+                'old_imei' => $oldImei,
+                'new_imei' => $newImei,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
 }
