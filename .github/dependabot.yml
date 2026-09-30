@@ -31,6 +31,12 @@ updates:
       frontend:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # laravel-vite-plugin 3.x needs vite 8; bump them together by hand.
+      - dependency-name: "laravel-vite-plugin"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
