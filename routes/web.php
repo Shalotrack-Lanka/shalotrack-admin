@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\DashboardController;
 
@@ -101,15 +100,16 @@ Route::middleware(['auth'])->group(function () {
         '/admin/dashboard',
         [DashboardController::class, 'index']
     )
+        ->middleware('role:ADMIN')
         ->name('admin.dashboard');
 
     // FIX: was Route::view() with zero data behind it — replaced with the
     // real controller so the dashboard actually receives $dealer and everything
     // else it needs. This is now the ONLY place dealer.dashboard is registered.
-    Route::get('/dealer/dashboard', [DealerDashboardController::class, 'index'])->name('dealer.dashboard');
+    Route::get('/dealer/dashboard', [DealerDashboardController::class, 'index'])->middleware('role:DEALER')->name('dealer.dashboard');
 
-    Route::view('/finance/dashboard', 'finance.dashboard')->name('finance.dashboard');
-    Route::view('/technician/dashboard', 'technician.dashboard')->name('technician.dashboard');
+    Route::view('/finance/dashboard', 'finance.dashboard')->middleware('role:FINANCE')->name('finance.dashboard');
+    Route::view('/technician/dashboard', 'technician.dashboard')->middleware('role:TECHNICIAN')->name('technician.dashboard');
 
     Route::get('/dashboard', function () {
         return redirect()->route('admin.dashboard');
@@ -121,14 +121,14 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::prefix('admin/master-pages')->group(function () {
+    Route::prefix('admin/master-pages')->middleware('role:ADMIN')->group(function () {
 
         Route::get('/setup-device', [AddDeviceController::class, 'index'])->name('admin.setup-device');
         Route::post('/setup-device', [AddDeviceController::class, 'store'])->name('admin.device.store');
         Route::get('/setup-device/list', [AddDeviceController::class, 'list'])->name('admin.device.list');
 
         // Barcode-scanner intake (ADMIN role only; checked again server-side on commit)
-        Route::middleware('role:ADMIN')->prefix('/setup-device/scan')->group(function () {
+        Route::prefix('/setup-device/scan')->group(function () {
             Route::get('/', [ScanDeviceController::class, 'index'])->name('admin.device.scan');
             Route::post('/check', [ScanDeviceController::class, 'check'])
                 ->middleware('throttle:120,1')->name('admin.device.scan.check');
@@ -195,7 +195,7 @@ Route::middleware(['auth'])->group(function () {
     | Cancel Requests
     |--------------------------------------------------------------------------
     */
-    Route::prefix('admin/cancel-requests')->group(function () {
+    Route::prefix('admin/cancel-requests')->middleware('role:ADMIN')->group(function () {
 
         // Cancel Device
         Route::get('/cancel-device', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'index'])->name('admin.cancel_device.index');
@@ -215,24 +215,30 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-    Route::prefix('admin/customer')->middleware('auth')->group(function () {
+    Route::prefix('admin/customer')->group(function () {
 
-        // Customer Setup
-        Route::get('/setup', [CustomerSetupController::class, 'index'])->name('admin.customer-setup');
-        Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])->name('admin.customer-setup.refresh');
-        Route::patch('/setup/{customerId}/status', [CustomerSetupController::class, 'toggleStatus'])->name('admin.customer-setup.toggle-status');
+        // Bank slips: ADMIN and FINANCE (the controller re-checks). Kept outside the ADMIN group so
+        // the two role checks do not stack.
+        Route::get('/device-management/{activatedDevice}/bank-slip', [CustomerDeviceManagementController::class, 'bankSlip'])->middleware('role:ADMIN,FINANCE')->name('admin.customer-device-management.bank-slip');
 
-        // Customer Device Management
-        Route::get('/device-management', [CustomerDeviceManagementController::class, 'index'])->name('admin.customer-device-management');
-        Route::post('/device-management/{vehicleId}/activate', [CustomerDeviceManagementController::class, 'activate'])->name('admin.customer-device-management.activate');
-        Route::patch('/device-management/{activatedDevice}', [CustomerDeviceManagementController::class, 'update'])->name('admin.customer-device-management.update');
-        Route::post('/device-management/{activatedDevice}/replace', [CustomerDeviceManagementController::class, 'replace'])->name('admin.customer-device-management.replace');
-        Route::get('/device-management/{activatedDevice}/bank-slip', [CustomerDeviceManagementController::class, 'bankSlip'])->name('admin.customer-device-management.bank-slip');
-        Route::post('/device-management/{expiredDevice}/reactivate', [CustomerDeviceManagementController::class, 'reactivate'])->name('admin.customer-device-management.reactivate');
+        Route::middleware('role:ADMIN')->group(function () {
 
-        // Report generation for Customer Setup and Customer Device Management
-        Route::get('/setup/report', [CustomerSetupController::class, 'generateReport'])->name('admin.customer-setup.report');
-        Route::get('customer-device-management/report', [CustomerDeviceManagementController::class, 'generateReport'])->name('admin.customer-device-management.report');
+            // Customer Setup
+            Route::get('/setup', [CustomerSetupController::class, 'index'])->name('admin.customer-setup');
+            Route::get('/setup/refresh', [CustomerSetupController::class, 'refresh'])->name('admin.customer-setup.refresh');
+            Route::patch('/setup/{customerId}/status', [CustomerSetupController::class, 'toggleStatus'])->name('admin.customer-setup.toggle-status');
+
+            // Customer Device Management
+            Route::get('/device-management', [CustomerDeviceManagementController::class, 'index'])->name('admin.customer-device-management');
+            Route::post('/device-management/{vehicleId}/activate', [CustomerDeviceManagementController::class, 'activate'])->name('admin.customer-device-management.activate');
+            Route::patch('/device-management/{activatedDevice}', [CustomerDeviceManagementController::class, 'update'])->name('admin.customer-device-management.update');
+            Route::post('/device-management/{activatedDevice}/replace', [CustomerDeviceManagementController::class, 'replace'])->name('admin.customer-device-management.replace');
+            Route::post('/device-management/{expiredDevice}/reactivate', [CustomerDeviceManagementController::class, 'reactivate'])->name('admin.customer-device-management.reactivate');
+
+            // Report generation for Customer Setup and Customer Device Management
+            Route::get('/setup/report', [CustomerSetupController::class, 'generateReport'])->name('admin.customer-setup.report');
+            Route::get('customer-device-management/report', [CustomerDeviceManagementController::class, 'generateReport'])->name('admin.customer-device-management.report');
+        });
     });
 
 
@@ -243,7 +249,7 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::prefix('admin/vehicles')->name('admin.vehicles.')->group(function () {
+    Route::prefix('admin/vehicles')->name('admin.vehicles.')->middleware('role:ADMIN')->group(function () {
 
         // Vehicle Details
         Route::get('/details', [VehicleDetailsController::class, 'index'])->name('details');
@@ -269,51 +275,57 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('admin/dealer')->group(function () {
 
-        // Dealer Management
-        Route::get('/dealer-management', [DealerManagementController::class, 'index'])->name('admin.dealer-management');
-        Route::post('/dealer-management', [DealerManagementController::class, 'store'])->name('admin.dealer.store');
-        Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');
+        // Dealer portal (DEALER role only; every action is also scoped to the dealer's own rows
+        // inside DealerDashboardController).
+        Route::middleware('role:DEALER')->group(function () {
+            Route::delete('/unassign-device/{id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
+            Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
+            Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
+            Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
+            Route::post('/dealer/reassign-device/{id}', [DealerDashboardController::class, 'reassignDevice'])->name('dealer.reassign-device');
+            // Mark as broken (the Remove button) -> markDeviceBroken.
+            Route::delete('/dealer/remove-broken-device/{shdevice_id}', [DealerDashboardController::class, 'markDeviceBroken'])->name('dealer.remove-broken-device');
+            // Back to pending (the To Pending button) -> moveToPending.
+            Route::post('/dealer/move-to-pending/{shdevice_id}', [DealerDashboardController::class, 'moveToPending'])->name('dealer.move-to-pending');
 
-        // manage replacement
-        Route::get('/manage-replacement', [ManageReplacementController::class, 'index'])->name('admin.manage-replacement');
+            Route::get('/customer-ad/{id}/edit', [DealerDashboardController::class, 'editCustomerAd'])->name('dealer.customer-ad.edit');
+            Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
+            Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
 
-        // dealer ledger
-        Route::get('/dealer-ledger', [DealerLedgerController::class, 'index'])->name('admin.dealer-ledger');
+            // Dealer Profile
+            Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
+            Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
+        });
 
-        Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])->name('admin.dealer.assigned-devices');
+        // Device commands: the controller checks device ownership (ADMIN any, DEALER own customers only).
+        Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->middleware('role:ADMIN,DEALER')->name('device-commands');
 
-        // Dealer Dashboard
-        Route::delete('/unassign-device/{id}', [DealerDashboardController::class, 'unassignDevice'])->name('dealer.unassign-device');
-        Route::post('/assign-device', [DealerDashboardController::class, 'assignDeviceToCustomer'])->name('dealer.assign-device');
-        Route::post('/customer-ad', [DealerDashboardController::class, 'storeDealerCustomerAd'])->name('dealer.customer-ad.store');
-        Route::get('customers', [DealerDashboardController::class, 'customerList'])->name('dealer.customers.index');
-        Route::post('/dealer/reassign-device/{id}', [DealerDashboardController::class, 'reassignDevice'])->name('dealer.reassign-device');
-        // Broken එකක් ලෙස සලකුණු කිරීම (Remove බොත්තම සඳහා) - අදාළ function එක 'markDeviceBroken' වේ.
-        Route::delete('/dealer/remove-broken-device/{shdevice_id}', [DealerDashboardController::class, 'markDeviceBroken'])->name('dealer.remove-broken-device');
-        // නැවත Pending වෙත ගෙන යාම (To Pending බොත්තම සඳහා) - අදාළ function එක 'moveToPending' වේ.
-        Route::post('/dealer/move-to-pending/{shdevice_id}', [DealerDashboardController::class, 'moveToPending'])->name('dealer.move-to-pending');
+        // Admin area
+        Route::middleware('role:ADMIN')->group(function () {
+            // Dealer Management
+            Route::get('/dealer-management', [DealerManagementController::class, 'index'])->name('admin.dealer-management');
+            Route::post('/dealer-management', [DealerManagementController::class, 'store'])->name('admin.dealer.store');
+            Route::get('/customer-ads', [DealerManagementController::class, 'dealerCustomers'])->name('admin.dealers.customer-ads');
 
-        Route::get('/customer-ad/{id}/edit', [DealerDashboardController::class, 'editCustomerAd'])->name('dealer.customer-ad.edit');
-        Route::delete('/customer-ad/{id}', [DealerDashboardController::class, 'destroyCustomerAd'])->name('dealer.customer-ad.destroy');
-        Route::post('/dealer/customers/assign-new-device', [DealerDashboardController::class, 'assignNewDeviceFromList'])->name('dealer.customers.assign_new_device_from_list');
-        // pdf report generation
-        Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
+            // manage replacement
+            Route::get('/manage-replacement', [ManageReplacementController::class, 'index'])->name('admin.manage-replacement');
 
+            // dealer ledger
+            Route::get('/dealer-ledger', [DealerLedgerController::class, 'index'])->name('admin.dealer-ledger');
 
-        // Dealer Profile
-        Route::get('/profile', [DealerAccountController::class, 'edit'])->name('dealer.profile.edit');
-        Route::put('/profile', [DealerAccountController::class, 'update'])->name('dealer.profile.update');
+            Route::get('/assigned-devices', [AssignedDevicesController::class, 'index'])->name('admin.dealer.assigned-devices');
 
-        // Admin-facing: dedicated full profile page for a specific dealer
-        Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
-        Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
-        Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
+            // pdf report generation (lists every dealer's customers, so admin only)
+            Route::get('/dealer-customers/report', [DealerDashboardController::class, 'generateReport'])->name('admin.dealer-customers.report');
 
-        // Device Commands
-        Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');
+            // Admin-facing: dedicated full profile page for a specific dealer
+            Route::get('/{id}/profile', [DealerProfileController::class, 'show'])->name('admin.dealer.profile');
+            Route::put('/{id}/profile', [DealerProfileController::class, 'update'])->name('admin.dealer.profile.update');
+            Route::patch('/{id}/toggle-status', [DealerProfileController::class, 'toggleStatus'])->name('admin.dealer.toggle-status');
+        });
     });
 
-    Route::prefix('admin/complaints')->group(function () {
+    Route::prefix('admin/complaints')->middleware('role:ADMIN')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'index'])->name('admin.complaints.index');
         Route::post('/{complaintId}/reply', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'reply'])->name('admin.complaints.reply');
         Route::post('/{complaintId}/resolve', [\App\Http\Controllers\Admin\Complaints\AdminComplaintController::class, 'resolve'])->name('admin.complaints.resolve');
@@ -338,30 +350,35 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('admin/supplier')->group(function () {
 
-        // Supplier Dashboard
-        Route::get('/dashboard', [SupplierDashboardController::class, 'index'])->name('supplier.dashboard');
+        // Supplier portal (SUPPLIER role only). These MUST be declared before the
+        // '/{id}' routes below: Laravel matches in registration order, and
+        // PUT '/profile' used to be swallowed by PUT '/{id}' (admin supplier update).
+        Route::middleware('role:SUPPLIER')->group(function () {
+            Route::get('/dashboard', [SupplierDashboardController::class, 'index'])->name('supplier.dashboard');
+            Route::get('/profile', [SupplierProfileController::class, 'edit'])->name('supplier.profile');
+            Route::put('/profile', [SupplierProfileController::class, 'update'])->name('supplier.profile.update');
+        });
 
-        // Supplier Management
-        Route::get('/supplier-management', [SupplierManagementController::class, 'index'])->name('admin.suppliers');
-        Route::post('/supplier-management', [SupplierManagementController::class, 'store'])->name('admin.suppliers.store');
-        Route::get('/{id}/edit', [SupplierManagementController::class, 'edit'])->name('admin.suppliers.edit');
-        Route::put('/{id}', [SupplierManagementController::class, 'update'])->name('admin.suppliers.update');
-        Route::post('/{id}/attach-product', [SupplierManagementController::class, 'attachProduct'])->name('admin.suppliers.attach-product');
-        Route::delete('/{id}/detach-product/{productId}', [SupplierManagementController::class, 'detachProduct'])->name('admin.suppliers.detach-product');
-        Route::patch('/{id}/toggle-status', [SupplierManagementController::class, 'toggleStatus'])->name('admin.suppliers.toggle-status');
+        // Admin: supplier management, invoices
+        Route::middleware('role:ADMIN')->group(function () {
+            Route::get('/supplier-management', [SupplierManagementController::class, 'index'])->name('admin.suppliers');
+            Route::post('/supplier-management', [SupplierManagementController::class, 'store'])->name('admin.suppliers.store');
+            Route::get('/{id}/edit', [SupplierManagementController::class, 'edit'])->name('admin.suppliers.edit');
+            Route::put('/{id}', [SupplierManagementController::class, 'update'])->name('admin.suppliers.update');
+            Route::post('/{id}/attach-product', [SupplierManagementController::class, 'attachProduct'])->name('admin.suppliers.attach-product');
+            Route::delete('/{id}/detach-product/{productId}', [SupplierManagementController::class, 'detachProduct'])->name('admin.suppliers.detach-product');
+            Route::patch('/{id}/toggle-status', [SupplierManagementController::class, 'toggleStatus'])->name('admin.suppliers.toggle-status');
 
-        //profile routes for supplier
-        Route::get('/profile', [SupplierProfileController::class, 'edit'])->name('supplier.profile');
-        Route::put('/profile', [SupplierProfileController::class, 'update'])->name('supplier.profile.update');
-        // Admin-facing: dedicated full profile page for a specific supplier.
-        Route::get('/{id}/profile', [SupplierProfileController::class, 'showForAdmin'])->name('admin.supplier.profile.show');
+            // Admin-facing: dedicated full profile page for a specific supplier.
+            Route::get('/{id}/profile', [SupplierProfileController::class, 'showForAdmin'])->name('admin.supplier.profile.show');
 
-        // Supplier Invoice Management
-        Route::get('/supplier-management-invoice', [SupplierInvoiceController::class, 'index'])->name('admin.supplier-invoice');
-        Route::post('/supplier-management-invoice', [SupplierInvoiceController::class, 'store'])->name('admin.supplier-invoice.store');
-        Route::get('/{id}/purchase-data', [SupplierInvoiceController::class, 'getSupplierData'])->name('admin.suppliers.purchase-data');
-        Route::get('/invoice/{id}/download', [SupplierInvoiceController::class, 'download'])->name('admin.supplier-invoice.download');
-        Route::get('/get-supplier-data/{id}', [SupplierInvoiceController::class, 'getSupplierData']);
+            // Supplier Invoice Management
+            Route::get('/supplier-management-invoice', [SupplierInvoiceController::class, 'index'])->name('admin.supplier-invoice');
+            Route::post('/supplier-management-invoice', [SupplierInvoiceController::class, 'store'])->name('admin.supplier-invoice.store');
+            Route::get('/{id}/purchase-data', [SupplierInvoiceController::class, 'getSupplierData'])->name('admin.suppliers.purchase-data');
+            Route::get('/invoice/{id}/download', [SupplierInvoiceController::class, 'download'])->name('admin.supplier-invoice.download');
+            Route::get('/get-supplier-data/{id}', [SupplierInvoiceController::class, 'getSupplierData']);
+        });
     });
 
 
@@ -371,7 +388,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-    Route::prefix('admin/stock')->middleware('auth')->group(function () {
+    Route::prefix('admin/stock')->middleware('role:ADMIN')->group(function () {
 
         Route::get('/manage-stock', [ManageStockController::class, 'index'])->name('admin.stock.manage');
         Route::post('/manage-stock', [ManageStockController::class, 'store'])->name('admin.stock.store');
@@ -394,7 +411,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-    Route::prefix('admin/complains')->group(function () {
+    Route::prefix('admin/complains')->middleware('role:ADMIN')->group(function () {
 
         Route::get(
             '/troubleshoot',
@@ -431,7 +448,7 @@ Route::middleware(['auth'])->group(function () {
 */
 
 
-    Route::prefix('admin/activations')->middleware('auth')->group(function () {
+    Route::prefix('admin/activations')->middleware('role:ADMIN')->group(function () {
 
         Route::get(
             '/activation-report',
@@ -454,7 +471,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-    Route::prefix('admin/report')->middleware(['auth'])->group(function () {
+    Route::prefix('admin/report')->middleware('role:ADMIN')->group(function () {
 
         Route::get(
             '/stock-in-report',
@@ -479,6 +496,7 @@ Route::middleware(['auth'])->group(function () {
         '/admin/profile',
         [AdminProfileController::class, 'show']
     )
+        ->middleware('role:ADMIN')
         ->name('admin.profile');
 
     // Route::get('/dealer/profile',
@@ -489,38 +507,35 @@ Route::middleware(['auth'])->group(function () {
         '/finance/profile',
         [AdminProfileController::class, 'show']
     )
+        ->middleware('role:FINANCE')
         ->name('finance.profile');
 
     Route::get(
         '/technician/profile',
         [AdminProfileController::class, 'show']
     )
+        ->middleware('role:TECHNICIAN')
         ->name('technician.profile');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Breeze Profile
-    |--------------------------------------------------------------------------
-    */
-
-    Route::get('/profile', [ProfileController::class, 'edit'])
-        ->name('profile.edit');
-
-    Route::patch('/profile', [ProfileController::class, 'update'])
-        ->name('profile.update');
-
-    Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->name('profile.destroy');
+    // Breeze /profile (PATCH validated against a non-existent `users` table and 500'd; DELETE let any
+    // logged-in dealer/supplier/admin delete their own Admins row) and PUT /password were removed:
+    // no page links to them. Dealers and suppliers change details on their own profile pages.
 });
 
 
 
 // Dealer Routes Group
 Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function () {
-    Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');
-    Route::post('/device-commands/send', [DeviceCommandController::class, 'sendCommand'])->name('device-commands.send');
-    Route::get('/device-commands/status/{imei}', [DeviceCommandController::class, 'deviceStatus'])->name('device-commands.status');
-    Route::get('/device-commands/history/{vehicleId}', [DeviceCommandController::class, 'commandHistory'])->name('device-commands.history');
+    // Device commands: the controller checks device ownership (ADMIN any, DEALER own customers only).
+    Route::middleware('role:ADMIN,DEALER')->group(function () {
+        Route::get('/device-commands', [DeviceCommandController::class, 'dealerIndex'])->name('device-commands');
+        Route::post('/device-commands/send', [DeviceCommandController::class, 'sendCommand'])->name('device-commands.send');
+        Route::get('/device-commands/status/{imei}', [DeviceCommandController::class, 'deviceStatus'])->name('device-commands.status');
+        Route::get('/device-commands/history/{vehicleId}', [DeviceCommandController::class, 'commandHistory'])->name('device-commands.history');
+    });
+
+    // Everything else in this group is the dealer portal.
+    Route::middleware('role:DEALER')->group(function () {
 
     Route::get('/gps-tracking', [GpsTrackingController::class, 'dealerIndex'])->name('gps-tracking');
 
@@ -544,6 +559,7 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     Route::get('/check-new-replies', [DealerComplaintController::class, 'checkNewReplies'])->name('check-new-replies');
 
     Route::get('/complaints/resolved', [DealerComplaintController::class, 'resolved'])->name('complaints.resolved');
+    });
 });
 
 // Removed: two unauthenticated duplicates of admin.get-supplier-products
