@@ -204,6 +204,9 @@ Route::middleware(['auth'])->group(function () {
         // Cancel Sim
         Route::get('/cancel-sim', [\App\Http\Controllers\Admin\CancelRequests\CancelSimController::class, 'index'])->name('admin.cancel_sim.index');
         Route::patch('/cancel-sim/{sim}', [\App\Http\Controllers\Admin\CancelRequests\CancelSimController::class, 'update'])->name('admin.cancel_sim.update');
+
+        // Give a spare Activated SIM to a device registered without one
+        Route::patch('/cancel-device/{device}/attach-sim', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'attachSim'])->name('admin.cancel_device.attach_sim');
     });
 
 
