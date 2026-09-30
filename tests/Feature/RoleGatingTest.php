@@ -18,10 +18,7 @@ use Tests\TestCase;
 class RoleGatingTest extends TestCase
 {
     /** Routes any logged-in account may use (account plumbing, no business data). */
-    private const ANY_LOGGED_IN = [
-        'GET dashboard', 'POST logout', 'GET verify-email', 'GET verify-email/{id}/{hash}',
-        'POST email/verification-notification', 'GET confirm-password', 'POST confirm-password',
-    ];
+    private const ANY_LOGGED_IN = ['GET dashboard', 'POST logout'];
 
     private function roleMiddleware(LaravelRoute $route): ?array
     {

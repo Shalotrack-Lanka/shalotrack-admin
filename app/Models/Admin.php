@@ -3,9 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
 class Admin extends Authenticatable
 {
+    // Needed for Password::sendResetLink(): the reset e-mail is sent with $user->notify().
+    // Without it "Forgot password" threw "Call to undefined method Admin::notify()" (HTTP 500).
+    use Notifiable;
+
     protected $table = 'Admins';
 
     protected $primaryKey = 'admin_id';
