@@ -243,24 +243,32 @@ class CustomerDeviceManagementController extends Controller
             'payment_status'=> $activatedDevice->payment_status,
         ]);
 
-        $synced = $this->syncReplacementToApi($old, $new->fresh(), $activatedDevice->fresh());
+        $synced = $this->syncReplacementToApi($old, $new->fresh(), $activatedDevice->fresh(), $oldImei);
 
         $message = "Device replaced for {$activatedDevice->vehicle_number}: {$oldImei} is now Broken Device and {$new->imei_number} took over. The subscription carried over.";
         if (! $synced) {
-            $message .= ' The mobile API could not be updated right now; the change will be picked up at the next sync.';
+            $message .= " The mobile API could not be fully updated, so the app may still show the old device. Ask a developer to run: php artisan devices:push-replacement {$oldImei} {$new->imei_number}";
         }
 
         return redirect()->route('admin.customer-device-management')->with('success', $message);
     }
 
-    /** Tells the API about both devices (non-fatal; the change is already saved here). */
-    private function syncReplacementToApi(?SetupShalotrackDevice $old, SetupShalotrackDevice $new, ActivatedDevice $row): bool
+    /**
+     * Tells the API about both devices, then moves the vehicle to the new device there, then sends
+     * the subscription status (non-fatal; the change is already saved here). Order matters: the API
+     * refuses the move unless the new device is already registered there as Activated.
+     */
+    private function syncReplacementToApi(?SetupShalotrackDevice $old, SetupShalotrackDevice $new, ActivatedDevice $row, string $oldImei): bool
     {
         $ok = true;
         if ($old) {
             $ok = $this->pushDeviceToApi($old) && $ok;
         }
-        $ok = $this->pushDeviceToApi($new) && $ok;
+        $newPushed = $this->pushDeviceToApi($new);
+        $ok = $newPushed && $ok;
+
+        // Without the new device on the API side the move would be refused, so skip it (and report failure).
+        $ok = ($newPushed ? $this->pushReplacementToApi($oldImei, $new->imei_number) : false) && $ok;
 
         try {
             $response = Http::timeout(15)
