@@ -1,0 +1,38 @@
+# Weekly grouped dependency updates, so alerts do not pile up.
+# Security updates are still opened immediately by GitHub regardless of this schedule.
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Colombo
+    open-pull-requests-limit: 5
+    groups:
+      laravel-and-symfony:
+        patterns: ["laravel/*", "illuminate/*", "symfony/*"]
+        update-types: ["minor", "patch"]
+      other-php:
+        patterns: ["*"]
+        exclude-patterns: ["laravel/*", "illuminate/*", "symfony/*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Colombo
+    open-pull-requests-limit: 3
+    groups:
+      frontend:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
