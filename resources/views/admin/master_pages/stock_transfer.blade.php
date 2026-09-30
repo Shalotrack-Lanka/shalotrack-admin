@@ -57,6 +57,12 @@
                         {{ $awaitingActivation }} device(s) are in stock but not activated yet. Activate them on Cancel Device first; only activated devices can be transferred to a dealer.
                     </p>
                     @endif
+                    @if(($activatedWithoutSim ?? 0) > 0)
+                    <p id="no-sim-hint" class="mt-1 text-[11px] text-amber-600 font-normal">
+                        {{ $activatedWithoutSim }} activated device(s) have no SIM, so they are not listed. Attach a spare SIM on
+                        <a href="{{ route('admin.cancel_device.index') }}" class="underline font-bold">Cancel Device</a> to make them transferable.
+                    </p>
+                    @endif
                 </div>
 
                 <div class="md:col-span-1">

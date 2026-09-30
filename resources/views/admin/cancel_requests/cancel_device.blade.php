@@ -94,7 +94,13 @@
                                     <tr class="hover:bg-gray-50 transition">
                                         <td class="p-3">{{ $device->imei_number }}</td>
                                         <td class="p-3">{{ $device->device_category }}</td>
-                                        <td class="p-3">{{ $device->sim_number ?? '-' }}</td>
+                                        <td class="p-3">
+                                            @if($device->sim_number)
+                                                {{ $device->sim_number }}
+                                            @else
+                                                @include('admin.cancel_requests._attach_sim_form', ['device' => $device, 'spareSims' => $spareSims])
+                                            @endif
+                                        </td>
                                         <td class="p-3">
                                             @if($device->dealer)
                                                 <span class="font-bold text-gray-800">{{ $device->dealer->full_name }}</span>
@@ -194,6 +200,11 @@
                                                 @csrf
                                                 @method('PATCH')
                                             </form>
+                                            @if(! $device->sim_number && ! $bound && $device->status === 'Activated')
+                                                <div class="mt-2">
+                                                    @include('admin.cancel_requests._attach_sim_form', ['device' => $device, 'spareSims' => $spareSims])
+                                                </div>
+                                            @endif
                                         </td>
                                         <td class="p-3 pt-4">
                                             {{-- The dealer is only applied when a device is being (re)activated,

@@ -166,8 +166,8 @@
 
                     <div x-show="noSimCount > 0" x-cloak class="mx-5 mt-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-xs font-bold">
                         <span x-text="noSimCount"></span> device<span x-show="noSimCount !== 1">s have</span><span x-show="noSimCount === 1"> has</span> no SIM.
-                        Stock Transfer picks devices by SIM number, so a device without a SIM can't be transferred to a dealer.
-                        If that's not intended, scan the missing SIM barcodes before registering.
+                        A device without a SIM can't be transferred to a dealer or given to a customer until a spare SIM is attached
+                        (Cancel Device page). To avoid that step, scan the missing SIM barcodes before registering.
                     </div>
 
                     <div class="overflow-x-auto">
