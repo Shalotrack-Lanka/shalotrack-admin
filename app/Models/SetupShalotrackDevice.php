@@ -51,6 +51,18 @@ class SetupShalotrackDevice extends Model
         });
     }
 
+    /** Activated, unsold company stock that is NOT transferable only because it has no SIM yet. */
+    public function scopeCompanyStockWithoutSim($query)
+    {
+        return static::notBound(
+            $query->whereNull('dealer_id')
+                ->where('status', DeviceStatus::Activated->value)
+                ->where(function ($q) {
+                    $q->whereNull('sim_number')->orWhere('sim_number', '');
+                })
+        );
+    }
+
     /** Company stock an admin may transfer to a dealer: activated, unsold, with a SIM. */
     public function scopeCompanyStockForTransfer($query)
     {

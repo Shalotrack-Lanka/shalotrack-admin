@@ -32,6 +32,9 @@ class StockTransferController extends Controller
             ->where('status', DeviceStatus::NotActivated->value)
             ->count();
 
+        // Activated, unsold company stock that cannot be transferred only because it has no SIM.
+        $activatedWithoutSim = SetupShalotrackDevice::companyStockWithoutSim()->count();
+
         $dealers = Dealer::where('status', 'active')->orderBy('full_name')->get();
 
         $transfers = DealerTransferLedger::with('dealer')->latest()->get();
@@ -52,7 +55,7 @@ class StockTransferController extends Controller
         return view(
             'admin.master_pages.stock_transfer',
             // simsByCategory යන්න compact එකට අනිවාර්යයෙන්ම එකතු කරන්න
-            compact('deviceCategories', 'dealers', 'transfers', 'allocatedDevices', 'simsByCategory', 'awaitingActivation')
+            compact('deviceCategories', 'dealers', 'transfers', 'allocatedDevices', 'simsByCategory', 'awaitingActivation', 'activatedWithoutSim')
         );
     }
 
