@@ -9,9 +9,6 @@ use App\Http\Controllers\Admin\MasterPages\ScanDeviceController;
 use App\Http\Controllers\Admin\MasterPages\AddSimController;
 use App\Http\Controllers\Admin\MasterPages\CancelDeviceController;
 use App\Http\Controllers\Admin\MasterPages\CancelSimController;
-use App\Http\Controllers\Admin\MasterPages\PriceGroupController;
-use App\Http\Controllers\Admin\MasterPages\PriceGroupDetailsController;
-use App\Http\Controllers\Admin\MasterPages\ChangeProductCodeController;
 use App\Http\Controllers\Admin\MasterPages\AddDeviceTypeController;
 use App\Http\Controllers\Admin\MasterPages\StockTransferController;
 
@@ -49,8 +46,6 @@ use App\Http\Controllers\Admin\Reports\CreditInvoiceReportController;
 
 use App\Http\Controllers\Admin\Stock\ManageStockController;
 use App\Http\Controllers\Admin\Stock\CurrentStockController;
-use App\Http\Controllers\Admin\Stock\SoldDeviceReportController;
-use App\Http\Controllers\Admin\Stock\AddFaultyDeviceController;
 
 use App\Http\Controllers\Admin\Vehicles\VehicleDetailsController;
 use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
@@ -538,28 +533,28 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     // Everything else in this group is the dealer portal.
     Route::middleware('role:DEALER')->group(function () {
 
-    Route::get('/gps-tracking', [GpsTrackingController::class, 'dealerIndex'])->name('gps-tracking');
+        Route::get('/gps-tracking', [GpsTrackingController::class, 'dealerIndex'])->name('gps-tracking');
 
-    Route::get('/complaints', [DealerComplaintController::class, 'index'])->name('complaints');
-    Route::post('/complaints/{complaintId}/reply', [DealerComplaintController::class, 'reply'])->name('complaints.reply');
-    Route::post('/complaints/{complaintId}/escalate', [DealerComplaintController::class, 'escalate'])->name('complaints.escalate');
-    Route::post('/complaints/{complaintId}/resolve', [DealerComplaintController::class, 'resolve'])->name('complaints.resolve');
-    Route::post('/complaints/{complaintId}/close', [DealerComplaintController::class, 'close'])->name('complaints.close');
+        Route::get('/complaints', [DealerComplaintController::class, 'index'])->name('complaints');
+        Route::post('/complaints/{complaintId}/reply', [DealerComplaintController::class, 'reply'])->name('complaints.reply');
+        Route::post('/complaints/{complaintId}/escalate', [DealerComplaintController::class, 'escalate'])->name('complaints.escalate');
+        Route::post('/complaints/{complaintId}/resolve', [DealerComplaintController::class, 'resolve'])->name('complaints.resolve');
+        Route::post('/complaints/{complaintId}/close', [DealerComplaintController::class, 'close'])->name('complaints.close');
 
-    // Polls for new complaint threads assigned to this dealer.
-    // FIX: this URI + a "resolved" URI were each registered twice in this
-    // group (once more under a fully-qualified duplicate that produced
-    // the malformed name dealer.dealer.check-new-complaints, unreachable
-    // for real traffic since Laravel matches the first-registered route
-    // for a given URI). Both duplicate pairs pointed at the identical
-    // controller/method, so there was no behavioral bug -- just dead,
-    // confusing lines. Collapsed to one registration each.
-    Route::get('/check-new-complaints', [DealerComplaintController::class, 'checkNewComplaints'])->name('check-new-complaints');
+        // Polls for new complaint threads assigned to this dealer.
+        // FIX: this URI + a "resolved" URI were each registered twice in this
+        // group (once more under a fully-qualified duplicate that produced
+        // the malformed name dealer.dealer.check-new-complaints, unreachable
+        // for real traffic since Laravel matches the first-registered route
+        // for a given URI). Both duplicate pairs pointed at the identical
+        // controller/method, so there was no behavioral bug -- just dead,
+        // confusing lines. Collapsed to one registration each.
+        Route::get('/check-new-complaints', [DealerComplaintController::class, 'checkNewComplaints'])->name('check-new-complaints');
 
-    // Polls for new admin replies on this dealer's open complaints.
-    Route::get('/check-new-replies', [DealerComplaintController::class, 'checkNewReplies'])->name('check-new-replies');
+        // Polls for new admin replies on this dealer's open complaints.
+        Route::get('/check-new-replies', [DealerComplaintController::class, 'checkNewReplies'])->name('check-new-replies');
 
-    Route::get('/complaints/resolved', [DealerComplaintController::class, 'resolved'])->name('complaints.resolved');
+        Route::get('/complaints/resolved', [DealerComplaintController::class, 'resolved'])->name('complaints.resolved');
     });
 });
 
