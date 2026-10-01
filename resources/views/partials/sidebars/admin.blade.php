@@ -213,7 +213,7 @@
 
 
            <!-- DEALERS -->
-        <div x-data="{ open: {{ request()->is('admin/dealer*') ? 'true' : 'false' }} }">
+        <div x-data="{ open: {{ (request()->is('admin/dealer*') || request()->routeIs('admin.commission-payouts*')) ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -241,6 +241,7 @@
                 <a href="{{ route('admin.dealer-management') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealer-management') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer Management</a>
                 <a href="{{ route('admin.dealers.customer-ads') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealers.customer-ads') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer customers</a>
                 <a href="{{ route('admin.dealer-scorecard') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealer-scorecard') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer scorecard</a>
+                <a href="{{ route('admin.commission-payouts') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.commission-payouts*') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Commission payouts</a>
                 <!--<a href="{{ route('admin.manage-replacement') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.manage-replacement') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Manage Replacements</a>-->
                 <!--<a href="{{ route('admin.dealer-ledger') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealer-ledger') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer Ledger</a>-->
 

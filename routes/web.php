@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
 use App\Http\Controllers\Admin\Dealer\DealerComplaintController;
 use App\Http\Controllers\Admin\Dealer\DealerScorecardController;
+use App\Http\Controllers\Admin\Dealer\CommissionPayoutController;
 
 // FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
 // that doesn't exist — the real one lives in a separate top-level Dealer
@@ -217,6 +218,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
     Route::get('/admin/device-health', [DeviceHealthController::class, 'admin'])->middleware('role:ADMIN')->name('admin.device-health');
     Route::get('/admin/dealer-scorecard', [DealerScorecardController::class, 'admin'])->middleware('role:ADMIN')->name('admin.dealer-scorecard');
+
+    // Commission payout statements (ADMIN only; dealers read their own paid ones under dealer.*).
+    Route::middleware('role:ADMIN')->prefix('admin/commission-payouts')->name('admin.commission-payouts')->group(function () {
+        Route::get('/', [CommissionPayoutController::class, 'index']);
+        Route::get('/{dealer}', [CommissionPayoutController::class, 'show'])->name('.show');
+        Route::post('/{dealer}/pay', [CommissionPayoutController::class, 'pay'])->middleware('throttle:20,1')->name('.pay');
+    });
 
     Route::prefix('admin/customer')->group(function () {
 
@@ -546,6 +554,8 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
         Route::get('/device-health', [DeviceHealthController::class, 'dealer'])->name('device-health');
 
         Route::get('/scorecard', [DealerScorecardController::class, 'dealer'])->name('scorecard');
+        Route::get('/commission-statements', [CommissionPayoutController::class, 'dealerIndex'])->name('commission-statements');
+        Route::get('/commission-statements/{month}', [CommissionPayoutController::class, 'dealerShow'])->name('commission-statement');
 
         Route::get('/complaints', [DealerComplaintController::class, 'index'])->name('complaints');
         Route::post('/complaints/{complaintId}/reply', [DealerComplaintController::class, 'reply'])->name('complaints.reply');

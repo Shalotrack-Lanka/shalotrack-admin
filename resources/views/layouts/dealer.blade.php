@@ -139,6 +139,10 @@
                 <span>My scorecard</span>
             </a>
 
+            <a href="{{ route('dealer.commission-statements') }}" class="flex items-center justify-between p-3 text-white hover:bg-blue-900 rounded {{ request()->routeIs('dealer.commission-statement*') ? 'bg-blue-900' : '' }}">
+                <span>Commission statements</span>
+            </a>
+
             {{-- NEW: Complaints link -- route/controller/view already existed
      (dealer.complaints, DealerComplaintController, dealer/complaints
      view) but nothing in this sidebar ever linked to them. --}}
