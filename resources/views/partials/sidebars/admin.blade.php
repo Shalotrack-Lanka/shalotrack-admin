@@ -126,7 +126,7 @@
         </div>
 
         <!-- CUSTOMER -->
-        <div x-data="{ open: {{ request()->is('admin/customer*') || request()->routeIs('admin.renewals') || request()->routeIs('admin.device-health') ? 'true' : 'false' }} }">
+        <div x-data="{ open: {{ request()->is('admin/customer*') || request()->routeIs('admin.renewals') || request()->routeIs('admin.device-health') || request()->routeIs('admin.renewal-requests') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -165,6 +165,10 @@
 
                 <a href="{{ route('admin.device-health') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.device-health') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Device health
+                </a>
+
+                <a href="{{ route('admin.renewal-requests') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.renewal-requests') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
+                    Renewal requests
                 </a>
 
             </div>
