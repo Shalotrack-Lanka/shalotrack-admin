@@ -27,3 +27,6 @@ Schedule::command('subscriptions:sync-to-api')->everyMinute();
 // the day (23:55) so the snapshot reflects the day's activity, not its
 // first hour. See App\Console\Commands\SnapshotDashboardMetrics.
 Schedule::command('dashboard:snapshot')->dailyAt('23:55');
+
+// Keeps 12 months of audit trail (see App\Console\Commands\PruneAuditLog).
+Schedule::command('audit:prune')->dailyAt('02:30');

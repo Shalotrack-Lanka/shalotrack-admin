@@ -3,6 +3,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Services\Audit;
 use App\Models\DealerCustomerAd;
 use App\Http\Controllers\Controller;
 use App\Models\Dealer;
@@ -62,10 +63,12 @@ class DealerManagementController extends Controller
 
         $generatedUsername = null;
         $generatedPassword = null;
+        $createdDealerId = null;
 
-        DB::transaction(function () use ($validated, $dealerFormPassword, &$generatedUsername, &$generatedPassword) {
+        DB::transaction(function () use ($validated, $dealerFormPassword, &$generatedUsername, &$generatedPassword, &$createdDealerId) {
             $dealer = Dealer::create($validated);
             $dealer->refresh();
+            $createdDealerId = $dealer->id;
 
             $generatedUsername = $this->generateUniqueUsername($dealer->full_name);
             $generatedPassword = $dealerFormPassword ?: Str::password(10, symbols: false);
@@ -98,6 +101,13 @@ class DealerManagementController extends Controller
                 }
             }
         });
+
+        Audit::record('dealer.created', 'dealer', $createdDealerId, $validated['full_name'], [], [
+            'dealer_status'         => $validated['dealer_status'],
+            'region'                => $validated['region'],
+            'login_username'        => $generatedUsername,
+            'password_set_by_admin' => $dealerFormPassword !== null,
+        ]);
 
         return redirect()->back()->with('success', "Dealer '{$validated['full_name']}' saved successfully.");
     }

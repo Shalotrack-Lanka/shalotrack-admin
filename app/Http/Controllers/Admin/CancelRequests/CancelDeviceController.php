@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\CancelRequests;
 
+use App\Services\Audit;
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ActivatedDevice;
@@ -78,6 +79,8 @@ class CancelDeviceController extends Controller
             ]);
         }
 
+        $auditBefore = $device->only(['status', 'dealer_id', 'cancel_reason']);
+
         $device->status        = $validated['status'];
         $device->cancel_reason = $validated['status'] === DeviceStatus::TemporarilyStopped->value ? $validated['cancel_reason'] : null;
         $device->canceled_date = $validated['status'] === DeviceStatus::TemporarilyStopped->value ? now() : null;
@@ -87,6 +90,9 @@ class CancelDeviceController extends Controller
         }
 
         $device->save();
+
+        Audit::record('device.status_changed', 'device', $device->shdevice_id, $device->imei_number,
+            Audit::diff($auditBefore, $device->only(['status', 'dealer_id', 'cancel_reason']), ['status', 'dealer_id', 'cancel_reason']));
 
         // NEW: push this device's updated state to the API
         $synced = $this->pushDeviceToApi($device);

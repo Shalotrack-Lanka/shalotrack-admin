@@ -428,6 +428,8 @@
         </div>
         --}}
 
+        <a href="{{ route('admin.audit-log') }}" class="block p-3 rounded text-white hover:bg-blue-900 {{ request()->routeIs('admin.audit-log') ? 'bg-blue-900 font-semibold' : '' }}">Audit log</a>
+
     </nav>
 
 </aside>
