@@ -126,7 +126,7 @@
         </div>
 
         <!-- CUSTOMER -->
-        <div x-data="{ open: {{ request()->is('admin/customer*') ? 'true' : 'false' }} }">
+        <div x-data="{ open: {{ request()->is('admin/customer*') || request()->routeIs('admin.renewals') ? 'true' : 'false' }} }">
 
             <button
                 @click="open=!open"
@@ -157,6 +157,10 @@
 
                 <a href="{{ route('admin.customer-device-management') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.customer-device-management') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Customer Device Management
+                </a>
+
+                <a href="{{ route('admin.renewals') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.renewals') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
+                    Renewals due
                 </a>
 
             </div>

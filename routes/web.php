@@ -33,6 +33,7 @@ use App\Http\Controllers\Admin\Dealer\DealerDashboardController;
 
 use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 use App\Http\Controllers\Admin\Customer\CustomerDeviceManagementController;
+use App\Http\Controllers\Admin\Customer\RenewalsController;
 
 use App\Http\Controllers\Admin\Complains_Enquiries\TroubleshootController;
 use App\Http\Controllers\Admin\Complains_Enquiries\FeedbackController;
@@ -210,6 +211,8 @@ Route::middleware(['auth'])->group(function () {
 | Customer
 |--------------------------------------------------------------------------
 */
+
+    Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
 
     Route::prefix('admin/customer')->group(function () {
 
@@ -534,6 +537,8 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
     Route::middleware('role:DEALER')->group(function () {
 
         Route::get('/gps-tracking', [GpsTrackingController::class, 'dealerIndex'])->name('gps-tracking');
+
+        Route::get('/renewals', [RenewalsController::class, 'dealer'])->name('renewals');
 
         Route::get('/complaints', [DealerComplaintController::class, 'index'])->name('complaints');
         Route::post('/complaints/{complaintId}/reply', [DealerComplaintController::class, 'reply'])->name('complaints.reply');
