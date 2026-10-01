@@ -131,6 +131,10 @@
                 <span>Renewals due</span>
             </a>
 
+            <a href="{{ route('dealer.scorecard') }}" class="flex items-center justify-between p-3 text-white hover:bg-blue-900 rounded {{ request()->routeIs('dealer.scorecard') ? 'bg-blue-900' : '' }}">
+                <span>My scorecard</span>
+            </a>
+
             {{-- NEW: Complaints link -- route/controller/view already existed
      (dealer.complaints, DealerComplaintController, dealer/complaints
      view) but nothing in this sidebar ever linked to them. --}}
