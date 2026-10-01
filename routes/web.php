@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
 use App\Http\Controllers\Admin\Dealer\DealerComplaintController;
 use App\Http\Controllers\Admin\Dealer\DealerScorecardController;
 use App\Http\Controllers\Admin\Dealer\CommissionPayoutController;
+use App\Http\Controllers\Admin\AuditLogController;
 
 // FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
 // that doesn't exist — the real one lives in a separate top-level Dealer
@@ -218,6 +219,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
     Route::get('/admin/device-health', [DeviceHealthController::class, 'admin'])->middleware('role:ADMIN')->name('admin.device-health');
     Route::get('/admin/dealer-scorecard', [DealerScorecardController::class, 'admin'])->middleware('role:ADMIN')->name('admin.dealer-scorecard');
+
+    Route::get('/admin/audit-log', [AuditLogController::class, 'index'])->middleware('role:ADMIN')->name('admin.audit-log');
 
     // Commission payout statements (ADMIN only; dealers read their own paid ones under dealer.*).
     Route::middleware('role:ADMIN')->prefix('admin/commission-payouts')->name('admin.commission-payouts')->group(function () {

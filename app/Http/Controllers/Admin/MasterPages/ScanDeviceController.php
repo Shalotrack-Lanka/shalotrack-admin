@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\MasterPages;
 
+use App\Services\Audit;
 use App\Http\Controllers\Controller;
 use App\Models\DeviceType;
 use App\Models\SetupShalotrackDevice;
@@ -139,6 +140,14 @@ class ScanDeviceController extends Controller
             'created'   => count($created),
             'ip'        => $request->ip(),
         ]);
+
+        if ($created !== []) {
+            Audit::record('device.intake_committed', 'device_type', $data['device_type_id'], null, [], [
+                'submitted' => count($data['rows']),
+                'created'   => count($created),
+                'imeis'     => array_slice(array_map(fn ($d) => $d->imei_number, $created), 0, 50),
+            ]);
+        }
 
         // Same non-fatal sync to the API that manual setup and bulk import do.
         $syncFailed = 0;

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Customer;
 
+use App\Services\Audit;
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ActivatedDevice;
@@ -154,6 +155,13 @@ class CustomerDeviceManagementController extends Controller
             $device->save();
         });
 
+        Audit::record('device.activated', 'vehicle', $vehicle->vehicle_id, $vehicle->vehicle_number, [], [
+            'imei'               => $validated['imei_number'],
+            'payment_status'     => $validated['payment_status'],
+            'subscription_model' => $validated['subscription_model'] ?? null,
+            'start'              => $validated['subscription_start_date'] ?? null,
+        ]);
+
         return redirect()->route('admin.customer-device-management')
             ->with('success', "Device activated for {$vehicle->vehicle_number}.");
     }
@@ -161,6 +169,9 @@ class CustomerDeviceManagementController extends Controller
     public function update(Request $request, ActivatedDevice $activatedDevice)
     {
         $validated = $this->validateDeviceForm($request, $activatedDevice, customerId: $activatedDevice->customer_id);
+
+        $auditKeys = ['payment_status', 'subscription_model', 'subscription_start_date', 'subscription_end_date', 'bank_invoice', 'sim_number', 'device_category'];
+        $auditBefore = $activatedDevice->only($auditKeys);
 
         DB::transaction(function () use ($validated, $activatedDevice, $request) {
             if ($request->hasFile('bank_slip')) {
@@ -178,6 +189,14 @@ class CustomerDeviceManagementController extends Controller
                 ...$this->subscriptionFields($validated, keepBankSlip: !$request->hasFile('bank_slip'), current: $activatedDevice),
             ]);
         });
+
+        $auditChanges = Audit::diff($auditBefore, $activatedDevice->fresh()->only($auditKeys), $auditKeys);
+        if ($auditChanges !== [] || $request->hasFile('bank_slip')) {
+            Audit::record('subscription.updated', 'vehicle', $activatedDevice->vehicle_id, $activatedDevice->vehicle_number, $auditChanges, [
+                'imei'             => $activatedDevice->imei_number,
+                'bank_slip_replaced' => $request->hasFile('bank_slip'),
+            ]);
+        }
 
         return redirect()->route('admin.customer-device-management')
             ->with('success', "Device {$activatedDevice->imei_number} updated.");
@@ -243,6 +262,10 @@ class CustomerDeviceManagementController extends Controller
             'payment_status'=> $activatedDevice->payment_status,
         ]);
 
+        Audit::record('device.replaced', 'vehicle', $activatedDevice->vehicle_id, $activatedDevice->vehicle_number,
+            ['imei' => ['from' => $oldImei, 'to' => $new->imei_number]],
+            ['reason' => $validated['reason'], 'payment_status' => $activatedDevice->payment_status]);
+
         $synced = $this->syncReplacementToApi($old, $new->fresh(), $activatedDevice->fresh(), $oldImei);
 
         $message = "Device replaced for {$activatedDevice->vehicle_number}: {$oldImei} is now Broken Device and {$new->imei_number} took over. The subscription carried over.";
@@ -304,6 +327,8 @@ class CustomerDeviceManagementController extends Controller
         $path = $activatedDevice->bank_slip;
         abort_unless($path && Storage::disk('public')->exists($path), 404, 'This bank slip is no longer stored on the server.');
 
+        Audit::record('bank_slip.viewed', 'vehicle', $activatedDevice->vehicle_id, $activatedDevice->vehicle_number, [], ['imei' => $activatedDevice->imei_number]);
+
         return Storage::disk('public')->response($path, null, [
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control'          => 'private, max-age=300',
@@ -350,6 +375,12 @@ class CustomerDeviceManagementController extends Controller
 
             $expiredDevice->delete();
         });
+
+        Audit::record('device.reactivated', 'vehicle', $expiredDevice->vehicle_id, $expiredDevice->vehicle_number, [], [
+            'imei'           => $expiredDevice->imei_number,
+            'payment_status' => $validated['payment_status'],
+            'start'          => $validated['subscription_start_date'] ?? null,
+        ]);
 
         return redirect()->route('admin.customer-device-management')
             ->with('success', "Device {$expiredDevice->imei_number} reactivated for {$expiredDevice->vehicle_number}.");

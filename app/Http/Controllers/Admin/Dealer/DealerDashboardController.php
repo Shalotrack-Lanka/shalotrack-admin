@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Services\Audit;
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\DealerCustomerAd;
@@ -287,6 +288,8 @@ class DealerDashboardController extends Controller
             'imei_numbers'  => $currentImeis,
         ]);
 
+        Audit::record('device.assigned', 'device', $device->shdevice_id, $device->imei_number, [], ['dealer_id' => $device->dealer_id, 'customer' => $customer->name]);
+
         return back()->with('success', "Device IMEI {$device->imei_number} successfully assigned to {$customer->name}!");
     }
 
@@ -345,6 +348,8 @@ class DealerDashboardController extends Controller
             'imei_numbers'  => $currentImeis,
         ]);
 
+        Audit::record('device.assigned', 'device', $device->shdevice_id, $device->imei_number, [], ['dealer_id' => $device->dealer_id, 'customer' => $customer->name]);
+
         return back()->with('success', "Device IMEI {$device->imei_number} successfully assigned to {$customer->name}!");
     }
 
@@ -386,6 +391,8 @@ class DealerDashboardController extends Controller
             }
         }
 
+        Audit::record('device.unassigned', 'device', $device->shdevice_id, $device->imei_number, [], ['dealer_id' => $device->dealer_id]);
+
         return back()->with('success', "Device IMEI {$device->imei_number} moved to Pending Repair!");
     }
 
@@ -412,6 +419,7 @@ class DealerDashboardController extends Controller
             $device->save();
             // Back in stock with no sale: reverse any commission still active for it.
             $this->commission->recordReversed($device, 'returned_to_stock_without_customer');
+            Audit::record('device.reassigned', 'device', $device->shdevice_id, $device->imei_number, [], ['dealer_id' => $device->dealer_id, 'to' => 'available stock']);
             return back()->with('success', "Device moved to Available Stocks (no customer linked).");
         }
 
@@ -443,6 +451,8 @@ class DealerDashboardController extends Controller
             ]);
         }
 
+        Audit::record('device.reassigned', 'device', $device->shdevice_id, $device->imei_number, [], ['dealer_id' => $device->dealer_id, 'to' => 'original customer']);
+
         return back()->with('success', "Device IMEI {$device->imei_number} reassigned to the original customer successfully!");
     }
 
@@ -467,6 +477,8 @@ class DealerDashboardController extends Controller
         // commission entry (e.g. was broken before ever being assigned).
         $this->commission->recordReversed($device, 'device_broken');
 
+        Audit::record('device.marked_broken', 'device', $device->shdevice_id, $device->imei_number, [], ['dealer_id' => $device->dealer_id]);
+
         return back()->with('success', "Device IMEI {$device->imei_number} marked as Broken.");
     }
 
@@ -487,6 +499,8 @@ class DealerDashboardController extends Controller
 
         $device->status = DeviceStatus::PendingRepair->value;
         $device->save();
+
+        Audit::record('device.moved_to_pending', 'device', $device->shdevice_id, $device->imei_number, [], ['dealer_id' => $device->dealer_id]);
 
         return back()->with('success', "Device IMEI {$device->imei_number} moved back to Pending Repair for testing!");
     }

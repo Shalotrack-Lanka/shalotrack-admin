@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Services\Audit;
 use App\Exceptions\CommissionPayoutException;
 use App\Http\Controllers\Controller;
 use App\Models\Dealer;
@@ -89,7 +90,11 @@ class CommissionPayoutController extends Controller
                 ->withErrors(['payout' => $e->getMessage()]);
         }
 
-        // Audit trail beyond the payout row itself.
+        Audit::record('commission.payout_recorded', 'payout', $payout->id, ($dealer->full_name ?: 'Dealer #' . $dealer->id) . ' ' . $month, [], [
+            'dealer_id' => $dealer->id, 'period' => $month, 'net' => (string) $payout->net_amount,
+            'lines' => $payout->line_count, 'reference' => $payout->reference,
+        ]);
+
         Log::info('Commission payout recorded', [
             'payout_id' => $payout->id, 'dealer_id' => $dealer->id, 'period' => $month,
             'net' => (string) $payout->net_amount, 'reference' => $payout->reference, 'by' => $user->admin_id,

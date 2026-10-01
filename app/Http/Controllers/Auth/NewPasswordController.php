@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Services\Audit;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use Illuminate\Auth\Events\PasswordReset;
@@ -49,6 +50,8 @@ class NewPasswordController extends Controller
                 ])->save();
 
                 event(new PasswordReset($user));
+
+                Audit::record('account.password_reset', 'admin', $user->admin_id, $user->username, [], ['via' => 'reset link']);
             }
         );
 

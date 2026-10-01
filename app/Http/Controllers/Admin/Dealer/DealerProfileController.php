@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Services\Audit;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Dealer;
@@ -91,6 +92,9 @@ class DealerProfileController extends Controller
         $passwordInput = $validated['password'] ?? null;
         unset($validated['password'], $validated['password_confirmation']);
 
+        $auditKeys = array_keys($validated);
+        $auditBefore = $dealer->only($auditKeys);
+
         // 1. Update basic fields
         $dealer->update($validated);
 
@@ -127,6 +131,12 @@ class DealerProfileController extends Controller
             $linkedAdmin->save();
         }
 
+        // The password itself is never recorded, only the fact that it was changed.
+        $auditChanges = Audit::diff($auditBefore, $dealer->fresh()->only($auditKeys), $auditKeys);
+        if ($auditChanges !== [] || $passwordChanged) {
+            Audit::record('dealer.updated', 'dealer', $dealer->id, $dealer->full_name, $auditChanges, ['password_changed' => $passwordChanged]);
+        }
+
         if ($passwordChanged) {
             return back()->with('success', "Dealer '{$dealer->full_name}' profile and password updated successfully.");
         }
@@ -138,8 +148,11 @@ class DealerProfileController extends Controller
     {
         $dealer = Dealer::findOrFail($id);
 
+        $oldStatus = $dealer->status;
         $dealer->status = $dealer->status === 'active' ? 'archived' : 'active';
         $dealer->save();
+
+        Audit::record('dealer.status_changed', 'dealer', $dealer->id, $dealer->full_name, ['status' => ['from' => $oldStatus, 'to' => $dealer->status]]);
 
         $adminStatus = $dealer->status === 'active' ? 'ACTIVE' : 'INACTIVE';
 

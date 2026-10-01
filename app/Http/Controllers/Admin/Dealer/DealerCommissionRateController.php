@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Services\Audit;
 use App\Http\Controllers\Controller;
 use App\Models\DealerCommissionRate;
 use App\Models\DeviceType;
@@ -58,19 +59,28 @@ class DealerCommissionRateController extends Controller
             ->where('device_type_id', $validated['device_type_id'] ?? null)
             ->first();
 
+        $scope = ($validated['dealer_status'] ?? 'any tier') . ' / device type ' . ($validated['device_type_id'] ?? 'any');
+
         if ($existing) {
+            $oldRate = $existing->rate;
             $existing->update(['rate' => $validated['rate']]);
+            Audit::record('commission.rate_saved', 'rate', $existing->id, $scope, ['rate' => ['from' => (string) $oldRate, 'to' => (string) $validated['rate']]]);
             return back()->with('success', 'Commission rate updated.');
         }
 
-        DealerCommissionRate::create($validated);
+        $created = DealerCommissionRate::create($validated);
+        Audit::record('commission.rate_saved', 'rate', $created->id, $scope, ['rate' => ['from' => null, 'to' => (string) $validated['rate']]]);
 
         return back()->with('success', 'Commission rate added.');
     }
 
     public function destroy(DealerCommissionRate $rate)
     {
+        $scope = ($rate->dealer_status ?? 'any tier') . ' / device type ' . ($rate->device_type_id ?? 'any');
+        $oldRate = (string) $rate->rate;
+        $rateId = $rate->id;
         $rate->delete();
+        Audit::record('commission.rate_deleted', 'rate', $rateId, $scope, ['rate' => ['from' => $oldRate, 'to' => null]]);
 
         return back()->with('success', 'Commission rate removed. Matching sales will now fall through to the next most specific rate (or the unconfigured fallback).');
     }

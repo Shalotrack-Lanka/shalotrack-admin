@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Services\Audit;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -61,6 +62,8 @@ class DealerAccountController extends Controller
             'new_password.min'   => 'New password must be at least 8 characters.',
         ]);
 
+        $auditBefore = $admin->only(['full_name', 'email', 'phone_number']);
+
         $dealer = Dealer::findOrFail($admin->dealer_id);
         $dealer->full_name     = $validated['full_name'];
         $dealer->contact_email = $validated['contact_email'];
@@ -79,6 +82,10 @@ class DealerAccountController extends Controller
         }
 
         $admin->save();
+
+        Audit::record('account.profile_updated', 'admin', $admin->admin_id, $admin->username,
+            Audit::diff($auditBefore, $admin->only(['full_name', 'email', 'phone_number']), ['full_name', 'email', 'phone_number']),
+            ['password_changed' => $request->filled('new_password')]);
 
         return redirect()->back()->with('success', 'Your profile has been updated successfully.');
     }
