@@ -336,8 +336,8 @@
     Using element.style.transform instead is guaranteed to work.
 --}}
 <div id="custom-toast"
-     class="fixed top-5 right-5 z-50 transition-all duration-300 ease-in-out"
-     style="transform: translateY(-200%);">
+     class="transition-all duration-300 ease-in-out"
+     style="position: fixed; top: 1.25rem; right: 1.25rem; z-index: 50; transform: translateY(-200%);">
     <div class="flex items-center p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-2xl space-x-3.5 w-80 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
 
         <!-- ක්ලික් කළ හැකි ප්‍රදේශය (Dealer Complaints පිටුවට යයි) -->

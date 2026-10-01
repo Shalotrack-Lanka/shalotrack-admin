@@ -121,16 +121,9 @@ class DealerDashboardController extends Controller
             ->latest()
             ->get();
 
-        // FIX: was a live "current assigned count * 1000" formula --
-        // recalculated on every page load, so a device later going broken
-        // or being unassigned silently reduced a dealer's PAST earnings.
-        // Now reads the immutable ledger total (DealerCommissionService).
-        //
-        // ⚠️ NOT PRODUCTION READY: this figure has no payment-status gate
-        // and no historical backfill -- both are open client-dependent
-        // decisions. See DealerCommissionService's class docblock before
-        // treating this number as final or deploying it to real dealers.
-        $earnedCommission = $this->commission->currentTotal($dealer);
+        // Commission is deliberately NOT shown to dealers yet (no payment-status gate, no historical backfill;
+        // see DealerCommissionService). The ledger keeps recording earned/reversed rows on assign/unassign.
+        // Not computed here either, so a commission-service fault can never break the dealer dashboard.
         $totalCustomers = $dealerLeads->count();
 
         $customerIds = app(\App\Services\DealerCustomerScope::class)->customerIds($dealer);
@@ -150,7 +143,6 @@ class DealerDashboardController extends Controller
             'allocatedDevicesCount',
             'assignedDevices',
             'assignedDevicesCount',
-            'earnedCommission',
             'pendingDevices',
             'brokenDevices'
         ));
