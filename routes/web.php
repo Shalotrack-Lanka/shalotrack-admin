@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\Dealer\ManageReplacementController;
 use App\Http\Controllers\Admin\Dealer\DealerLedgerController;
 use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
 use App\Http\Controllers\Admin\Dealer\DealerComplaintController;
+use App\Http\Controllers\Admin\Dealer\DealerScorecardController;
 
 // FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
 // that doesn't exist — the real one lives in a separate top-level Dealer
@@ -213,6 +214,7 @@ Route::middleware(['auth'])->group(function () {
 */
 
     Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
+    Route::get('/admin/dealer-scorecard', [DealerScorecardController::class, 'admin'])->middleware('role:ADMIN')->name('admin.dealer-scorecard');
 
     Route::prefix('admin/customer')->group(function () {
 
@@ -539,6 +541,8 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
         Route::get('/gps-tracking', [GpsTrackingController::class, 'dealerIndex'])->name('gps-tracking');
 
         Route::get('/renewals', [RenewalsController::class, 'dealer'])->name('renewals');
+
+        Route::get('/scorecard', [DealerScorecardController::class, 'dealer'])->name('scorecard');
 
         Route::get('/complaints', [DealerComplaintController::class, 'index'])->name('complaints');
         Route::post('/complaints/{complaintId}/reply', [DealerComplaintController::class, 'reply'])->name('complaints.reply');
