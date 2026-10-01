@@ -29,6 +29,9 @@ class AuditLog extends Model
     public const ACTIONS = [
         'subscription.updated'       => [self::CATEGORY_MONEY, 'Payment / subscription edited'],
         'bank_slip.viewed'           => [self::CATEGORY_MONEY, 'Bank slip viewed'],
+        'renewal.approved'           => [self::CATEGORY_MONEY, 'Customer renewal approved'],
+        'renewal.rejected'           => [self::CATEGORY_MONEY, 'Customer renewal rejected'],
+        'renewal.slip_viewed'        => [self::CATEGORY_MONEY, 'Renewal slip viewed'],
         'commission.payout_recorded' => [self::CATEGORY_MONEY, 'Commission payout recorded'],
         'commission.rate_saved'      => [self::CATEGORY_MONEY, 'Commission rate saved'],
         'commission.rate_deleted'    => [self::CATEGORY_MONEY, 'Commission rate removed'],
