@@ -197,8 +197,9 @@ class DealerDashboardController extends Controller
 
     public function customerList(Request $request)
     {
-        \Illuminate\Support\Facades\Artisan::call('customers:sync');
-
+        // No synchronous customers:sync here. It is scheduled every 5 minutes (routes/console.php);
+        // running it inside the request made this page wait on the API (2 calls x 3 retries x 15 s
+        // worst case) and added load on every page view.
         $dealerId = auth()->user()->dealer->id ?? null;
 
         if (!$dealerId) {
@@ -406,6 +407,12 @@ class DealerDashboardController extends Controller
             ->where('shdevice_id', $shdevice_id)
             ->firstOrFail();
 
+        // Only a repaired device (Pending Repair) goes back. A broken device must be
+        // tested first, and a device live on a vehicle must never be moved by the dealer.
+        if ($device->status !== DeviceStatus::PendingRepair->value || $this->isBound($device)) {
+            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be reassigned -- its status is \"{$device->status}\". Only devices in Pending Repair can be reassigned."]);
+        }
+
         $customerId = $device->assigned_customer_id;
 
         if (!$customerId) {
@@ -480,6 +487,12 @@ class DealerDashboardController extends Controller
             ->where('shdevice_id', $shdevice_id)
             ->firstOrFail();
 
+        // Only a Broken device goes back for testing. Anything else (sold, or live on a
+        // vehicle) would change a status the gateway relies on, so it is refused.
+        if ($device->status !== DeviceStatus::BrokenDevice->value || $this->isBound($device)) {
+            return back()->withErrors(['assign' => "Device IMEI {$device->imei_number} cannot be moved to Pending Repair -- its status is \"{$device->status}\". Only Broken devices can be sent back for testing."]);
+        }
+
         $device->status = DeviceStatus::PendingRepair->value;
         $device->save();
 
@@ -516,6 +529,13 @@ class DealerDashboardController extends Controller
         $customerAd = DealerCustomerAd::where('dealer_id', $dealerId)
             ->where('id', $id)
             ->firstOrFail();
+
+        // Devices still point at this customer (sold, pending repair or broken). Deleting
+        // the lead would orphan them, so the dealer must unassign them first.
+        if (SetupShalotrackDevice::where('assigned_customer_id', $customerAd->id)->exists()) {
+            return back()->withErrors(['assign' => "{$customerAd->name} still has devices assigned. Unassign them before deleting this customer."]);
+        }
+
         $customerAd->delete();
 
         return back()->with('success', 'Customer deleted successfully!');
