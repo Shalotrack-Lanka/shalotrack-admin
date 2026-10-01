@@ -13,7 +13,16 @@ RUN apk add --no-cache \
     sqlite \
     sqlite-dev \
     postgresql-dev \
-    && docker-php-ext-install pdo pdo_sqlite pdo_pgsql
+    libzip-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_sqlite pdo_pgsql zip gd
+
+# Fail the build (not a production request) if an extension that Excel import/export
+# (phpoffice/phpspreadsheet needs zip + gd) or PDF generation depends on is missing.
+RUN php -m | grep -qix zip && php -m | grep -qix gd
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
