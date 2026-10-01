@@ -131,6 +131,10 @@
                 <span>Renewals due</span>
             </a>
 
+            <a href="{{ route('dealer.device-health') }}" class="flex items-center justify-between p-3 text-white hover:bg-blue-900 rounded {{ request()->routeIs('dealer.device-health') ? 'bg-blue-900' : '' }}">
+                <span>Device health</span>
+            </a>
+
             <a href="{{ route('dealer.scorecard') }}" class="flex items-center justify-between p-3 text-white hover:bg-blue-900 rounded {{ request()->routeIs('dealer.scorecard') ? 'bg-blue-900' : '' }}">
                 <span>My scorecard</span>
             </a>

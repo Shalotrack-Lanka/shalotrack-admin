@@ -35,6 +35,7 @@ use App\Http\Controllers\Admin\Dealer\DealerDashboardController;
 use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 use App\Http\Controllers\Admin\Customer\CustomerDeviceManagementController;
 use App\Http\Controllers\Admin\Customer\RenewalsController;
+use App\Http\Controllers\Admin\Customer\DeviceHealthController;
 
 use App\Http\Controllers\Admin\Complains_Enquiries\TroubleshootController;
 use App\Http\Controllers\Admin\Complains_Enquiries\FeedbackController;
@@ -214,6 +215,7 @@ Route::middleware(['auth'])->group(function () {
 */
 
     Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
+    Route::get('/admin/device-health', [DeviceHealthController::class, 'admin'])->middleware('role:ADMIN')->name('admin.device-health');
     Route::get('/admin/dealer-scorecard', [DealerScorecardController::class, 'admin'])->middleware('role:ADMIN')->name('admin.dealer-scorecard');
 
     Route::prefix('admin/customer')->group(function () {
@@ -541,6 +543,7 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
         Route::get('/gps-tracking', [GpsTrackingController::class, 'dealerIndex'])->name('gps-tracking');
 
         Route::get('/renewals', [RenewalsController::class, 'dealer'])->name('renewals');
+        Route::get('/device-health', [DeviceHealthController::class, 'dealer'])->name('device-health');
 
         Route::get('/scorecard', [DealerScorecardController::class, 'dealer'])->name('scorecard');
 
