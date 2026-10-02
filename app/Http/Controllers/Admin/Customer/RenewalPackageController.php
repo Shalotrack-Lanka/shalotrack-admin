@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\RenewalPackage;
 use App\Services\Audit;
+use App\Services\RenewalPackagesApi;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -15,6 +16,10 @@ use Illuminate\Validation\ValidationException;
  */
 class RenewalPackageController extends Controller
 {
+    public function __construct(private RenewalPackagesApi $api)
+    {
+    }
+
     private const KEYS = ['customer_price', 'company_margin', 'distributor_margin', 'retailer_margin', 'warranty_months', 'is_active', 'effective_from'];
 
     public function index()
@@ -70,7 +75,13 @@ class RenewalPackageController extends Controller
             Audit::record('package.updated', 'renewal_package', (string) $package->id, $package->label, $changes, ['code' => $package->code]);
         }
 
-        return back()->with('success', "{$package->label} saved" . ($changes === [] ? ' (nothing changed).' : '.'));
+        // The mobile app must show the price the admin just set. The save above is already committed, so a
+        // failed push never undoes it; the admin is told plainly and can retry (php artisan renewal-packages:push).
+        $push = $this->api->push();
+
+        $response = back()->with('success', "{$package->label} saved" . ($changes === [] ? ' (nothing changed).' : '.') . ($push['ok'] ? ' ' . $push['message'] : ''));
+
+        return $push['ok'] ? $response : $response->with('warning', $push['message'] . ' The price is saved here but the app still shows the old one. Press Save again in a minute, or run "php artisan renewal-packages:push".');
     }
 
     /** Dates and decimals as plain strings so the audit diff compares values, not object types. */
