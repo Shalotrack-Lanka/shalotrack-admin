@@ -23,8 +23,11 @@
                 <tr>
                     <td class="p-3">
                         <div class="font-mono text-xs">{{ $l['imei'] }}</div>
-                        @if($l['kind'] === 'clawback')
+                        @if(in_array($l['kind'], ['clawback', 'margin_clawback'], true))
                             <span class="inline-block mt-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-red-100 text-red-700">Clawback</span>
+                        @endif
+                        @if(in_array($l['kind'], ['margin', 'margin_clawback'], true))
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-blue-100 text-blue-700">{{ ucfirst($l['role']) }} margin &middot; {{ $l['package'] }}</span>
                         @endif
                     </td>
                     <td class="p-3">
@@ -37,7 +40,7 @@
                         @if($showReason)
                             {{ $l['reason'] }}
                             @if($l['payable_from'])<div class="text-[11px] text-slate-400">earliest {{ $day($l['payable_from']) }}</div>@endif
-                        @elseif($l['kind'] === 'clawback')
+                        @elseif(in_array($l['kind'], ['clawback', 'margin_clawback'], true))
                             <span class="text-[11px] text-slate-500">{{ $l['reason'] }}</span>
                         @else
                             {{ $day($l['payable_from']) }}

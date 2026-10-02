@@ -101,8 +101,19 @@ class DealerCommissionService
      * commission (idempotent -- safe to call from every "assign device to
      * customer" code path without checking first).
      */
+    /**
+     * Retired: the flat per-device sale rate was replaced by the package margins in the Renewal Plans
+     * guideline (see PackagePayments). Existing ledger rows stay valid and are still paid and clawed back
+     * by the statements; no new ones are created. Flip to true only to restore the old behaviour.
+     */
+    public const FIXED_SALE_COMMISSION_ENABLED = false;
+
     public function recordEarned(SetupShalotrackDevice $device, Dealer $dealer, ?string $reason = null): ?DealerCommissionLedger
     {
+        if (! self::FIXED_SALE_COMMISSION_ENABLED) {
+            return null;
+        }
+
         return DB::transaction(function () use ($device, $dealer, $reason) {
             $alreadyActive = DealerCommissionLedger::where('shdevice_id', $device->shdevice_id)
                 ->where('entry_type', 'earned')

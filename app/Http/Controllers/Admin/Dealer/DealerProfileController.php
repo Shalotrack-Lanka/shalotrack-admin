@@ -48,8 +48,11 @@ class DealerProfileController extends Controller
             ];
         })->values();
 
+        // Who this dealer reports to: only dealers whose type is "distributor", and never itself.
+        $distributors = Dealer::where('dealer_status', 'distributor')->where('id', '!=', $dealer->id)->orderBy('full_name')->get(['id', 'full_name']);
+
         return view('admin.dealer.profile_view', compact(
-            'dealer', 'assignedDevices', 'transfers', 'totalDevicesTransferred', 'recentActivity'
+            'dealer', 'assignedDevices', 'transfers', 'totalDevicesTransferred', 'recentActivity', 'distributors'
         ));
     }
 
@@ -62,6 +65,9 @@ class DealerProfileController extends Controller
             'address'          => 'nullable|string|max:500',
             'qualification'    => 'nullable|string|max:255',
             'dealer_status'    => ['required', 'string', 'in:' . implode(',', self::VALID_DEALER_STATUSES)],
+            // The distributor who earns the Distributor margin on this dealer's sales. Must be a real
+            // distributor, and never the dealer itself.
+            'distributor_id'   => ['nullable', 'integer', Rule::exists('dealers', 'id')->where('dealer_status', 'distributor'), Rule::notIn([$dealer->id])],
             'region'           => ['required', 'string', 'in:' . implode(',', self::VALID_REGIONS)],
             'country'          => 'nullable|string|max:100',
             'pin_code'         => 'nullable|string|max:50',
@@ -82,6 +88,8 @@ class DealerProfileController extends Controller
             'password'         => 'nullable|string|min:8|confirmed',
         ], [
             'dealer_status.in'             => 'Please select a valid dealer type.',
+            'distributor_id.exists'        => 'Choose a dealer whose type is Distributor.',
+            'distributor_id.not_in'        => 'A dealer cannot be its own distributor.',
             'region.in'                    => 'Please select a valid region.',
             'contact_email.unique'         => 'This email is already registered to another dealer.',
             'deposit_date.before_or_equal' => 'Deposit date cannot be in the future.',

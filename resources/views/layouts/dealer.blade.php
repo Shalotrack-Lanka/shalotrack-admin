@@ -139,6 +139,10 @@
                 <span>My scorecard</span>
             </a>
 
+            <a href="{{ route('dealer.commission-earnings') }}" class="flex items-center justify-between p-3 text-white hover:bg-blue-900 rounded {{ request()->routeIs('dealer.commission-earnings') ? 'bg-blue-900' : '' }}">
+                <span>My commission</span>
+            </a>
+
             <a href="{{ route('dealer.commission-statements') }}" class="flex items-center justify-between p-3 text-white hover:bg-blue-900 rounded {{ request()->routeIs('dealer.commission-statement*') ? 'bg-blue-900' : '' }}">
                 <span>Commission statements</span>
             </a>

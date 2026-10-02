@@ -178,14 +178,20 @@ class CommissionStatement
                     'notes'              => $notes !== null && trim($notes) !== '' ? trim($notes) : null,
                 ]);
 
-                $ids = array_column($s['lines'], 'ledger_id');
-                $claimed = DB::table('dealer_commission_ledger')
+                $ids = array_values(array_filter(array_column($s['lines'], 'ledger_id')));
+                $entryIds = array_values(array_filter(array_column($s['lines'], 'entry_id')));
+
+                $claimed = $ids === [] ? 0 : DB::table('dealer_commission_ledger')
                     ->whereIn('id', $ids)
+                    ->whereNull('payout_id')
+                    ->update(['payout_id' => $payout->id]);
+                $claimedEntries = $entryIds === [] ? 0 : DB::table('commission_entries')
+                    ->whereIn('id', $entryIds)
                     ->whereNull('payout_id')
                     ->update(['payout_id' => $payout->id]);
 
                 // Another payout got to one of these rows first: roll everything back rather than pay twice.
-                if ($claimed !== count($ids)) {
+                if ($claimed !== count($ids) || $claimedEntries !== count($entryIds)) {
                     throw new CommissionPayoutException('These commission lines changed while you were paying. Nothing was recorded; reload and try again.');
                 }
 
@@ -262,8 +268,13 @@ class CommissionStatement
             $lines[] = $c;
         }
 
-        $gross = array_sum(array_map(fn ($l) => $l['kind'] === 'sale' ? $l['amount_cents'] : 0, $lines));
-        $claw = array_sum(array_map(fn ($l) => $l['kind'] === 'clawback' ? $l['amount_cents'] : 0, $lines));
+        // Package margins (Renewal Plans guideline): payable once the month ends, because each one was
+        // recorded together with a confirmed payment. Anything reversed shows as a negative line.
+        foreach ($this->marginLines($dealer, $period, null) as $m) {
+            $lines[] = $m;
+        }
+
+        [$gross, $claw] = self::totals($lines);
 
         return $this->shape($dealer, $period, null, $lines, $pending, $gross, $claw);
     }
@@ -361,11 +372,69 @@ class CommissionStatement
             ];
         }
 
+        foreach ($this->marginLines($dealer, $period, $payout) as $m) {
+            $lines[] = $m;
+        }
+
         // Totals come from the payout record itself, not a recomputation: this is what was actually paid.
         return $this->shape(
             $dealer, $period, $payout, $lines, [],
             self::cents($payout->gross_amount), self::cents($payout->clawback_amount)
         );
+    }
+
+    /**
+     * Package margin lines for a dealer or distributor. For an open statement: every unpaid line recorded
+     * before the month ended (older unpaid lines roll in). For a paid statement: the lines that payout claimed.
+     *
+     * @return array<int, array<string,mixed>>
+     */
+    private function marginLines(Dealer $dealer, array $period, ?DealerCommissionPayout $payout): array
+    {
+        $q = DB::table('commission_entries as e')
+            ->join('package_payments as p', 'p.id', '=', 'e.payment_id')
+            ->where('e.dealer_id', $dealer->id)
+            ->orderBy('e.occurred_at')->orderBy('e.id');
+
+        $payout
+            ? $q->where('e.payout_id', $payout->id)
+            : $q->whereNull('e.payout_id')->where('e.occurred_at', '<', $period['endExclusive']);
+
+        $lines = [];
+        foreach ($q->get(['e.id', 'e.amount', 'e.role', 'e.entry_type', 'e.occurred_at', 'e.reason',
+            'p.imei_number', 'p.customer_name', 'p.vehicle_number', 'p.package_label', 'p.package_model',
+            'p.subscription_start', 'p.id as payment_id']) as $r) {
+            $claw = $r->entry_type === 'clawback';
+            $lines[] = [
+                'ledger_id'      => null,
+                'entry_id'       => (int) $r->id,
+                'payment_id'     => (int) $r->payment_id,
+                'kind'           => $claw ? 'margin_clawback' : 'margin',
+                'role'           => $r->role,
+                'package'        => $r->package_label ?: $r->package_model,
+                'imei'           => $r->imei_number,
+                'customer_name'  => $r->customer_name,
+                'vehicle_number' => $r->vehicle_number,
+                'amount_cents'   => self::cents($r->amount),
+                'sold_on'        => Carbon::parse($r->occurred_at, 'UTC'),
+                'sub_start'      => $r->subscription_start ? Carbon::parse($r->subscription_start, 'UTC') : null,
+                'payable_from'   => null,
+                'reason'         => $claw ? ($r->reason ?: 'Payment reversed') : null,
+            ];
+        }
+
+        return $lines;
+    }
+
+    /** @return array{0:int,1:int} [gross (sum of positive lines), clawbacks (sum of negative lines)] in cents */
+    private static function totals(array $lines): array
+    {
+        $gross = $claw = 0;
+        foreach ($lines as $l) {
+            $l['amount_cents'] >= 0 ? $gross += $l['amount_cents'] : $claw += $l['amount_cents'];
+        }
+
+        return [$gross, $claw];
     }
 
     /** @return array<string,mixed> */
@@ -419,6 +488,11 @@ class CommissionStatement
     private static function cents($amount): int
     {
         return (int) round(((float) $amount) * 100);
+    }
+
+    public static function centsOf($amount): int
+    {
+        return self::cents($amount);
     }
 
     /** "1,234.50" from cents. */
