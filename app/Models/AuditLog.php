@@ -35,6 +35,7 @@ class AuditLog extends Model
         'commission.payout_recorded' => [self::CATEGORY_MONEY, 'Commission payout recorded'],
         'commission.rate_saved'      => [self::CATEGORY_MONEY, 'Commission rate saved'],
         'commission.rate_deleted'    => [self::CATEGORY_MONEY, 'Commission rate removed'],
+        'package.updated'            => [self::CATEGORY_MONEY, 'Renewal package price / warranty changed'],
 
         'device.intake_committed'    => [self::CATEGORY_DEVICE, 'Devices registered (scan intake)'],
         'device.activated'           => [self::CATEGORY_DEVICE, 'Device bound to a customer'],

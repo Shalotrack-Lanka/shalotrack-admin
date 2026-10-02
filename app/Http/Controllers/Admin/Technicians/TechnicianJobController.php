@@ -253,13 +253,19 @@ class TechnicianJobController extends Controller
             return response()->json([]);
         }
 
+        // Vehicle numbers are typed many ways ("WP BGU-1212", "WP BGU 1212", "wpbgu1212"), so the number
+        // is compared with spaces, dashes and dots removed on both sides.
+        $plain = preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($q));
         // % and _ are wildcards in LIKE; escape them so "50%" searches for "50%".
-        $like = '%' . mb_strtolower(addcslashes($q, '\\%_')) . '%';
+        $nameLike = '%' . mb_strtolower(addcslashes($q, '\\%_')) . '%';
+        $stripped = "replace(replace(replace(lower(vehicle_number), ' ', ''), '-', ''), '.', '')";
 
         $rows = VehicleAd::query()
-            ->where(function ($w) use ($like) {
-                $w->whereRaw("lower(vehicle_number) like ? escape '\\'", [$like])
-                    ->orWhereRaw("lower(customer_name) like ? escape '\\'", [$like]);
+            ->where(function ($w) use ($plain, $nameLike, $stripped) {
+                if (mb_strlen($plain) >= 2) {
+                    $w->orWhereRaw("$stripped like ?", ['%' . $plain . '%']);
+                }
+                $w->orWhereRaw("lower(customer_name) like ? escape '\\'", [$nameLike]);
             })
             ->orderBy('vehicle_number')
             ->limit(15)
@@ -282,7 +288,9 @@ class TechnicianJobController extends Controller
 
         $q = TechnicianJob::query()
             ->with('technician:id,name,phone')
-            ->leftJoin('Customer-ad as c', 'c.customer_id', '=', 'technician_jobs.customer_id')
+            // Customer-ad.customer_id is a uuid in Postgres while technician_jobs.customer_id is text, and
+            // Postgres will not compare the two directly, so the join compares them as text.
+            ->leftJoin('Customer-ad as c', DB::raw('CAST(c.customer_id AS TEXT)'), '=', 'technician_jobs.customer_id')
             ->select(['technician_jobs.*', 'c.phone_number as customer_phone']);
 
         if ($technicianId !== null) {

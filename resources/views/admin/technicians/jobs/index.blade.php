@@ -11,16 +11,16 @@
 <div class="space-y-5"
      x-data="{
         newOpen: {{ $errors->has('vehicle_id') || $errors->has('technician_id') || $errors->has('scheduled_for') || $errors->has('job_type') ? 'true' : 'false' }},
-        q: '', results: [], picked: null, searching: false, timer: null,
+        q: '', results: [], picked: null, searching: false, failed: false, timer: null,
         search() {
             clearTimeout(this.timer); this.picked = null;
             if (this.q.trim().length < 2) { this.results = []; return; }
             this.timer = setTimeout(async () => {
-                this.searching = true;
+                this.searching = true; this.failed = false;
                 try {
                     const r = await fetch('{{ route('admin.technician-jobs.vehicles') }}?q=' + encodeURIComponent(this.q.trim()), { headers: { 'Accept': 'application/json' } });
-                    this.results = r.ok ? await r.json() : [];
-                } catch (e) { this.results = []; }
+                    if (!r.ok) { this.failed = true; this.results = []; } else { this.results = await r.json(); }
+                } catch (e) { this.failed = true; this.results = []; }
                 this.searching = false;
             }, 250);
         },
@@ -187,7 +187,8 @@
                             <li @click="pick(v)" class="px-3 py-2 hover:bg-blue-50 cursor-pointer" x-text="v.label"></li>
                         </template>
                     </ul>
-                    <p x-show="!picked && q.trim().length >= 2 && !searching && !results.length" class="text-[11px] text-amber-700 mt-1">No vehicle found.</p>
+                    <p x-show="failed" class="text-[11px] text-red-700 mt-1">The search failed. Reload the page and try again.</p>
+                    <p x-show="!failed && !picked && q.trim().length >= 2 && !searching && !results.length" class="text-[11px] text-amber-700 mt-1">No vehicle found.</p>
                     <p x-show="picked" class="text-[11px] text-emerald-700 mt-1">Vehicle selected.</p>
                 </div>
 

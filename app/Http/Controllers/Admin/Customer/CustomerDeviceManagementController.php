@@ -6,6 +6,7 @@ use App\Services\Audit;
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ActivatedDevice;
+use App\Models\RenewalPackage;
 use App\Models\ExpiredDevice;
 use App\Models\SetupShalotrackDevice;
 use App\Models\VehicleAd;
@@ -24,7 +25,7 @@ class CustomerDeviceManagementController extends Controller
 {
     use PushesDeviceToApi;
 
-    private const SUBSCRIPTION_MODELS = ['3 Months', '6 Months', '1 Year', '2 Year', '3 Year'];
+    private const SUBSCRIPTION_MODELS = ['3 Months', '6 Months', '1 Year', '2 Year', '3 Year', '6 Year'];
 
     // 30 days per month, per the spec.
     private const SUBSCRIPTION_DAYS = [
@@ -33,6 +34,7 @@ class CustomerDeviceManagementController extends Controller
         '1 Year'   => 360,
         '2 Year'   => 720,
         '3 Year'   => 1080,
+        '6 Year'   => 2160,
     ];
 
     public function index()
@@ -151,6 +153,8 @@ class CustomerDeviceManagementController extends Controller
                 'installed_on'       => $validated['installed_on'] ?? null,
                 'installed_by'       => $validated['installed_by'] ?? null,
                 'install_notes'      => $validated['install_notes'] ?? null,
+                // Permanent: the warranty clock starts here and no later edit or renewal moves it.
+                'original_activated_at' => now(),
                 ...$this->subscriptionFields($validated),
             ]);
 
@@ -175,7 +179,7 @@ class CustomerDeviceManagementController extends Controller
     {
         $validated = $this->validateDeviceForm($request, $activatedDevice, customerId: $activatedDevice->customer_id);
 
-        $auditKeys = ['payment_status', 'subscription_model', 'subscription_start_date', 'subscription_end_date', 'bank_invoice', 'sim_number', 'device_category'];
+        $auditKeys = ['payment_status', 'subscription_model', 'subscription_start_date', 'subscription_end_date', 'bank_invoice', 'sim_number', 'device_category', 'warranty_months'];
         $auditBefore = $activatedDevice->only($auditKeys);
         $installBefore = $this->installSnapshot($activatedDevice);
 
@@ -211,6 +215,8 @@ class CustomerDeviceManagementController extends Controller
             Audit::record('subscription.updated', 'vehicle', $activatedDevice->vehicle_id, $activatedDevice->vehicle_number, $auditChanges, [
                 'imei'             => $activatedDevice->imei_number,
                 'bank_slip_replaced' => $request->hasFile('bank_slip'),
+                // What this package costs a customer per the pricing master at the time of the edit.
+                'package_price_lkr'  => RenewalPackage::forModel($activatedDevice->fresh()->subscription_model)?->customer_price,
             ]);
         }
 
@@ -394,6 +400,8 @@ class CustomerDeviceManagementController extends Controller
                 'sim_number'         => $expiredDevice->sim_number,
                 'device_category'    => $expiredDevice->device_category,
                 'status'             => DeviceStatus::Activated->value,
+                // Legacy path: the earliest record we have for this device is when it was first bound.
+                'original_activated_at' => $expiredDevice->created_at ?? now(),
                 ...$this->subscriptionFields($validated),
             ]);
 
@@ -443,6 +451,8 @@ class CustomerDeviceManagementController extends Controller
 
         return [
             'payment_status'          => 'Paid',
+            // Warranty is earned by the package and never shrinks or resets (Renewal Plans guideline, section 3).
+            'warranty_months'         => max((int) ($current?->warranty_months ?? 0), RenewalPackage::warrantyMonthsFor($validated['subscription_model'])),
             'subscription_model'      => $validated['subscription_model'],
             'subscription_start_date' => Carbon::parse($validated['subscription_start_date'])->startOfDay(),
             'subscription_end_date'   => $this->calcSubscriptionEndDate($validated['subscription_start_date'], $validated['subscription_model']),

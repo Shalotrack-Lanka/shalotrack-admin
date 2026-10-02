@@ -369,6 +369,7 @@
                                 <option value="1 Year">1 Year</option>
                                 <option value="2 Year">2 Year</option>
                                 <option value="3 Year">3 Year</option>
+                                <option value="6 Year">6 Year</option>
                             </select>
                         </div>
 
@@ -523,7 +524,8 @@
                 '6 Months': 180,
                 '1 Year': 360,
                 '2 Year': 720,
-                '3 Year': 1080
+                '3 Year': 1080,
+                '6 Year': 2160
             };
 
             Alpine.store('deviceMgmt', {

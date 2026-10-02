@@ -38,6 +38,7 @@ use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 use App\Http\Controllers\Admin\Customer\CustomerDeviceManagementController;
 use App\Http\Controllers\Admin\Customer\RenewalRequestController;
 use App\Http\Controllers\Admin\Customer\InstallsWarrantyController;
+use App\Http\Controllers\Admin\Customer\RenewalPackageController;
 use App\Http\Controllers\Admin\Technicians\TechnicianController;
 use App\Http\Controllers\Admin\Technicians\TechnicianJobController;
 use App\Http\Controllers\Admin\Customer\RenewalsController;
@@ -221,6 +222,8 @@ Route::middleware(['auth'])->group(function () {
 */
 
     Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
+    Route::get('/admin/renewal-packages', [RenewalPackageController::class, 'index'])->middleware('role:ADMIN')->name('admin.renewal-packages');
+    Route::patch('/admin/renewal-packages/{package}', [RenewalPackageController::class, 'update'])->middleware('role:ADMIN')->name('admin.renewal-packages.update');
     Route::get('/admin/installs-warranty', [InstallsWarrantyController::class, 'index'])->middleware('role:ADMIN')->name('admin.installs-warranty');
     // Technicians and their jobs (ADMIN only; technicians are a list, not login accounts).
     Route::get('/admin/technicians', [TechnicianController::class, 'index'])->middleware('role:ADMIN')->name('admin.technicians');
