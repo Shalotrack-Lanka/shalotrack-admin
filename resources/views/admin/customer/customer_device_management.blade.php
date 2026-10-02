@@ -89,6 +89,9 @@
                                 'subscription_start_date' => optional($d->subscription_start_date)->format('Y-m-d'),
                                 'subscription_end_date' => optional($d->subscription_end_date)->format('Y-m-d'),
                                 'bank_invoice' => $d->bank_invoice,
+                                'installed_on' => optional($d->installed_on)->format('Y-m-d'),
+                                'installed_by' => $d->installed_by,
+                                'install_notes' => $d->install_notes,
                                 'bank_slip_url' => $d->bank_slip ? route('admin.customer-device-management.bank-slip', $d->activated_device_id) : null,
                                 ];
                                 @endphp
@@ -412,6 +415,30 @@
                     </div>
                 </template>
 
+                <template x-if="$store.deviceMgmt.mode !== 'reactivate'">
+                    <div class="space-y-4 border-t border-gray-100 pt-4" data-install-fields>
+                        <p class="text-xs font-bold text-gray-700">Installation</p>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Installed on</label>
+                            <input type="date" name="installed_on" x-model="$store.deviceMgmt.form.installed_on"
+                                :max="$store.deviceMgmt.todayString()"
+                                class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                            <p class="text-[11px] text-gray-400 mt-1">The day the device was fitted to the vehicle. Warranty is the subscription period.</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Installed by</label>
+                            <input type="text" name="installed_by" x-model="$store.deviceMgmt.form.installed_by" maxlength="100"
+                                placeholder="Technician or dealer name"
+                                class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Install notes (optional)</label>
+                            <textarea name="install_notes" x-model="$store.deviceMgmt.form.install_notes" maxlength="500" rows="2"
+                                class="w-full rounded-lg border-gray-300 text-sm shadow-sm"></textarea>
+                        </div>
+                    </div>
+                </template>
+
                 <div class="pt-2">
                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors">
                         <span x-text="$store.deviceMgmt.submitLabel"></span>
@@ -457,6 +484,20 @@
                         placeholder="e.g. faulty, water damage"
                         class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
                 </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">New device fitted on</label>
+                        <input type="date" name="installed_on" x-model="$store.deviceMgmt.replaceInstalledOn"
+                            :max="$store.deviceMgmt.todayString()"
+                            class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Fitted by</label>
+                        <input type="text" name="installed_by" x-model="$store.deviceMgmt.replaceInstalledBy" maxlength="100"
+                            class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                    </div>
+                </div>
+                <p class="text-[11px] text-gray-400 -mt-2">The install record moves to the new device. The old install stays in the audit log.</p>
                 <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors">
                     Replace Device
                 </button>
@@ -503,6 +544,8 @@
                 replaceOldImei: '',
                 replaceNewImei: '',
                 replaceReason: '',
+                replaceInstalledOn: '',
+                replaceInstalledBy: '',
                 notActivated: @json($notActivatedDevices),
                 form: {
                     imei_number: '',
@@ -512,6 +555,13 @@
                     subscription_model: '',
                     subscription_start_date: '',
                     bank_invoice: '',
+                    installed_on: '',
+                    installed_by: '',
+                    install_notes: '',
+                },
+
+                todayString() {
+                    return todayDateString();
                 },
 
                 get modalTitle() {
@@ -607,6 +657,9 @@
                         subscription_model: '',
                         subscription_start_date: todayDateString(),
                         bank_invoice: '',
+                        installed_on: todayDateString(),
+                        installed_by: '',
+                        install_notes: '',
                     };
                     this.open = true;
                 },
@@ -633,6 +686,9 @@
                         subscription_model: device.subscription_model || '',
                         subscription_start_date: device.subscription_start_date || todayDateString(),
                         bank_invoice: device.bank_invoice || '',
+                        installed_on: device.installed_on || '',
+                        installed_by: device.installed_by || '',
+                        install_notes: device.install_notes || '',
                     };
                     this.open = true;
                 },
@@ -655,6 +711,9 @@
                         subscription_model: '',
                         subscription_start_date: todayDateString(),
                         bank_invoice: '',
+                        installed_on: '',
+                        installed_by: '',
+                        install_notes: '',
                     };
                     this.open = true;
                 },
@@ -665,6 +724,8 @@
                     this.replaceOldImei = device.imei_number;
                     this.replaceNewImei = '';
                     this.replaceReason = '';
+                    this.replaceInstalledOn = todayDateString();
+                    this.replaceInstalledBy = '';
                     this.replaceOpen = true;
                 },
 

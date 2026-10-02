@@ -26,10 +26,14 @@ class ActivatedDevice extends Model
         'bank_invoice',
         'bank_slip',
         'status',
+        'installed_on',
+        'installed_by',
+        'install_notes',
     ];
 
     protected $casts = [
         'has_gps_device'          => 'boolean',
+        'installed_on'            => 'date',
         'subscription_start_date' => 'datetime',
         'subscription_end_date'   => 'datetime',
     ];

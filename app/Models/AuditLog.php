@@ -40,6 +40,7 @@ class AuditLog extends Model
         'device.activated'           => [self::CATEGORY_DEVICE, 'Device bound to a customer'],
         'device.reactivated'         => [self::CATEGORY_DEVICE, 'Expired device reactivated'],
         'device.replaced'            => [self::CATEGORY_DEVICE, 'Device replaced'],
+        'install.updated'            => [self::CATEGORY_DEVICE, 'Install details edited'],
         'device.status_changed'      => [self::CATEGORY_DEVICE, 'Device status changed'],
         'device.assigned'            => [self::CATEGORY_DEVICE, 'Dealer assigned a device to a customer'],
         'device.unassigned'          => [self::CATEGORY_DEVICE, 'Dealer unassigned a device'],
