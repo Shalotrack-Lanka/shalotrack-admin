@@ -19,7 +19,7 @@
         <div>
             <h1 class="text-2xl font-black text-blue-950">Commission payouts</h1>
             <p class="text-xs text-slate-500 mt-0.5">
-                Monthly statements. A sale is payable once its customer's subscription has been paid for {{ CommissionStatement::PAYABLE_AFTER_DAYS }}+ days by the end of the month.
+                Monthly statements. Package-margin commission (retailer and distributor) is payable once its month has ended. Old fixed-rate sales keep the {{ CommissionStatement::PAYABLE_AFTER_DAYS }}-day rule.
             </p>
         </div>
         <form method="GET" action="{{ route('admin.commission-payouts') }}">
@@ -33,7 +33,7 @@
 
     @unless($ratesConfigured)
         <div class="bg-red-50 border border-red-200 text-red-800 text-sm rounded-xl p-4">
-            <b>No commission rates are configured.</b> Every amount below uses the built-in fallback of LKR 1,000 per device, which nobody has approved. Set the rates before paying anyone.
+            <b>No commission rates are configured.</b> Old fixed-rate sales still waiting to be paid use the built-in fallback of LKR 1,000 per device, which nobody has approved. Check them before paying anyone. New package-margin commission is not affected.
         </div>
     @endunless
 

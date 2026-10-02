@@ -31,7 +31,7 @@
     @endif
     @unless($ratesConfigured)
         <div class="bg-red-50 border border-red-200 text-red-800 text-sm rounded-xl p-4">
-            <b>No commission rates are configured.</b> These amounts use the unapproved built-in fallback of LKR 1,000 per device.
+            <b>No commission rates are configured.</b> Some lines below are old fixed-rate sales that use the unapproved built-in fallback of LKR 1,000 per device. New package-margin lines are not affected.
         </div>
     @endunless
 
