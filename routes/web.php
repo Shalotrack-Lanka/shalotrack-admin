@@ -579,6 +579,7 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
         Route::get('/device-health', [DeviceHealthController::class, 'dealer'])->name('device-health');
 
         Route::get('/scorecard', [DealerScorecardController::class, 'dealer'])->name('scorecard');
+        Route::get('/commission-earnings', [CommissionPayoutController::class, 'dealerEarnings'])->name('commission-earnings');
         Route::get('/commission-statements', [CommissionPayoutController::class, 'dealerIndex'])->name('commission-statements');
         Route::get('/commission-statements/{month}', [CommissionPayoutController::class, 'dealerShow'])->name('commission-statement');
 

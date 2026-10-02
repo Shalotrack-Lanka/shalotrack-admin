@@ -116,6 +116,63 @@ class CommissionPayoutController extends Controller
         ]);
     }
 
+    /**
+     * What the dealer (or distributor) has earned, month by month: this month, or the last 3, 6 or 12.
+     * Unlike the statements page this includes months not yet paid; each line says whether it has been paid.
+     * Own rows only: a login with no dealer record sees nothing.
+     */
+    public function dealerEarnings(Request $request)
+    {
+        $dealer = auth()->user()->dealer;
+        $range = (int) $request->query('range', 1);
+        $range = in_array($range, [1, 3, 6, 12], true) ? $range : 1;
+
+        $months = [];
+        $cursor = now(CommissionStatement::TZ)->startOfMonth();
+        for ($i = 0; $i < $range; $i++) {
+            $months[] = $cursor->format('Y-m');
+            $cursor = $cursor->subMonth();
+        }
+
+        $perMonth = [];
+        foreach ($months as $m) {
+            $perMonth[$m] = ['label' => \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $m . '-01')->format('F Y'),
+                'earned' => 0, 'clawback' => 0, 'paid' => 0, 'outstanding' => 0];
+        }
+        $lines = collect();
+
+        if ($dealer) {
+            $rows = \Illuminate\Support\Facades\DB::table('commission_entries as e')
+                ->join('package_payments as p', 'p.id', '=', 'e.payment_id')
+                ->leftJoin('dealer_commission_payouts as po', 'po.id', '=', 'e.payout_id')
+                ->where('e.dealer_id', $dealer->id)
+                ->whereIn('e.period_month', $months)
+                ->orderByDesc('e.occurred_at')->orderByDesc('e.id')
+                ->get(['e.id', 'e.amount', 'e.role', 'e.entry_type', 'e.period_month', 'e.occurred_at', 'e.reason', 'e.payout_id',
+                    'po.reference as payout_reference', 'po.paid_on as payout_paid_on',
+                    'p.vehicle_number', 'p.customer_name', 'p.package_label', 'p.package_model']);
+
+            foreach ($rows as $r) {
+                $c = CommissionStatement::centsOf($r->amount);
+                $r->amount_cents = $c;
+                $c >= 0 ? $perMonth[$r->period_month]['earned'] += $c : $perMonth[$r->period_month]['clawback'] += $c;
+                $r->payout_id ? $perMonth[$r->period_month]['paid'] += $c : $perMonth[$r->period_month]['outstanding'] += $c;
+            }
+            $lines = $rows->take(500);
+        }
+
+        $total = ['earned' => 0, 'clawback' => 0, 'paid' => 0, 'outstanding' => 0];
+        foreach ($perMonth as $m) {
+            foreach ($total as $k => $_) {
+                $total[$k] += $m[$k];
+            }
+        }
+
+        return view('dealer.commission-earnings', [
+            'range' => $range, 'perMonth' => $perMonth, 'total' => $total, 'lines' => $lines, 'hasDealer' => $dealer !== null,
+        ]);
+    }
+
     public function dealerShow(string $month)
     {
         $dealer = auth()->user()->dealer;
@@ -170,7 +227,12 @@ class CommissionPayoutController extends Controller
 
             foreach ($s['lines'] as $l) {
                 fputcsv($out, [
-                    $l['kind'] === 'sale' ? 'Sale' : 'Clawback',
+                    match ($l['kind']) {
+                        'sale'            => 'Sale',
+                        'margin'          => ucfirst($l['role']) . ' margin (' . $l['package'] . ')',
+                        'margin_clawback' => 'Clawback: ' . ucfirst($l['role']) . ' margin (' . $l['package'] . ')',
+                        default           => 'Clawback',
+                    },
                     RenewalsReport::csvSafe($l['imei']),
                     RenewalsReport::csvSafe($l['customer_name']),
                     RenewalsReport::csvSafe($l['vehicle_number']),

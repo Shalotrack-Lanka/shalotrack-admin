@@ -133,6 +133,16 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">Distributor (earns the Distributor margin)</label>
+                        <select name="distributor_id"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none bg-white">
+                            <option value="">None</option>
+                            @foreach($distributors as $dist)
+                                <option value="{{ $dist->id }}" {{ (string) old('distributor_id', $dealer->distributor_id) === (string) $dist->id ? 'selected' : '' }}>{{ $dist->full_name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">Region <span class="text-red-500">*</span></label>
                         <select name="region" required
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none bg-white">

@@ -6,7 +6,9 @@ use App\Services\Audit;
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ActivatedDevice;
+use App\Models\PackagePayment;
 use App\Models\RenewalPackage;
+use App\Services\PackagePayments;
 use App\Models\ExpiredDevice;
 use App\Models\SetupShalotrackDevice;
 use App\Models\VehicleAd;
@@ -24,6 +26,10 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class CustomerDeviceManagementController extends Controller
 {
     use PushesDeviceToApi;
+
+    public function __construct(private PackagePayments $payments)
+    {
+    }
 
     private const SUBSCRIPTION_MODELS = ['3 Months', '6 Months', '1 Year', '2 Year', '3 Year', '6 Year'];
 
@@ -139,7 +145,7 @@ class CustomerDeviceManagementController extends Controller
                 $validated['bank_slip'] = $request->file('bank_slip')->store('bank_slips', 'public');
             }
 
-            ActivatedDevice::create([
+            $bound = ActivatedDevice::create([
                 'vehicle_id'         => $vehicle->vehicle_id,
                 'customer_id'        => $vehicle->customer_id,
                 'customer_name'      => $vehicle->customer_name,
@@ -160,6 +166,9 @@ class CustomerDeviceManagementController extends Controller
 
             $device->status = DeviceStatus::Activated->value;
             $device->save();
+
+            // Same transaction: the device is never saved as Paid without its payment record and commission.
+            $this->payments->record($bound, PackagePayments::SOURCE_ACTIVATION);
         });
 
         Audit::record('device.activated', 'vehicle', $vehicle->vehicle_id, $vehicle->vehicle_number, [], [
@@ -183,7 +192,29 @@ class CustomerDeviceManagementController extends Controller
         $auditBefore = $activatedDevice->only($auditKeys);
         $installBefore = $this->installSnapshot($activatedDevice);
 
-        DB::transaction(function () use ($validated, $activatedDevice, $request) {
+        // What the device looked like before this edit, to tell a RENEWAL (a new payment for a new
+        // period) from a CORRECTION of the payment already recorded.
+        $wasPaid = $activatedDevice->payment_status === 'Paid';
+        $beforeKey = $wasPaid ? PackagePayments::eventKey($activatedDevice) : null;
+        $previousExpiry = $wasPaid ? $activatedDevice->subscription_end_date : null;
+        $nowPaid = $validated['payment_status'] === 'Paid';
+
+        $newPeriod = $wasPaid && $nowPaid
+            && trim((string) ($validated['bank_invoice'] ?? '')) !== trim((string) $activatedDevice->bank_invoice)
+            && Carbon::parse($validated['subscription_start_date'])->format('Y-m-d') !== $activatedDevice->subscription_start_date?->format('Y-m-d');
+
+        // Renewal Plans guideline, section 4: renewing a subscription that is still running adds the new
+        // period to the existing expiry, so the customer never loses days they already paid for.
+        $renewalNote = '';
+        if ($newPeriod && $previousExpiry && $previousExpiry->isFuture()) {
+            $existingEnd = $previousExpiry->copy()->startOfDay();
+            if (Carbon::parse($validated['subscription_start_date'])->startOfDay()->lt($existingEnd)) {
+                $validated['subscription_start_date'] = $existingEnd->format('Y-m-d');
+                $renewalNote = " The new period starts at the current expiry ({$existingEnd->format('Y-m-d')}) so the customer keeps the days already paid for.";
+            }
+        }
+
+        DB::transaction(function () use ($validated, $activatedDevice, $request, $wasPaid, $beforeKey, $nowPaid, $newPeriod, $previousExpiry) {
             if ($request->hasFile('bank_slip')) {
                 if ($activatedDevice->bank_slip) {
                     Storage::disk('public')->delete($activatedDevice->bank_slip);
@@ -201,6 +232,18 @@ class CustomerDeviceManagementController extends Controller
                 'install_notes'    => $validated['install_notes'] ?? null,
                 ...$this->subscriptionFields($validated, keepBankSlip: !$request->hasFile('bank_slip'), current: $activatedDevice),
             ]);
+
+            // Commission follows the payment, in the same transaction as the save.
+            $afterKey = $nowPaid ? PackagePayments::eventKey($activatedDevice) : null;
+            if ($wasPaid && $beforeKey !== $afterKey && ! $newPeriod) {
+                $old = PackagePayment::where('event_key', $beforeKey)->first();
+                if ($old) {
+                    $this->payments->reverse($old, $nowPaid ? 'Payment details corrected by admin' : 'Payment un-marked by admin');
+                }
+            }
+            if ($nowPaid && ($newPeriod || ! $wasPaid || $beforeKey !== $afterKey)) {
+                $this->payments->record($activatedDevice, PackagePayments::SOURCE_EDIT, $previousExpiry);
+            }
         });
 
         $installChanges = Audit::diff($installBefore, $this->installSnapshot($activatedDevice->fresh()), self::INSTALL_KEYS);
@@ -215,13 +258,15 @@ class CustomerDeviceManagementController extends Controller
             Audit::record('subscription.updated', 'vehicle', $activatedDevice->vehicle_id, $activatedDevice->vehicle_number, $auditChanges, [
                 'imei'             => $activatedDevice->imei_number,
                 'bank_slip_replaced' => $request->hasFile('bank_slip'),
+                'renewal'            => $newPeriod,
+                'previous_expiry'    => $previousExpiry?->format('Y-m-d'),
                 // What this package costs a customer per the pricing master at the time of the edit.
                 'package_price_lkr'  => RenewalPackage::forModel($activatedDevice->fresh()->subscription_model)?->customer_price,
             ]);
         }
 
         return redirect()->route('admin.customer-device-management')
-            ->with('success', "Device {$activatedDevice->imei_number} updated.");
+            ->with('success', "Device {$activatedDevice->imei_number} updated.{$renewalNote}");
     }
 
     /**
@@ -389,7 +434,7 @@ class CustomerDeviceManagementController extends Controller
         $validated = $this->validateDeviceForm($request, forReactivation: true, customerId: $expiredDevice->customer_id);
 
         DB::transaction(function () use ($validated, $expiredDevice) {
-            ActivatedDevice::create([
+            $revived = ActivatedDevice::create([
                 'vehicle_id'         => $expiredDevice->vehicle_id,
                 'customer_id'        => $expiredDevice->customer_id,
                 'customer_name'      => $expiredDevice->customer_name,
@@ -404,6 +449,8 @@ class CustomerDeviceManagementController extends Controller
                 'original_activated_at' => $expiredDevice->created_at ?? now(),
                 ...$this->subscriptionFields($validated),
             ]);
+
+            $this->payments->record($revived, PackagePayments::SOURCE_REACTIVATION);
 
             $expiredDevice->delete();
         });
