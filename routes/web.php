@@ -37,6 +37,7 @@ use App\Http\Controllers\Admin\Dealer\DealerDashboardController;
 use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 use App\Http\Controllers\Admin\Customer\CustomerDeviceManagementController;
 use App\Http\Controllers\Admin\Customer\RenewalRequestController;
+use App\Http\Controllers\Admin\Customer\InstallsWarrantyController;
 use App\Http\Controllers\Admin\Customer\RenewalsController;
 use App\Http\Controllers\Admin\Customer\DeviceHealthController;
 
@@ -218,14 +219,15 @@ Route::middleware(['auth'])->group(function () {
 */
 
     Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
+    Route::get('/admin/installs-warranty', [InstallsWarrantyController::class, 'index'])->middleware('role:ADMIN')->name('admin.installs-warranty');
     Route::get('/admin/device-health', [DeviceHealthController::class, 'admin'])->middleware('role:ADMIN')->name('admin.device-health');
     Route::get('/admin/dealer-scorecard', [DealerScorecardController::class, 'admin'])->middleware('role:ADMIN')->name('admin.dealer-scorecard');
 
     Route::get('/admin/audit-log', [AuditLogController::class, 'index'])->middleware('role:ADMIN')->name('admin.audit-log');
 
     Route::get('/admin/renewal-requests', [RenewalRequestController::class, 'index'])->middleware('role:ADMIN')->name('admin.renewal-requests');
-    Route::get('/admin/renewal-requests/{id}/slip', [RenewalRequestController::class, 'slip'])->whereUuid('id')->middleware(['role:ADMIN', 'throttle:60,1'])->name('admin.renewal-requests.slip');
-    Route::post('/admin/renewal-requests/{id}/decide', [RenewalRequestController::class, 'decide'])->whereUuid('id')->middleware('role:ADMIN')->name('admin.renewal-requests.decide');
+    Route::get('/admin/renewal-requests/{id}/slip', [RenewalRequestController::class, 'slip'])->middleware(['role:ADMIN', 'throttle:60,1'])->name('admin.renewal-requests.slip');
+    Route::post('/admin/renewal-requests/{id}/decide', [RenewalRequestController::class, 'decide'])->middleware('role:ADMIN')->name('admin.renewal-requests.decide');
 
     // Commission payout statements (ADMIN only; dealers read their own paid ones under dealer.*).
     Route::middleware('role:ADMIN')->prefix('admin/commission-payouts')->name('admin.commission-payouts')->group(function () {

@@ -148,6 +148,9 @@ class CustomerDeviceManagementController extends Controller
                 'sim_number'         => $validated['sim_number'],
                 'device_category'    => $validated['device_category'],
                 'status'             => DeviceStatus::Activated->value,
+                'installed_on'       => $validated['installed_on'] ?? null,
+                'installed_by'       => $validated['installed_by'] ?? null,
+                'install_notes'      => $validated['install_notes'] ?? null,
                 ...$this->subscriptionFields($validated),
             ]);
 
@@ -160,6 +163,8 @@ class CustomerDeviceManagementController extends Controller
             'payment_status'     => $validated['payment_status'],
             'subscription_model' => $validated['subscription_model'] ?? null,
             'start'              => $validated['subscription_start_date'] ?? null,
+            'installed_on'       => $validated['installed_on'] ?? null,
+            'installed_by'       => $validated['installed_by'] ?? null,
         ]);
 
         return redirect()->route('admin.customer-device-management')
@@ -172,6 +177,7 @@ class CustomerDeviceManagementController extends Controller
 
         $auditKeys = ['payment_status', 'subscription_model', 'subscription_start_date', 'subscription_end_date', 'bank_invoice', 'sim_number', 'device_category'];
         $auditBefore = $activatedDevice->only($auditKeys);
+        $installBefore = $this->installSnapshot($activatedDevice);
 
         DB::transaction(function () use ($validated, $activatedDevice, $request) {
             if ($request->hasFile('bank_slip')) {
@@ -186,9 +192,19 @@ class CustomerDeviceManagementController extends Controller
             $activatedDevice->update([
                 'sim_number'       => $validated['sim_number'],
                 'device_category'  => $validated['device_category'],
+                'installed_on'     => $validated['installed_on'] ?? null,
+                'installed_by'     => $validated['installed_by'] ?? null,
+                'install_notes'    => $validated['install_notes'] ?? null,
                 ...$this->subscriptionFields($validated, keepBankSlip: !$request->hasFile('bank_slip'), current: $activatedDevice),
             ]);
         });
+
+        $installChanges = Audit::diff($installBefore, $this->installSnapshot($activatedDevice->fresh()), self::INSTALL_KEYS);
+        if ($installChanges !== []) {
+            Audit::record('install.updated', 'vehicle', $activatedDevice->vehicle_id, $activatedDevice->vehicle_number, $installChanges, [
+                'imei' => $activatedDevice->imei_number,
+            ]);
+        }
 
         $auditChanges = Audit::diff($auditBefore, $activatedDevice->fresh()->only($auditKeys), $auditKeys);
         if ($auditChanges !== [] || $request->hasFile('bank_slip')) {
@@ -220,12 +236,15 @@ class CustomerDeviceManagementController extends Controller
                 }),
             ],
             'reason' => ['required', 'string', 'max:255'],
+            'installed_on' => ['nullable', 'date', 'before_or_equal:' . now()->local()->toDateString()],
+            'installed_by' => ['nullable', 'string', 'max:100'],
         ], [
             'new_imei_number.exists' => "This device is not available to bind: it may not be activated yet, already on a customer account, sitting in a dealer's unsold stock, or removed. Refresh the page and choose another device.",
             'reason.required' => 'Say why the device is being replaced (for example: faulty, water damage).',
         ]);
 
         $oldImei = $activatedDevice->imei_number;
+        $installBefore = $this->installSnapshot($activatedDevice);
 
         [$old, $new] = DB::transaction(function () use ($validated, $activatedDevice, $oldImei) {
             $new = SetupShalotrackDevice::bindableByAdmin()
@@ -248,6 +267,10 @@ class CustomerDeviceManagementController extends Controller
                 'imei_number'     => $new->imei_number,
                 'sim_number'      => $new->sim_number,
                 'device_category' => $new->device_category,
+                // The new hardware was fitted on this date; the old install is kept in the audit trail.
+                'installed_on'    => $validated['installed_on'] ?? now()->local()->toDateString(),
+                'installed_by'    => $validated['installed_by'] ?? null,
+                'install_notes'   => null,
             ]);
 
             return [$old, $new];
@@ -263,7 +286,8 @@ class CustomerDeviceManagementController extends Controller
         ]);
 
         Audit::record('device.replaced', 'vehicle', $activatedDevice->vehicle_id, $activatedDevice->vehicle_number,
-            ['imei' => ['from' => $oldImei, 'to' => $new->imei_number]],
+            ['imei' => ['from' => $oldImei, 'to' => $new->imei_number]]
+                + Audit::diff($installBefore, $this->installSnapshot($activatedDevice->fresh()), self::INSTALL_KEYS),
             ['reason' => $validated['reason'], 'payment_status' => $activatedDevice->payment_status]);
 
         $synced = $this->syncReplacementToApi($old, $new->fresh(), $activatedDevice->fresh(), $oldImei);
@@ -386,6 +410,18 @@ class CustomerDeviceManagementController extends Controller
             ->with('success', "Device {$expiredDevice->imei_number} reactivated for {$expiredDevice->vehicle_number}.");
     }
 
+    private const INSTALL_KEYS = ['installed_on', 'installed_by', 'install_notes'];
+
+    /** Install details as plain strings, so the audit trail compares dates by value. */
+    private function installSnapshot(ActivatedDevice $device): array
+    {
+        return [
+            'installed_on'  => $device->installed_on?->format('Y-m-d'),
+            'installed_by'  => $device->installed_by,
+            'install_notes' => $device->install_notes,
+        ];
+    }
+
     /**
      * Builds the payment_status / subscription_model / subscription_start_date /
      * subscription_end_date / bank_invoice / bank_slip columns from validated
@@ -449,6 +485,13 @@ class CustomerDeviceManagementController extends Controller
             'bank_slip' => ['nullable', 'image', 'max:2048'],
         ];
 
+        if (! $forReactivation) {
+            // Date compared against Sri Lanka's today: the app clock is UTC and would reject a valid local date early in the morning.
+            $rules['installed_on']  = ['nullable', 'date', 'before_or_equal:' . now()->local()->toDateString()];
+            $rules['installed_by']  = ['nullable', 'string', 'max:100'];
+            $rules['install_notes'] = ['nullable', 'string', 'max:500'];
+        }
+
         if (!$forReactivation) {
             // Payment and subscription belong to the physical device (one activated_devices row
             // per IMEI), so a bound row's IMEI can never be swapped from the edit form.
@@ -469,6 +512,7 @@ class CustomerDeviceManagementController extends Controller
 
         return $request->validate($rules, [
             'bank_invoice.unique' => 'This bank invoice number is already used for another customer. One invoice can only cover devices of the same owner.',
+            'installed_on.before_or_equal' => 'The install date cannot be in the future.',
             'imei_number.in' => "A device's IMEI cannot be changed here: its payment and subscription belong to this device.",
             'imei_number.exists' => "This device is no longer available to activate: it may not be activated yet, already on a customer account, sitting in a dealer's unsold stock, or removed. Refresh the page and choose another device.",
         ]);
