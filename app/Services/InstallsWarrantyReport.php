@@ -3,19 +3,16 @@
 namespace App\Services;
 
 use App\Models\ActivatedDevice;
-use App\Models\ExpiredDevice;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Installs and warranty, one row per bound device. Warranty is the subscription period (a founder
- * decision, 2026-09-30), so there is no warranty column: it is read from the subscription.
+ * Installs and warranty, one row per bound device.
  *
- * How the data looks (see ExpireDeviceSubscriptions): a paid device has payment_status 'Paid' and an
- * end date. When it lapses the end date is cleared and the lapse date is kept in expired_devices.
- * So a warranty is:
- *   - active  = Paid, end date in the future
- *   - ended   = not Paid, with an expired_devices record (that record's date is when it ended)
- *   - none    = not Paid and never paid (a new device awaiting its first payment)
+ * Warranty follows the Renewal Plans guideline: it ends at the device's ORIGINAL activation date plus
+ * the best warranty its packages have earned (activated_devices.warranty_months). It is independent of
+ * the subscription: renewing never moves it, and an expired subscription does not end it. Rows where
+ * warranty_months is 0 have no added warranty (for example a 6 Months package).
  */
 class InstallsWarrantyReport
 {
@@ -28,8 +25,8 @@ class InstallsWarrantyReport
     public const FILTERS = [
         self::FILTER_ALL     => 'All installs',
         self::FILTER_ENDING  => 'Warranty ending soon',
-        self::FILTER_ENDED   => 'Warranty ended',
-        self::FILTER_NONE    => 'Never paid',
+        self::FILTER_ENDED   => 'Warranty expired',
+        self::FILTER_NONE    => 'No added warranty',
         self::FILTER_MISSING => 'Missing install details',
     ];
 
@@ -38,38 +35,30 @@ class InstallsWarrantyReport
     public function query(string $filter, int $days): Builder
     {
         $days = in_array($days, self::WINDOWS, true) ? $days : 30;
+        $today = now()->local()->toDateString();
+        $until = now()->local()->addDays($days)->toDateString();
+        $end = $this->warrantyEndSql();
 
         $q = ActivatedDevice::query()
             ->leftJoin('setup_shalotrack_devices as sd', 'sd.imei_number', '=', 'activated_devices.imei_number')
             ->leftJoin('dealers as d', 'd.id', '=', 'sd.dealer_id')
             ->whereNotNull('activated_devices.imei_number')
-            ->select(['activated_devices.*', 'd.full_name as dealer_name'])
-            ->selectSub(
-                ExpiredDevice::query()
-                    ->selectRaw('max(expired_date)')
-                    ->whereColumn('expired_devices.imei_number', 'activated_devices.imei_number'),
-                'ended_on'
-            );
+            ->select(['activated_devices.*', 'd.full_name as dealer_name']);
 
-        $notPaid = fn ($w) => $w->whereNull('activated_devices.payment_status')
-            ->orWhere('activated_devices.payment_status', '!=', 'Paid');
-        $hasLapsed = fn () => ExpiredDevice::query()
-            ->whereColumn('expired_devices.imei_number', 'activated_devices.imei_number');
+        $hasWarranty = fn ($w) => $w->where('activated_devices.warranty_months', '>', 0)
+            ->whereNotNull('activated_devices.original_activated_at');
 
         switch ($filter) {
             case self::FILTER_ENDING:
-                return $q->where('activated_devices.payment_status', 'Paid')
-                    ->whereNotNull('activated_devices.subscription_end_date')
-                    ->where('activated_devices.subscription_end_date', '>=', now())
-                    ->where('activated_devices.subscription_end_date', '<=', now()->addDays($days))
-                    ->orderBy('activated_devices.subscription_end_date');
+                return $q->where($hasWarranty)->whereRaw("$end >= ?", [$today])->whereRaw("$end <= ?", [$until])
+                    ->orderByRaw("$end asc");
 
             case self::FILTER_ENDED:
-                return $q->where($notPaid)->whereExists($hasLapsed())
-                    ->orderByDesc('ended_on');
+                return $q->where($hasWarranty)->whereRaw("$end < ?", [$today])
+                    ->orderByRaw("$end desc");
 
             case self::FILTER_NONE:
-                return $q->where($notPaid)->whereNotExists($hasLapsed())
+                return $q->where('activated_devices.warranty_months', 0)
                     ->orderByDesc('activated_devices.created_at');
 
             case self::FILTER_MISSING:
@@ -84,22 +73,23 @@ class InstallsWarrantyReport
     }
 
     /**
-     * @return array{state: string, label: string, date: \Illuminate\Support\Carbon|null, days: int|null}
+     * Warranty end as a Sri Lanka calendar date, in SQL so the filters and counts need no PHP loop.
+     * Postgres clamps to month end like Carbon's addMonthsNoOverflow; SQLite (tests) is close enough.
      */
+    private function warrantyEndSql(): string
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            return "(((activated_devices.original_activated_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Colombo')::date"
+                . " + (activated_devices.warranty_months * interval '1 month'))::date";
+        }
+
+        return "date(datetime(activated_devices.original_activated_at, '+5 hours', '+30 minutes'),"
+            . " '+' || activated_devices.warranty_months || ' months')";
+    }
+
+    /** @return array{state: string, label: string, date: \Illuminate\Support\Carbon|null, days: int|null} */
     public static function warranty(object $row): array
     {
-        if ($row->payment_status === 'Paid' && $row->subscription_end_date) {
-            $days = RenewalsReport::daysLeft($row->subscription_end_date);
-
-            return $days !== null && $days < 0
-                ? ['state' => 'ended', 'label' => 'Ended', 'date' => $row->subscription_end_date, 'days' => $days]
-                : ['state' => 'active', 'label' => 'Active', 'date' => $row->subscription_end_date, 'days' => $days];
-        }
-
-        if (! empty($row->ended_on)) {
-            return ['state' => 'ended', 'label' => 'Ended', 'date' => \Illuminate\Support\Carbon::parse($row->ended_on), 'days' => null];
-        }
-
-        return ['state' => 'none', 'label' => 'Not started (never paid)', 'date' => null, 'days' => null];
+        return DeviceWarranty::status($row);
     }
 }

@@ -12,7 +12,8 @@
         <div>
             <h1 class="text-2xl font-black text-blue-950">Installs and warranty</h1>
             <p class="text-xs text-slate-500 mt-0.5">
-                Warranty is the subscription period: it runs while the device is paid, and ends when the subscription does.
+                Warranty is counted from the device's original activation date and depends on the package it bought
+                (1 Year = 12 months, 2 Years = 18, 3 Years = 24, 6 Years = 36; 6 Months adds none). Renewing a subscription never extends it.
                 To add or correct an install, use Edit on
                 <a href="{{ route('admin.customer-device-management') }}" class="text-blue-700 underline">Customer Device Management</a>.
             </p>
@@ -56,6 +57,8 @@
                         <th class="p-3">Dealer</th>
                         <th class="p-3">Installed on</th>
                         <th class="p-3">Installed by</th>
+                        <th class="p-3">Original activation</th>
+                        <th class="p-3">Subscription</th>
                         <th class="p-3">Warranty</th>
                     </tr>
                 </thead>
@@ -65,7 +68,7 @@
                             $w = InstallsWarrantyReport::warranty($row);
                             $tone = match (true) {
                                 $w['state'] === 'ended' => 'bg-red-100 text-red-700',
-                                $w['state'] === 'none' => 'bg-slate-100 text-slate-600',
+                                in_array($w['state'], ['none', 'unknown'], true) => 'bg-slate-100 text-slate-600',
                                 ($w['days'] ?? 99) <= 7 => 'bg-amber-100 text-amber-700',
                                 default => 'bg-emerald-100 text-emerald-700',
                             };
@@ -88,18 +91,27 @@
                                     <div class="text-[11px] text-slate-500 max-w-xs truncate" title="{{ $row->install_notes }}">{{ $row->install_notes }}</div>
                                 @endif
                             </td>
+                            <td class="p-3 whitespace-nowrap">{{ $row->original_activated_at ? $row->original_activated_at->copy()->local()->format('Y-m-d') : '—' }}</td>
+                            <td class="p-3 text-xs whitespace-nowrap">
+                                @if($row->subscription_model)
+                                    {{ $row->subscription_model }}
+                                    <div class="text-[11px] text-slate-500">Ends {{ $row->subscription_end_date ? $row->subscription_end_date->copy()->local()->format('Y-m-d') : '—' }}</div>
+                                @else
+                                    <span class="text-slate-500">None active</span>
+                                @endif
+                            </td>
                             <td class="p-3">
                                 <span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold {{ $tone }}">{{ $w['label'] }}</span>
                                 @if($w['date'])
                                     <div class="text-[11px] text-slate-500 mt-0.5">
-                                        {{ $w['state'] === 'active' ? 'Ends' : 'Ended' }} {{ $w['date']->copy()->local()->format('Y-m-d') }}
+                                        {{ $w['state'] === 'active' ? 'Ends' : 'Expired' }} {{ $w['date']->copy()->local()->format('Y-m-d') }}
                                         @if($w['state'] === 'active' && $w['days'] !== null) · {{ $w['days'] }} days left @endif
                                     </div>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="p-6 text-center text-sm text-slate-500">Nothing here.</td></tr>
+                        <tr><td colspan="9" class="p-6 text-center text-sm text-slate-500">Nothing here.</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -29,11 +29,15 @@ class ActivatedDevice extends Model
         'installed_on',
         'installed_by',
         'install_notes',
+        'original_activated_at',
+        'warranty_months',
     ];
 
     protected $casts = [
         'has_gps_device'          => 'boolean',
         'installed_on'            => 'date',
+        'original_activated_at'   => 'datetime',
+        'warranty_months'         => 'integer',
         'subscription_start_date' => 'datetime',
         'subscription_end_date'   => 'datetime',
     ];
