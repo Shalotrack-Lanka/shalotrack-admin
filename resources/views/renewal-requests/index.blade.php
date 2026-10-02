@@ -55,7 +55,11 @@
                         </div>
                         <div class="text-xs text-slate-600">{{ $r['customerName'] ?? '' }} · {{ $r['customerPhone'] ?? '' }} · IMEI {{ $r['imeiNumber'] ?? '' }}</div>
                     </div>
-                    <div class="text-sm font-bold text-slate-800">Wants: {{ $r['durationModel'] ?? '' }}</div>
+                    <div class="text-sm font-bold text-slate-800">Wants: {{ $r['durationModel'] ?? '' }}
+                        @if(isset($r['amountLkr']) && $r['amountLkr'] !== null)
+                            <div class="text-xs font-semibold text-emerald-700">Price shown to customer: LKR {{ number_format((float) $r['amountLkr'], 2) }}</div>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="grid md:grid-cols-2 gap-3 text-xs text-slate-700">
