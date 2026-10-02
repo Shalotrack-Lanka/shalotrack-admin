@@ -19,7 +19,7 @@
         <div>
             <h1 class="text-2xl font-black text-blue-950">Commission payouts</h1>
             <p class="text-xs text-slate-500 mt-0.5">
-                Monthly statements. A sale is payable once its customer's subscription has been paid for {{ CommissionStatement::PAYABLE_AFTER_DAYS }}+ days by the end of the month.
+                Monthly statements. Package-margin commission (retailer and distributor) is payable once its month has ended. Old fixed-rate sales keep the {{ CommissionStatement::PAYABLE_AFTER_DAYS }}-day rule.
             </p>
         </div>
         <form method="GET" action="{{ route('admin.commission-payouts') }}">
