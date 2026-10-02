@@ -33,7 +33,7 @@
 
     @unless($ratesConfigured)
         <div class="bg-red-50 border border-red-200 text-red-800 text-sm rounded-xl p-4">
-            <b>No commission rates are configured.</b> Every amount below uses the built-in fallback of LKR 1,000 per device, which nobody has approved. Set the rates before paying anyone.
+            <b>No commission rates are configured.</b> Old fixed-rate sales still waiting to be paid use the built-in fallback of LKR 1,000 per device, which nobody has approved. Check them before paying anyone. New package-margin commission is not affected.
         </div>
     @endunless
 

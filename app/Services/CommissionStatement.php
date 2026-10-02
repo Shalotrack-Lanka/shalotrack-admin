@@ -78,10 +78,22 @@ class CommissionStatement
         return now(self::TZ)->startOfMonth()->subMonth()->format('Y-m');
     }
 
-    /** False when no commission rate has been configured: every amount is then the hard-coded fallback. */
+    /**
+     * False only when old fixed-rate ledger rows are still waiting to be paid AND no fixed rate was ever
+     * configured (their amounts are then the unapproved LKR 1,000 fallback). Package-margin commission
+     * does not use rates at all, so with no such leftover rows there is nothing to warn about.
+     */
     public function ratesConfigured(): bool
     {
-        return DealerCommissionRate::query()->exists();
+        if (DealerCommissionRate::query()->exists()) {
+            return true;
+        }
+
+        return ! DB::table('dealer_commission_ledger')
+            ->where('entry_type', 'earned')
+            ->whereNull('reversed_at')
+            ->whereNull('payout_id')
+            ->exists();
     }
 
     /**
