@@ -38,6 +38,8 @@ use App\Http\Controllers\Admin\Customer\CustomerSetupController;
 use App\Http\Controllers\Admin\Customer\CustomerDeviceManagementController;
 use App\Http\Controllers\Admin\Customer\RenewalRequestController;
 use App\Http\Controllers\Admin\Customer\InstallsWarrantyController;
+use App\Http\Controllers\Admin\Technicians\TechnicianController;
+use App\Http\Controllers\Admin\Technicians\TechnicianJobController;
 use App\Http\Controllers\Admin\Customer\RenewalsController;
 use App\Http\Controllers\Admin\Customer\DeviceHealthController;
 
@@ -220,6 +222,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
     Route::get('/admin/installs-warranty', [InstallsWarrantyController::class, 'index'])->middleware('role:ADMIN')->name('admin.installs-warranty');
+    // Technicians and their jobs (ADMIN only; technicians are a list, not login accounts).
+    Route::get('/admin/technicians', [TechnicianController::class, 'index'])->middleware('role:ADMIN')->name('admin.technicians');
+    Route::post('/admin/technicians', [TechnicianController::class, 'store'])->middleware('role:ADMIN')->name('admin.technicians.store');
+    Route::patch('/admin/technicians/{technician}', [TechnicianController::class, 'update'])->middleware('role:ADMIN')->name('admin.technicians.update');
+    Route::get('/admin/technician-jobs', [TechnicianJobController::class, 'index'])->middleware('role:ADMIN')->name('admin.technician-jobs');
+    Route::post('/admin/technician-jobs', [TechnicianJobController::class, 'store'])->middleware('role:ADMIN')->name('admin.technician-jobs.store');
+    Route::get('/admin/technician-jobs/vehicles', [TechnicianJobController::class, 'vehicles'])->middleware(['role:ADMIN', 'throttle:60,1'])->name('admin.technician-jobs.vehicles');
+    Route::patch('/admin/technician-jobs/{job}/reschedule', [TechnicianJobController::class, 'reschedule'])->middleware('role:ADMIN')->name('admin.technician-jobs.reschedule');
+    Route::post('/admin/technician-jobs/{job}/complete', [TechnicianJobController::class, 'complete'])->middleware('role:ADMIN')->name('admin.technician-jobs.complete');
+    Route::post('/admin/technician-jobs/{job}/cancel', [TechnicianJobController::class, 'cancel'])->middleware('role:ADMIN')->name('admin.technician-jobs.cancel');
     Route::get('/admin/device-health', [DeviceHealthController::class, 'admin'])->middleware('role:ADMIN')->name('admin.device-health');
     Route::get('/admin/dealer-scorecard', [DealerScorecardController::class, 'admin'])->middleware('role:ADMIN')->name('admin.dealer-scorecard');
 
