@@ -55,19 +55,30 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
 
             $simNumber = !empty($row['sim_number']) ? trim((string)$row['sim_number']) : null;
 
+            // Lock the SIM first so its ICCID/IMSI can be copied onto the device
+            // before the SIM leaves the pool (otherwise its identity is lost).
+            $sim = null;
+            if ($simNumber) {
+                $sim = Sim::where('sim_number', $simNumber)
+                    ->where('sim_status', 'Activated')
+                    ->lockForUpdate()
+                    ->first();
+            }
+
             $newDevice = SetupShalotrackDevice::create([
                 'device_type_id'  => $deviceType->id,
                 'device_category' => $deviceCategoryLabel,
                 'imei_number'     => trim((string)$row['imei_number']),
                 'sim_number'      => $simNumber,
+                'iccid'           => $sim?->iccid,
+                'imsi'            => $sim?->imsi,
                 'status'          => DeviceStatus::NotActivated->value,
                 'dealer_id'       => null,
             ]);
 
             // දුන් SIM එක පද්ධතියේ Activated ලැයිස්තුවෙන් ඉවත් කිරීම
-            if ($simNumber) {
-                Sim::where('sim_number', $simNumber)->where('sim_status', 'Activated')->delete();
-            }
+            // (its identity now lives on the device row: iccid/imsi above)
+            $sim?->delete();
 
             return $newDevice;
         });

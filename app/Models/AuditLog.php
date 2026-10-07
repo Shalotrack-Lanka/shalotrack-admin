@@ -52,12 +52,15 @@ class AuditLog extends Model
         'device.reassigned'          => [self::CATEGORY_DEVICE, 'Dealer reassigned a device'],
         'device.marked_broken'       => [self::CATEGORY_DEVICE, 'Dealer marked a device broken'],
         'device.moved_to_pending'    => [self::CATEGORY_DEVICE, 'Dealer moved a device to pending'],
+        'ledger.stock_deleted'       => [self::CATEGORY_DEVICE, 'Stock ledger record removed'],
+        'ledger.transfer_deleted'    => [self::CATEGORY_DEVICE, 'Dealer transfer history record removed'],
 
         'technician.created'         => [self::CATEGORY_ACCOUNT, 'Technician added'],
         'technician.updated'         => [self::CATEGORY_ACCOUNT, 'Technician edited'],
         'dealer.created'             => [self::CATEGORY_ACCOUNT, 'Dealer created'],
         'dealer.updated'             => [self::CATEGORY_ACCOUNT, 'Dealer profile edited'],
         'dealer.status_changed'      => [self::CATEGORY_ACCOUNT, 'Dealer enabled / disabled'],
+        'customer_lead.deleted'      => [self::CATEGORY_ACCOUNT, 'Dealer removed a customer'],
         'account.profile_updated'    => [self::CATEGORY_ACCOUNT, 'Own profile edited'],
         'account.password_reset'     => [self::CATEGORY_ACCOUNT, 'Password reset'],
     ];

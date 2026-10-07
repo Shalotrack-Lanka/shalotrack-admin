@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Stock;
 use App\Http\Controllers\Controller;
 use App\Models\DeviceType;
 use App\Models\Stock;
+use App\Services\Audit;
 use App\Models\StockTransferLedger;
 use App\Models\Supplier;
 use App\Imports\StockImport;
@@ -144,7 +145,21 @@ class ManageStockController extends Controller
 
     public function destroyLedger(StockTransferLedger $ledger)
     {
+        // History only: the row is soft-deleted (recoverable) and the stock count is not touched.
+        $snapshot = $ledger->only(['stock_id', 'supplier', 'stock_in', 'description', 'stocked_in_date']);
+        $label    = $ledger->stock_in . ' units, ' . ($ledger->supplier ?: 'no supplier') . ', ' . optional($ledger->stocked_in_date)->format('Y-m-d');
+        $ledgerId = $ledger->id;
+
         $ledger->delete();
+
+        Audit::record(
+            'ledger.stock_deleted',
+            'stock_ledger',
+            $ledgerId,
+            $label,
+            collect($snapshot)->map(fn ($v) => ['from' => $v, 'to' => null])->all(),
+        );
+
         return redirect()->back()->with('success', 'Ledger record removed.');
     }
 

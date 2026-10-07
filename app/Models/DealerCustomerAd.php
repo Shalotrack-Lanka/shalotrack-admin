@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DealerCustomerAd extends Model
 {
     use HasFactory;
+
+    // A dealer "deleting" a customer lead hides it but keeps it recoverable.
+    use SoftDeletes;
 
     protected $table = 'dealer_customer_ads';
 

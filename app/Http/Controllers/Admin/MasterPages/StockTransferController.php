@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Dealer;
 use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
+use App\Services\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -203,11 +204,25 @@ class StockTransferController extends Controller
 
     public function destroy(DealerTransferLedger $ledger)
     {
-        // Only the history row is removed — the linked devices keep their
-        // dealer assignment (transfer_id is cleared via nullOnDelete), per
-        // business decision: a deleted history record does not undo a
-        // transfer that already happened.
+        // Only the history row is hidden — the linked devices keep their
+        // dealer assignment, per business decision: a deleted history record
+        // does not undo a transfer that already happened. The row is
+        // soft-deleted, so it stays recoverable (devices keep their
+        // transfer_id, so a restore reunites them) and the audit log keeps
+        // who removed it.
+        $label    = $ledger->quantity . ' x ' . $ledger->device_category . ' to dealer #' . $ledger->dealer_id;
+        $snapshot = $ledger->only(['dealer_id', 'device_category', 'quantity']);
+        $ledgerId = $ledger->id;
+
         $ledger->delete();
+
+        Audit::record(
+            'ledger.transfer_deleted',
+            'transfer_ledger',
+            $ledgerId,
+            $label,
+            collect($snapshot)->map(fn ($v) => ['from' => $v, 'to' => null])->all(),
+        );
 
         return back()->with('success', 'Transfer history record removed.');
     }
