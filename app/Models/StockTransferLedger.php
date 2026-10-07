@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StockTransferLedger extends Model
 {
+    // "Delete" hides the row but keeps it recoverable (history is never erased).
+    use SoftDeletes;
+
     protected $fillable = [
         'stock_id',
         'device_category_type',

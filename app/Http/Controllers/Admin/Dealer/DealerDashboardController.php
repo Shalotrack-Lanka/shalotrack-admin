@@ -542,7 +542,20 @@ class DealerDashboardController extends Controller
             return back()->withErrors(['assign' => "{$customerAd->name} still has devices assigned. Unassign them before deleting this customer."]);
         }
 
+        $customerId = $customerAd->id;
+        $label      = $customerAd->name;
+        $snapshot   = $customerAd->only(['dealer_id', 'name', 'email', 'contact', 'nic_or_id', 'no_of_devices']);
+
+        // Soft delete: the lead disappears from the dealer's list but stays recoverable.
         $customerAd->delete();
+
+        Audit::record(
+            'customer_lead.deleted',
+            'customer_lead',
+            $customerId,
+            $label,
+            collect($snapshot)->map(fn ($v) => ['from' => $v, 'to' => null])->all(),
+        );
 
         return back()->with('success', 'Customer deleted successfully!');
     }
