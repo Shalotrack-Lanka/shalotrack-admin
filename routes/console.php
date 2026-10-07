@@ -30,3 +30,8 @@ Schedule::command('dashboard:snapshot')->dailyAt('23:55');
 
 // Keeps 12 months of audit trail (see App\Console\Commands\PruneAuditLog).
 Schedule::command('audit:prune')->dailyAt('02:30');
+
+// Account deletion (PDPA): once the API has erased a customer and customers:sync has copied the
+// anonymised shell, strip their name and plate from the retained business records
+// (see App\Console\Commands\ScrubDeletedCustomers). Hourly is plenty: purges are rare.
+Schedule::command('customers:scrub-deleted')->hourlyAt(17);
