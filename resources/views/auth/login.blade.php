@@ -1,39 +1,17 @@
 <x-guest-layout>
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    {{-- ShaloTrack SVG Logo --}}
+    {{-- ShaloTrack logo (transparent cut-out; WebP with PNG fallback) --}}
     <div class="flex flex-col items-center mb-6">
-        <svg width="220" viewBox="0 0 220 200" xmlns="http://www.w3.org/2000/svg">
-            <!-- Pin/drop shape -->
-            <g transform="translate(110, 90) scale(0.9)">
-                <!-- Orange outer swoosh left -->
-                <path d="M-58,30 Q-72,-30 -30,-72 Q0,-95 30,-72 Q58,-50 62,-20" fill="none" stroke="#F07A1A" stroke-width="14" stroke-linecap="round"/>
-                <!-- Orange lower swoosh -->
-                <path d="M-10,50 Q10,70 35,50 Q55,28 62,-20" fill="none" stroke="#F07A1A" stroke-width="12" stroke-linecap="round"/>
-                <!-- Navy pin body -->
-                <ellipse cx="0" cy="-28" rx="52" ry="58" fill="#1B2E5E"/>
-                <!-- Pin bottom point -->
-                <path d="M-18,24 Q0,68 18,24" fill="#1B2E5E"/>
-                <!-- S-curve road (white) -->
-                <path d="M-16,-60 Q-30,-35 -8,-12 Q12,10 -4,32" fill="none" stroke="white" stroke-width="10" stroke-linecap="round"/>
-                <!-- WiFi signals (orange) -->
-                <path d="M28,-72 Q38,-68 34,-58" fill="none" stroke="#F07A1A" stroke-width="4" stroke-linecap="round"/>
-                <path d="M36,-80 Q52,-72 46,-56" fill="none" stroke="#F07A1A" stroke-width="4" stroke-linecap="round"/>
-                <path d="M44,-88 Q65,-76 58,-55" fill="none" stroke="#F07A1A" stroke-width="4" stroke-linecap="round"/>
-                <!-- Car silhouette -->
-                <g transform="translate(0, 18)">
-                    <rect x="-22" y="-8" width="44" height="16" rx="4" fill="#1B2E5E" stroke="white" stroke-width="1.2"/>
-                    <path d="M-14,-8 Q-10,-18 10,-18 Q16,-18 20,-8" fill="#1B2E5E" stroke="white" stroke-width="1.2"/>
-                    <path d="M-10,-8 Q-7,-15 9,-15 Q14,-15 18,-8" fill="white" opacity="0.25"/>
-                    <circle cx="-12" cy="8" r="4.5" fill="white"/>
-                    <circle cx="12" cy="8" r="4.5" fill="white"/>
-                    <circle cx="-12" cy="8" r="2" fill="#1B2E5E"/>
-                    <circle cx="12" cy="8" r="2" fill="#1B2E5E"/>
-                    <line x1="-4" y1="13" x2="-4" y2="22" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="4" y1="13" x2="4" y2="22" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                </g>
-            </g>
-        </svg>
+        <picture>
+            <source srcset="{{ asset('images/shalotrack-logo.webp') }}" type="image/webp">
+            <img src="{{ asset('images/shalotrack-logo.png') }}"
+                 alt="ShaloTrack logo"
+                 width="160" height="160"
+                 fetchpriority="high"
+                 decoding="async"
+                 style="width:160px;height:160px;user-select:none;">
+        </picture>
 
         <!-- Wordmark -->
         <div class="mt-1">
