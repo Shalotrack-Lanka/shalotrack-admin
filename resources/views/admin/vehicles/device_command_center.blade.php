@@ -282,8 +282,8 @@
 {{-- ── JavaScript ───────────────────────────────────────────────────────────── --}}
 <script>
     var CSRF_TOKEN   = '{{ csrf_token() }}';
-    var SEND_URL     = '{{ route("dealer.device-commands.send") }}';
-    var HISTORY_BASE = '{{ url("/dealer/device-commands/history") }}';
+    var SEND_URL     = '{{ route("admin.vehicles.device-commands.send") }}';
+    var HISTORY_BASE = '{{ url("/admin/vehicles/device-commands/history") }}';
 
     // ── Command Panel ─────────────────────────────────────────────────────────
 
@@ -408,7 +408,11 @@
             list.innerHTML = '';
 
             history.forEach(function(item) {
-                var date         = item.createdAt ? new Date(item.createdAt).toLocaleString() : '—';
+                var rawTs        = item.createdAt || item.created_at || '';
+                var parsedDate   = rawTs ? new Date(rawTs.replace(' ', 'T')) : null;
+                var date         = (parsedDate && !isNaN(parsedDate.getTime()))
+                                 ? parsedDate.toLocaleString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+                                 : (rawTs || '—');
                 var commandBadge = '<span class="px-2 py-0.5 rounded-lg text-[11px] font-black bg-blue-100 text-blue-700">'
                                  + escapeHtml(item.command || 'UNKNOWN') + '</span>';
                 var responseText = item.rawResponse
