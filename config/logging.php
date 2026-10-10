@@ -65,21 +65,9 @@ return [
             'replace_placeholders' => true,
         ],
 
-        'security' => [
-            'driver' => 'stack',
-            'channels' => ['security_file', 'security_otel'],
-            'ignore_exceptions' => true,
-        ],
-
         'security_file' => [
             'driver' => 'single',
             'path' => storage_path('logs/security.log'),
-            'level' => 'warning',
-        ],
-
-        'security_otel' => [
-            'driver' => 'custom',
-            'via' => \App\Logging\OtelLogHandlerFactory::class,
             'level' => 'warning',
         ],
 
