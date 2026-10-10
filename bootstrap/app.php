@@ -19,7 +19,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Dashboard statistics update middleware
         $middleware->trustProxies(at: '*');
-       // $middleware->append(\App\Http\Middleware\TraceRequestMiddleware::class);
 
         // Runs on every authenticated web request.
         // Forces logout immediately if the logged-in user's Admin.status
