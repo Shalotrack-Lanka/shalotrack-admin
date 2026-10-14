@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Services\AuthAudit;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -43,9 +44,10 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $user = \App\Models\Admin::where('username', $this->username)
-            ->where('status', 'ACTIVE')
-            ->first();
+        // Look the account up regardless of status, then require ACTIVE below: the answer to the
+        // person is identical either way, but the audit log can say WHY a sign-in was refused.
+        $account = \App\Models\Admin::where('username', $this->username)->first();
+        $user = $account && $account->status === 'ACTIVE' ? $account : null;
 
         // FIX: was comparing with !== (plain string equality), which only
         // ever "worked" for accounts with an insecure plain-text password,
@@ -56,6 +58,8 @@ class LoginRequest extends FormRequest
             ! Hash::check($this->password, $user->password)
         ) {
             RateLimiter::hit($this->throttleKey());
+
+            AuthAudit::failed($this, $account, ! $account ? 'no such account' : (! $user ? 'account is not active' : 'wrong password'));
 
             throw ValidationException::withMessages([
                 'username' => trans('auth.failed'),

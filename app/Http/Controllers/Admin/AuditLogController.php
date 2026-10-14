@@ -117,9 +117,11 @@ class AuditLogController extends Controller
 
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['When (Sri Lanka)', 'Who', 'Role', 'Action', 'Subject', 'Changes', 'Details', 'IP']);
+            fputcsv($out, ['When (Sri Lanka)', 'Who', 'Role', 'Action', 'Subject', 'Changes', 'Details', 'IP', 'Browser', 'System', 'Device type', 'Device model', 'User agent']);
 
             foreach ($query->limit(self::EXPORT_LIMIT)->cursor() as $r) {
+                // Entries written by the system (no browser involved) get blank device columns, not "Unknown".
+                $dev = $r->user_agent ? $r->clientDevice() : ['browser' => '', 'os' => '', 'device' => '', 'model' => null];
                 fputcsv($out, [
                     $r->occurred_at->copy()->local()->format('Y-m-d H:i:s'),
                     RenewalsReport::csvSafe($r->actor_name ?: ($r->actor_id ?: 'system / not signed in')),
@@ -129,6 +131,11 @@ class AuditLogController extends Controller
                     RenewalsReport::csvSafe($r->changes ? json_encode($r->changes, JSON_UNESCAPED_UNICODE) : ''),
                     RenewalsReport::csvSafe($r->meta ? json_encode($r->meta, JSON_UNESCAPED_UNICODE) : ''),
                     RenewalsReport::csvSafe($r->ip),
+                    RenewalsReport::csvSafe($dev['browser']),
+                    RenewalsReport::csvSafe($dev['os']),
+                    RenewalsReport::csvSafe($dev['device']),
+                    RenewalsReport::csvSafe($dev['model']),
+                    RenewalsReport::csvSafe($r->user_agent),
                 ]);
             }
 

@@ -24,6 +24,10 @@ class AppServiceProvider extends ServiceProvider
 
    public function boot(): void
     {
+        // Sign-in trail for the audit log: signed in, signed out, locked out (failed attempts are
+        // recorded by LoginRequest). Registered here, not in app/Listeners, so it cannot register twice.
+        \Illuminate\Support\Facades\Event::subscribe(\App\Services\AuthAudit::class);
+
         // Timestamps are stored and computed in UTC (config('app.timezone')). Screens and reports for
         // people in Sri Lanka show them through ->local(), which only changes how a time is displayed.
         Carbon::macro('local', function () {

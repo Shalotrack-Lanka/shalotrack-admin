@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
+use App\Support\ClientIp;
 use BackedEnum;
 use DateTimeInterface;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -18,12 +20,16 @@ use Throwable;
  */
 class Audit
 {
-    private const SENSITIVE_KEY = '/pass|token|secret|otp|api[_-]?key|authorization|cookie|session/i';
+    // Also covers national ID numbers (nic_number, nic_or_id ...) and card / bank identifiers, because the
+    // automatic activity record (AuditAdminActivity) stores submitted form fields.
+    private const SENSITIVE_KEY = '/pass|token|secret|otp|api[_-]?key|authorization|cookie|session|(^|[_-])nic([_-]|$)|national[_-]?id|cvv|card[_-]?number|iban|account[_-]?(no|number)/i';
     private const MAX_STRING = 500;
 
     /**
      * @param array<string,mixed> $changes  {field: {from, to}} (use diff())
      * @param array<string,mixed> $meta
+     * @param Authenticatable|null $actor who did it, when auth()->user() is not set yet (for example inside
+     *                                    the Login event, which fires before the guard stores the user)
      */
     public static function record(
         string $action,
@@ -32,9 +38,10 @@ class Audit
         ?string $subjectLabel = null,
         array $changes = [],
         array $meta = [],
+        ?Authenticatable $actor = null,
     ): void {
         try {
-            $user = auth()->user();
+            $user = $actor ?? auth()->user();
             $request = app()->bound('request') ? request() : null;
 
             AuditLog::create([
@@ -49,9 +56,12 @@ class Audit
                 'subject_label' => $subjectLabel !== null ? mb_substr($subjectLabel, 0, 150) : null,
                 'changes'       => $changes === [] ? null : self::clean($changes),
                 'meta'          => $meta === [] ? null : self::clean($meta),
-                'ip'            => $request && ! app()->runningInConsole() ? mb_substr((string) $request->ip(), 0, 45) : null,
+                'ip'            => $request && ! app()->runningInConsole() ? mb_substr((string) ClientIp::resolve($request), 0, 45) : null,
                 'user_agent'    => $request && ! app()->runningInConsole() ? mb_substr((string) $request->userAgent(), 0, 200) : null,
             ]);
+
+            // Tells the automatic activity record that a specific, detailed entry already covers this request.
+            $request?->attributes->set('audit.recorded', true);
         } catch (Throwable $e) {
             Log::error('Audit write failed', ['action' => $action, 'subject' => $subjectId, 'error' => $e->getMessage()]);
         }
