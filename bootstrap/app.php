@@ -41,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.adminsync' => \App\Http\Middleware\VerifyAdminSyncKey::class,
             'role'           => \App\Http\Middleware\EnsureRole::class,
+            'developer'      => \App\Http\Middleware\EnsureDeveloper::class,
         ]);
 
         // Check the role BEFORE route-model binding. Otherwise a wrong-role user hitting

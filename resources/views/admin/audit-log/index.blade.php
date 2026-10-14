@@ -13,6 +13,11 @@
     <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
         <h1 class="text-2xl font-black text-blue-950">Audit log</h1>
         <p class="text-xs text-slate-500 mt-0.5">Who signed in, changed or downloaded what, and when. Entries cannot be edited or deleted; they are removed automatically after 12 months.</p>
+        @if ($restricted)
+            <p class="mt-2 text-xs rounded-lg bg-slate-50 border border-slate-200 text-slate-600 px-3 py-2">You see your own activity and what happened to your account. The developer account sees everyone's.</p>
+        @else
+            <p class="mt-2 text-xs rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800 px-3 py-2">Developer view: this shows the activity of every user in the ERP.</p>
+        @endif
     </div>
 
     <form method="GET" action="{{ route('admin.audit-log') }}" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">

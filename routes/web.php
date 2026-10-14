@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\DeveloperAccountController;
 use App\Http\Controllers\Account\AccountPasswordController;
 use App\Http\Controllers\Admin\DashboardController;
 
@@ -557,6 +558,16 @@ Route::middleware(['auth'])->group(function () {
         ->whereNumber('requestId')
         ->middleware('role:ADMIN')
         ->name('admin.profile.password-requests.dismiss');
+
+    // Developer account only (Admin::isDeveloper): directory of every login + temporary password for any of them.
+    Route::get('/admin/profile/accounts', [DeveloperAccountController::class, 'index'])
+        ->middleware(['role:ADMIN', 'developer'])
+        ->name('admin.accounts.index');
+
+    Route::post('/admin/profile/accounts/{adminId}/temporary-password', [DeveloperAccountController::class, 'reset'])
+        ->where('adminId', '[A-Za-z0-9\-]+')
+        ->middleware(['role:ADMIN', 'developer', 'throttle:20,1'])
+        ->name('admin.accounts.temporary-password');
 
     // Any signed-in role: choose a new password. Also where a person is held until they do, when an
     // administrator created their account or set a temporary password (EnforcePasswordChange).
