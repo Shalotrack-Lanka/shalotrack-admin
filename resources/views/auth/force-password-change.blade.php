@@ -21,21 +21,21 @@
 
         <div>
             <x-input-label for="current_password" :value="$forced ? 'Temporary password you were given' : 'Current password'" />
-            <x-text-input id="current_password" class="block mt-1 w-full" type="password" name="current_password"
+            <x-password-input id="current_password" name="current_password"
                           required autofocus autocomplete="current-password" />
             <x-input-error :messages="$errors->get('current_password')" class="mt-2" />
         </div>
 
         <div class="mt-4">
             <x-input-label for="password" value="New password" />
-            <x-text-input id="password" class="block mt-1 w-full" type="password" name="password"
+            <x-password-input id="password" name="password"
                           required autocomplete="new-password" minlength="{{ \App\Support\PasswordPolicy::MIN_LENGTH }}" />
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
         <div class="mt-4">
             <x-input-label for="password_confirmation" value="Repeat the new password" />
-            <x-text-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation"
+            <x-password-input id="password_confirmation" name="password_confirmation"
                           required autocomplete="new-password" />
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>

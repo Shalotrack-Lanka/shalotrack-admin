@@ -92,17 +92,17 @@
 
             <div>
                 <label for="cp_current" class="{{ $label }}">Current password</label>
-                <input id="cp_current" name="current_password" type="password" required autocomplete="current-password" class="{{ $input }}">
+                <x-password-input id="cp_current" name="current_password" required autocomplete="current-password" class="text-sm" />
                 @foreach ($errors->changePassword->get('current_password') as $m)<p class="{{ $err }}">{{ $m }}</p>@endforeach
             </div>
             <div>
                 <label for="cp_new" class="{{ $label }}">New password</label>
-                <input id="cp_new" name="password" type="password" required minlength="{{ \App\Support\PasswordPolicy::MIN_LENGTH }}" autocomplete="new-password" class="{{ $input }}">
+                <x-password-input id="cp_new" name="password" required minlength="{{ \App\Support\PasswordPolicy::MIN_LENGTH }}" autocomplete="new-password" class="text-sm" />
                 @foreach ($errors->changePassword->get('password') as $m)<p class="{{ $err }}">{{ $m }}</p>@endforeach
             </div>
             <div>
                 <label for="cp_confirm" class="{{ $label }}">Repeat the new password</label>
-                <input id="cp_confirm" name="password_confirmation" type="password" required autocomplete="new-password" class="{{ $input }}">
+                <x-password-input id="cp_confirm" name="password_confirmation" required autocomplete="new-password" class="text-sm" />
             </div>
             <button type="submit" class="{{ $button }}">Change password</button>
         </form>
@@ -168,7 +168,7 @@
                                     </div>
                                     <div>
                                         <label for="rr_me_{{ $req->id }}" class="{{ $label }}">Your password</label>
-                                        <input id="rr_me_{{ $req->id }}" name="current_password" type="password" required autocomplete="current-password" class="{{ $input }}">
+                                        <x-password-input id="rr_me_{{ $req->id }}" name="current_password" required autocomplete="current-password" class="text-sm" />
                                     </div>
                                     <div class="sm:col-span-2 flex items-center gap-3">
                                         <button type="submit" class="{{ $button }}">Set temporary password</button>
@@ -216,19 +216,19 @@
                             </div>
                             <div>
                                 <label for="aa_password" class="{{ $label }}">Temporary password</label>
-                                <input id="aa_password" name="password" type="password" required minlength="{{ \App\Support\PasswordPolicy::MIN_LENGTH }}" autocomplete="new-password" class="{{ $input }}">
+                                <x-password-input id="aa_password" name="password" required minlength="{{ \App\Support\PasswordPolicy::MIN_LENGTH }}" autocomplete="new-password" class="text-sm" />
                                 @foreach ($errors->addAdmin->get('password') as $m)<p class="{{ $err }}">{{ $m }}</p>@endforeach
                             </div>
                             <div>
                                 <label for="aa_confirm" class="{{ $label }}">Repeat the temporary password</label>
-                                <input id="aa_confirm" name="password_confirmation" type="password" required autocomplete="new-password" class="{{ $input }}">
+                                <x-password-input id="aa_confirm" name="password_confirmation" required autocomplete="new-password" class="text-sm" />
                             </div>
                         </div>
                         <p class="text-xs text-slate-500">{{ \App\Support\PasswordPolicy::hint() }}</p>
 
                         <div class="border-t border-gray-100 pt-4 max-w-sm">
                             <label for="aa_me" class="{{ $label }}">Your own password (to confirm it is you)</label>
-                            <input id="aa_me" name="current_password" type="password" required autocomplete="current-password" class="{{ $input }}">
+                            <x-password-input id="aa_me" name="current_password" required autocomplete="current-password" class="text-sm" />
                             @foreach ($errors->addAdmin->get('current_password') as $m)<p class="{{ $err }}">{{ $m }}</p>@endforeach
                         </div>
 
