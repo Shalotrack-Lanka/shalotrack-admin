@@ -35,6 +35,9 @@ class EnforceAdminStatus
 
         // Account has been deactivated since this session was created.
         if ($user->status !== 'ACTIVE') {
+            // Read by the sign-out audit entry so it says this was forced, not chosen.
+            $request->attributes->set('audit.logout_reason', 'forced out: the account was deactivated while signed in');
+
             Auth::logout();
 
             $request->session()->invalidate();

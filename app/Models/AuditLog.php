@@ -24,6 +24,8 @@ class AuditLog extends Model
     public const CATEGORY_MONEY = 'money';
     public const CATEGORY_DEVICE = 'device';
     public const CATEGORY_ACCOUNT = 'account';
+    public const CATEGORY_SECURITY = 'security';
+    public const CATEGORY_ACTIVITY = 'activity';
 
     /** action => [category, human label]. The viewer's filter and labels come from here. */
     public const ACTIONS = [
@@ -63,13 +65,30 @@ class AuditLog extends Model
         'customer_lead.deleted'      => [self::CATEGORY_ACCOUNT, 'Dealer removed a customer'],
         'account.profile_updated'    => [self::CATEGORY_ACCOUNT, 'Own profile edited'],
         'account.password_reset'     => [self::CATEGORY_ACCOUNT, 'Password reset'],
+
+        'auth.login'                 => [self::CATEGORY_SECURITY, 'Signed in'],
+        'auth.logout'                => [self::CATEGORY_SECURITY, 'Signed out'],
+        'auth.login_failed'          => [self::CATEGORY_SECURITY, 'Failed sign-in attempt'],
+        'auth.lockout'               => [self::CATEGORY_SECURITY, 'Locked out (too many failed attempts)'],
+
+        // Written automatically for anything that has no detailed entry of its own (see AuditAdminActivity).
+        'request.write'              => [self::CATEGORY_ACTIVITY, 'Portal change (automatic record)'],
+        'data.downloaded'            => [self::CATEGORY_ACTIVITY, 'File or report downloaded'],
     ];
 
     public const CATEGORIES = [
         self::CATEGORY_MONEY   => 'Money and subscriptions',
         self::CATEGORY_DEVICE  => 'Device lifecycle',
         self::CATEGORY_ACCOUNT => 'Dealer and user admin',
+        self::CATEGORY_SECURITY => 'Sign-in and security',
+        self::CATEGORY_ACTIVITY => 'Other portal activity',
     ];
+
+    /** Browser, system and device class of whoever made the request, read from the stored User-Agent. */
+    public function clientDevice(): array
+    {
+        return \App\Support\UserAgent::parse($this->user_agent);
+    }
 
     public static function labelFor(string $action): string
     {

@@ -27,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // remain browsing because the login check only fires at login time.
         $middleware->appendToGroup('web', \App\Http\Middleware\EnforceAdminStatus::class);
 
+        // Writes an audit entry (after the response is sent) for every save / delete / download a signed-in
+        // user makes that has no detailed entry of its own. Never changes or delays the response.
+        $middleware->appendToGroup('web', \App\Http\Middleware\AuditAdminActivity::class);
+
         // Register the custom middleware aliases
         $middleware->alias([
             'auth.adminsync' => \App\Http\Middleware\VerifyAdminSyncKey::class,
