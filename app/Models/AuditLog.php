@@ -64,12 +64,17 @@ class AuditLog extends Model
         'dealer.status_changed'      => [self::CATEGORY_ACCOUNT, 'Dealer enabled / disabled'],
         'customer_lead.deleted'      => [self::CATEGORY_ACCOUNT, 'Dealer removed a customer'],
         'account.profile_updated'    => [self::CATEGORY_ACCOUNT, 'Own profile edited'],
-        'account.password_reset'     => [self::CATEGORY_ACCOUNT, 'Password reset'],
+        'account.password_reset'     => [self::CATEGORY_ACCOUNT, 'Password reset (temporary password set by an administrator)'],
+        'account.password_changed'   => [self::CATEGORY_ACCOUNT, 'Own password changed'],
+        'account.password_reset_dismissed' => [self::CATEGORY_ACCOUNT, 'Password reset request dismissed'],
+        'admin.created'              => [self::CATEGORY_ACCOUNT, 'Administrator added'],
 
         'auth.login'                 => [self::CATEGORY_SECURITY, 'Signed in'],
         'auth.logout'                => [self::CATEGORY_SECURITY, 'Signed out'],
         'auth.login_failed'          => [self::CATEGORY_SECURITY, 'Failed sign-in attempt'],
         'auth.lockout'               => [self::CATEGORY_SECURITY, 'Locked out (too many failed attempts)'],
+        'auth.password_reset_requested' => [self::CATEGORY_SECURITY, 'Forgot-password request'],
+        'auth.reauth_failed'         => [self::CATEGORY_SECURITY, 'Wrong password on a sensitive action'],
 
         // Written automatically for anything that has no detailed entry of its own (see AuditAdminActivity).
         'request.write'              => [self::CATEGORY_ACTIVITY, 'Portal change (automatic record)'],

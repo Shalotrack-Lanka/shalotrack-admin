@@ -25,7 +25,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // has been set to INACTIVE by an admin since their session started.
         // This closes the window where a deactivated dealer/supplier could
         // remain browsing because the login check only fires at login time.
+        // Signs a browser out when the password was changed or reset somewhere else.
+        $middleware->appendToGroup('web', \Illuminate\Session\Middleware\AuthenticateSession::class);
+
         $middleware->appendToGroup('web', \App\Http\Middleware\EnforceAdminStatus::class);
+
+        // Holds a person on the "choose a new password" screen while Admins.must_change_password is set.
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnforcePasswordChange::class);
 
         // Writes an audit entry (after the response is sent) for every save / delete / download a signed-in
         // user makes that has no detailed entry of its own. Never changes or delays the response.
@@ -89,6 +95,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // inline errors, exactly like Laravel does by default — not
             // get hijacked into this custom error page.
             if ($e instanceof \Illuminate\Validation\ValidationException) {
+                return null;
+            }
+
+            // A signed-out visitor (or a browser signed out because the password was changed elsewhere)
+            // must be sent to the login page, not shown a "500 Unauthenticated" error page.
+            if ($e instanceof \Illuminate\Auth\AuthenticationException) {
                 return null;
             }
 

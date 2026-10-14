@@ -92,9 +92,14 @@
                     </div>
 
                     @if(Auth::user()->role=='ADMIN')
+                        @php $waitingForPassword = \App\Models\PasswordResetRequest::pendingCount(); @endphp
                         <a href="{{ route('admin.profile') }}"
                            class="block px-4 py-2 hover:bg-gray-100">
                             Profile
+                            @if($waitingForPassword > 0)
+                                <span class="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700"
+                                      title="People waiting for a new password">{{ $waitingForPassword }}</span>
+                            @endif
                         </a>
                     @elseif(Auth::user()->role=='DEALER')
                         <a href="{{ route('dealer.profile.edit') }}"

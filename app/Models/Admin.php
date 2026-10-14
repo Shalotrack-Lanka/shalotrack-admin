@@ -35,6 +35,37 @@ class Admin extends Authenticatable
         'password',
     ];
 
+    // must_change_password and password_changed_at are NOT fillable on purpose: only the account / reset
+    // screens set them (forceFill), never a request field.
+    protected $casts = [
+        'must_change_password' => 'boolean',
+        'password_changed_at'  => 'datetime',
+    ];
+
+    /** Route name of this person's home screen, by role. */
+    public function homeRouteName(): string
+    {
+        return match ($this->role) {
+            'ADMIN'      => 'admin.dashboard',
+            'DEALER'     => 'dealer.dashboard',
+            'FINANCE'    => 'finance.dashboard',
+            'TECHNICIAN' => 'technician.dashboard',
+            'SUPPLIER'   => 'supplier.dashboard',
+            default      => 'login',
+        };
+    }
+
+    /** Route name of the screen where this person edits their own details, by role (null = none here). */
+    public function profileRouteName(): ?string
+    {
+        return match ($this->role) {
+            'ADMIN'      => 'admin.profile',
+            'FINANCE'    => 'finance.profile',
+            'TECHNICIAN' => 'technician.profile',
+            default      => null,
+        };
+    }
+
     public function dealer()
     {
         return $this->belongsTo(Dealer::class);
