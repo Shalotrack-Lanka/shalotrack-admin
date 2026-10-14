@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\PasswordResetRequest;
 use App\Services\Audit;
+use App\Services\TemporaryPassword;
 use App\Support\PasswordPolicy;
 use App\Support\ReauthGuard;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -90,33 +90,20 @@ class AdminUserController extends Controller
             return back()->withErrors(['request' => 'This is your own account. Use "Change password" above instead.'], 'resetRequest');
         }
 
-        $typed = trim((string) $request->input('temporary_password'));
-        $temporary = $typed !== '' ? $typed : PasswordPolicy::generate();
-
-        DB::transaction(function () use ($target, $temporary, $req, $me) {
-            $target->forceFill([
-                'password'             => Hash::make($temporary),
-                'must_change_password' => true,
-                'password_changed_at'  => null,
-                'remember_token'       => Str::random(60),
-            ])->save();
-
-            $this->close($req, PasswordResetRequest::DONE, $me->admin_id);
-        });
-
-        // Their other sessions end by themselves: AuthenticateSession signs out any session whose stored
-        // password no longer matches.
-        Audit::record('account.password_reset', 'admin', $target->admin_id, $target->username, [], [
-            'via'                => 'temporary password set by an administrator',
-            'request_id'         => $req->id,
-            'password_generated' => $typed === '',
-        ]);
+        $result = TemporaryPassword::set(
+            $target,
+            $me,
+            (string) $request->input('temporary_password'),
+            'temporary password set by an administrator',
+            ['request_id' => $req->id],
+        );
+        // (set() has also closed this request: every waiting request for that login is marked DONE)
 
         return redirect()->route('admin.profile')->with('temp_password', [
             'username'  => $target->username,
             'name'      => $target->full_name,
-            'password'  => $temporary,
-            'generated' => $typed === '',
+            'password'  => $result['password'],
+            'generated' => $result['generated'],
         ]);
     }
 

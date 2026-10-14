@@ -42,6 +42,17 @@ class Admin extends Authenticatable
         'password_changed_at'  => 'datetime',
     ];
 
+    /**
+     * The company's developer / support login (config/erp.php, default "admin001"): sees every account and
+     * the whole audit log, and can set a temporary password for any login. An active ADMIN only.
+     */
+    public function isDeveloper(): bool
+    {
+        return $this->role === 'ADMIN'
+            && $this->status === 'ACTIVE'
+            && in_array(strtolower((string) $this->username), (array) config('erp.developer_usernames', ['admin001']), true);
+    }
+
     /** Route name of this person's home screen, by role. */
     public function homeRouteName(): string
     {

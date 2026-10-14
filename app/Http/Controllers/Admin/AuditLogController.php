@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Read-only viewer for the audit trail (ADMIN only; the route carries role:ADMIN).
+ * The developer account sees every entry; other administrators see only their own (see query()).
  * Nothing here can create, edit or delete an entry.
  */
 class AuditLogController extends Controller
@@ -22,15 +23,18 @@ class AuditLogController extends Controller
     public function index(Request $request)
     {
         $f = $this->filters($request);
+        $me = $request->user();
+        $restricted = ! $me->isDeveloper();
 
         if ($request->query('export') === 'csv') {
-            return $this->csv($this->query($f));
+            return $this->csv($this->query($f, $me));
         }
 
-        $rows = $this->query($f)->paginate(self::PER_PAGE)->withQueryString();
+        $rows = $this->query($f, $me)->paginate(self::PER_PAGE)->withQueryString();
 
         return view('admin.audit-log.index', [
             'rows'       => $rows,
+            'restricted' => $restricted,
             'f'          => $f,
             'categories' => AuditLog::CATEGORIES,
             'actions'    => AuditLog::ACTIONS,
@@ -72,10 +76,19 @@ class AuditLogController extends Controller
         }
     }
 
-    private function query(array $f)
+    private function query(array $f, $me)
     {
         $tz = config('app.display_timezone', 'Asia/Colombo');
         $q = AuditLog::query()->orderByDesc('occurred_at')->orderByDesc('id');
+
+        // Only the developer account sees everyone's activity. Any other administrator sees what they did
+        // themselves and what happened to their own account (e.g. a password reset). Applied first and as
+        // one grouped clause, so no filter below can widen it.
+        if (! $me->isDeveloper()) {
+            $q->where(fn ($w) => $w
+                ->where('actor_id', (string) $me->admin_id)
+                ->orWhere(fn ($x) => $x->where('subject_type', 'admin')->where('subject_id', (string) $me->admin_id)));
+        }
 
         if ($f['category']) {
             $q->where('category', $f['category']);
