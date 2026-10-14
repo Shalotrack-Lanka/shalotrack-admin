@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminProfileController;
+use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Account\AccountPasswordController;
 use App\Http\Controllers\Admin\DashboardController;
 
 use App\Http\Controllers\Admin\MasterPages\AddDeviceController;
@@ -535,6 +537,34 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:ADMIN')
         ->name('admin.profile');
 
+    // Edit own name / email / phone (username, role and status stay locked).
+    Route::put('/admin/profile', [AdminProfileController::class, 'update'])
+        ->middleware('role:ADMIN')
+        ->name('admin.profile.update');
+
+    // Hidden "Administration" section of the profile page: add an administrator and answer
+    // "forgot password" requests. Each asks for the signed-in administrator's own password again.
+    Route::post('/admin/profile/admins', [AdminUserController::class, 'store'])
+        ->middleware(['role:ADMIN', 'throttle:20,1'])
+        ->name('admin.profile.admins.store');
+
+    Route::post('/admin/profile/password-requests/{requestId}/resolve', [AdminUserController::class, 'resolveReset'])
+        ->whereNumber('requestId')
+        ->middleware(['role:ADMIN', 'throttle:20,1'])
+        ->name('admin.profile.password-requests.resolve');
+
+    Route::post('/admin/profile/password-requests/{requestId}/dismiss', [AdminUserController::class, 'dismissReset'])
+        ->whereNumber('requestId')
+        ->middleware('role:ADMIN')
+        ->name('admin.profile.password-requests.dismiss');
+
+    // Any signed-in role: choose a new password. Also where a person is held until they do, when an
+    // administrator created their account or set a temporary password (EnforcePasswordChange).
+    Route::get('/account/password', [AccountPasswordController::class, 'edit'])->name('account.password.edit');
+    Route::put('/account/password', [AccountPasswordController::class, 'update'])
+        ->middleware('throttle:20,1')
+        ->name('account.password.update');
+
     // Route::get('/dealer/profile',
     //   [AdminProfileController::class, 'show'])
     //  ->name('dealer.profile');
@@ -546,12 +576,20 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:FINANCE')
         ->name('finance.profile');
 
+    Route::put('/finance/profile', [AdminProfileController::class, 'update'])
+        ->middleware('role:FINANCE')
+        ->name('finance.profile.update');
+
     Route::get(
         '/technician/profile',
         [AdminProfileController::class, 'show']
     )
         ->middleware('role:TECHNICIAN')
         ->name('technician.profile');
+
+    Route::put('/technician/profile', [AdminProfileController::class, 'update'])
+        ->middleware('role:TECHNICIAN')
+        ->name('technician.profile.update');
 
     // Breeze /profile (PATCH validated against a non-existent `users` table and 500'd; DELETE let any
     // logged-in dealer/supplier/admin delete their own Admins row) and PUT /password were removed:
