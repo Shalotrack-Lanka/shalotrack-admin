@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\DeveloperAccountController;
+use App\Http\Controllers\Admin\Distributor\DistributorPortalController;
 use App\Http\Controllers\Account\AccountPasswordController;
 use App\Http\Controllers\Admin\DashboardController;
 
@@ -84,6 +85,7 @@ Route::get('/', function () {
         return match ($user->role) {
             'ADMIN'      => redirect()->route('admin.dashboard'),
             'DEALER'     => redirect()->route('dealer.dashboard'),
+            'DISTRIBUTOR' => redirect()->route('distributor.dashboard'),
             'FINANCE'    => redirect()->route('finance.dashboard'),
             'TECHNICIAN' => redirect()->route('technician.dashboard'),
             'SUPPLIER'   => redirect()->route('supplier.dashboard'),
@@ -113,6 +115,15 @@ Route::middleware(['auth'])->group(function () {
     // real controller so the dashboard actually receives $dealer and everything
     // else it needs. This is now the ONLY place dealer.dashboard is registered.
     Route::get('/dealer/dashboard', [DealerDashboardController::class, 'index'])->middleware('role:DEALER')->name('dealer.dashboard');
+
+    // Distributor portal (read-only for now). Every query is scoped inside DistributorNetwork.
+    Route::prefix('distributor')->name('distributor.')->middleware('role:DISTRIBUTOR')->group(function () {
+        Route::get('/dashboard', [DistributorPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dealers', [DistributorPortalController::class, 'dealers'])->name('dealers');
+        Route::get('/stock', [DistributorPortalController::class, 'stock'])->name('stock');
+        Route::get('/profile', [AdminProfileController::class, 'show'])->name('profile');
+        Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
+    });
 
     Route::view('/finance/dashboard', 'finance.dashboard')->middleware('role:FINANCE')->name('finance.dashboard');
     Route::view('/technician/dashboard', 'technician.dashboard')->middleware('role:TECHNICIAN')->name('technician.dashboard');

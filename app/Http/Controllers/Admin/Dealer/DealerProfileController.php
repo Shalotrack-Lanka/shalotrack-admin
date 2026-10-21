@@ -97,6 +97,24 @@ class DealerProfileController extends Controller
             'password.confirmed'           => 'The password confirmation does not match.',
         ]);
 
+        // A distributor reports to nobody, and a distributor that still has dealers under it cannot be turned
+        // into another type (those dealers would silently lose the distributor margin and their parent).
+        $wasDistributor = $dealer->dealer_status === 'distributor';
+        $nowDistributor = $validated['dealer_status'] === 'distributor';
+
+        if ($nowDistributor) {
+            $validated['distributor_id'] = null;
+        }
+
+        if ($wasDistributor && ! $nowDistributor) {
+            $under = Dealer::where('distributor_id', $dealer->id)->count();
+            if ($under > 0) {
+                return back()->withInput()->withErrors([
+                    'dealer_status' => "This distributor still has {$under} dealer(s) under it. Move them to another distributor (or to direct) first.",
+                ]);
+            }
+        }
+
         $passwordInput = $validated['password'] ?? null;
         unset($validated['password'], $validated['password_confirmation']);
 
@@ -137,6 +155,21 @@ class DealerProfileController extends Controller
                 $linkedAdmin->password = $hashedPassword;
             }
             $linkedAdmin->save();
+        }
+
+        // The login role follows the dealer type: distributor -> DISTRIBUTOR portal, anything else -> dealer portal.
+        // Only dealer/distributor logins are touched, never an ADMIN or any other role.
+        $newRole = $nowDistributor ? 'DISTRIBUTOR' : 'DEALER';
+        foreach (Admin::where('dealer_id', $dealer->id)->whereIn('role', ['DEALER', 'DISTRIBUTOR'])->get() as $login) {
+            if ($login->role !== $newRole) {
+                $oldRole = $login->role;
+                $login->role = $newRole;
+                $login->save();
+
+                Audit::record('account.role_changed', 'admin', $login->admin_id, $login->username,
+                    ['role' => ['from' => $oldRole, 'to' => $newRole]],
+                    ['reason' => "dealer type changed to {$validated['dealer_status']}", 'dealer_id' => $dealer->id]);
+            }
         }
 
         // The password itself is never recorded, only the fact that it was changed.

@@ -106,6 +106,11 @@
                            class="block px-4 py-2 hover:bg-gray-100">
                             Profile
                         </a>
+                    @elseif(Auth::user()->role=='DISTRIBUTOR')
+                        <a href="{{ route('distributor.profile') }}"
+                           class="block px-4 py-2 hover:bg-gray-100">
+                            Profile
+                        </a>
                     @elseif(Auth::user()->role=='FINANCE')
                         <a href="{{ route('finance.profile') }}"
                            class="block px-4 py-2 hover:bg-gray-100">

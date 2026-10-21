@@ -1,4 +1,4 @@
-@extends(Auth::user()->role === 'ADMIN' ? 'layouts.admin' : 'layouts.simple')
+@extends(match (Auth::user()->role) { 'ADMIN' => 'layouts.admin', 'DISTRIBUTOR' => 'layouts.distributor', default => 'layouts.simple' })
 
 @section('title', 'My Profile')
 
@@ -7,6 +7,7 @@
         $me = Auth::user();
         $isAdmin = $me->role === 'ADMIN';
         $updateRoute = match ($me->role) {
+            'DISTRIBUTOR' => 'distributor.profile.update',
             'FINANCE'    => 'finance.profile.update',
             'TECHNICIAN' => 'technician.profile.update',
             default      => 'admin.profile.update',
