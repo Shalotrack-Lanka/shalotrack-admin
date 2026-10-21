@@ -77,6 +77,13 @@ class DistributorTransferTest extends TestCase
             $t->timestamps();
             $t->unique(['ledger_id', 'device_id']);
         });
+        Schema::create('dealer_customer_ads', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('dealer_id')->nullable();
+            $t->string('name')->nullable();
+            $t->timestamps();
+            $t->softDeletes();
+        });
         Schema::create('setup_shalotrack_devices', function (Blueprint $t) {
             $t->id('shdevice_id');
             $t->string('device_category')->nullable();
@@ -456,4 +463,148 @@ class DistributorTransferTest extends TestCase
         $this->assertSame(['111', '222'], DealerTransferItem::where('ledger_id', $ledgerId)->orderBy('imei_number')->pluck('imei_number')->all());
         $this->assertNull(DB::table('dealer_transfer_ledgers')->where('id', $ledgerId)->value('from_dealer_id')); // legacy = company
     }
+
+    // ---- portal screens (UI step) ---------------------------------------------------------------------
+
+    private function ledger(int $to, ?int $from, int $qty = 1, string $cat = 'GT06', ?string $at = null): DealerTransferLedger
+    {
+        $l = DealerTransferLedger::create(['dealer_id' => $to, 'from_dealer_id' => $from, 'device_category' => $cat, 'quantity' => $qty]);
+        if ($at) {
+            DB::table('dealer_transfer_ledgers')->where('id', $l->id)->update(['created_at' => $at]);
+        }
+
+        return $l;
+    }
+
+    public function test_every_distributor_screen_renders_with_the_shared_shell(): void
+    {
+        $d = $this->device('111', $this->distA);
+        $this->sendAsDistA(['dealer_id' => $this->dealerA1, 'device_ids' => [$d]]);
+        $ledger = DealerTransferLedger::first();
+
+        $this->as($this->login('DISTRIBUTOR', 'dist_a', $this->distA));
+        foreach ([route('distributor.dashboard'), route('distributor.dealers'), route('distributor.stock'), route('distributor.transfer'),
+                  route('distributor.transfers'), route('distributor.transfers.show', $ledger), route('distributor.profile')] as $url) {
+            $this->get($url)->assertOk()->assertSee('Distributor Portal')->assertSee('Transfer History')->assertSee('Billing');
+        }
+    }
+
+    public function test_dashboard_points_out_what_needs_attention_and_links_dealers_to_transfer(): void
+    {
+        $this->as($this->login('DISTRIBUTOR', 'dist_a', $this->distA));
+        $this->get(route('distributor.dashboard'))->assertOk()
+            ->assertSee('Needs your attention')->assertSee('no stock')
+            ->assertSee(route('distributor.transfer', ['dealer' => $this->dealerA1]), false)
+            ->assertDontSee(route('distributor.transfer', ['dealer' => $this->dealerB1]), false);
+    }
+
+    public function test_stock_filters_search_category_and_availability(): void
+    {
+        $this->device('AAA111', $this->distA, 'GT06');
+        $this->device('BBB222', $this->distA, 'JM-VL');
+        $this->device('CCC333', $this->distA, 'GT06', 'Not Activated');
+        $this->device('DDD444', $this->distA, 'GT06', 'Assigned to Customer', 9);
+        DB::table('setup_shalotrack_devices')->insert(['imei_number' => 'NOCAT55', 'sim_number' => 'S', 'device_category' => null, 'dealer_id' => $this->distA, 'status' => 'Activated', 'created_at' => now(), 'updated_at' => now()]);
+        $this->device('OTHER999', $this->distB, 'GT06');
+
+        $this->as($this->login('DISTRIBUTOR', 'dist_a', $this->distA));
+
+        $this->get(route('distributor.stock', ['q' => 'AAA']))->assertSee('AAA111')->assertDontSee('BBB222');
+        $this->get(route('distributor.stock', ['q' => 'SIM-BBB']))->assertSee('BBB222')->assertDontSee('AAA111');
+        $this->get(route('distributor.stock', ['category' => 'JM-VL']))->assertSee('BBB222')->assertDontSee('AAA111');
+        $this->get(route('distributor.stock', ['category' => 'Uncategorised']))->assertSee('NOCAT55')->assertDontSee('AAA111');
+        $this->get(route('distributor.stock', ['availability' => 'available']))
+            ->assertSee('AAA111')->assertSee('BBB222')->assertSee('NOCAT55')->assertDontSee('CCC333')->assertDontSee('DDD444');
+        $this->get(route('distributor.stock', ['availability' => 'other']))
+            ->assertSee('CCC333')->assertSee('DDD444')->assertDontSee('AAA111');
+        // wildcard characters are searched literally, never as patterns
+        $this->get(route('distributor.stock', ['q' => '%']))->assertOk()->assertDontSee('AAA111');
+        // another distributor's device is never reachable by any filter
+        $this->assertSame(0, $this->get(route('distributor.stock', ['q' => 'OTHER999']))->assertOk()->viewData('devices')->total());
+        $this->get(route('distributor.stock', ['availability' => 'bogus']))->assertSessionHasErrors('availability');
+    }
+
+    public function test_history_lists_only_transfers_this_distributor_sent_or_received(): void
+    {
+        $mineIn   = $this->ledger($this->distA, null, 5, 'GT06');
+        $mineOut  = $this->ledger($this->dealerA1, $this->distA, 3, 'JM-VL');
+        $otherIn  = $this->ledger($this->distB, null, 7, 'OTHERCAT-IN');
+        $otherOut = $this->ledger($this->dealerB1, $this->distB, 2, 'OTHERCAT-OUT');
+        $direct   = $this->ledger($this->direct, null, 4, 'DIRECTCAT');
+        $this->ledger($this->dealerA2, $this->distA, 1, 'GT06', '2020-01-05 10:00:00');
+
+        $this->as($this->login('DISTRIBUTOR', 'dist_a', $this->distA));
+
+        $res = $this->get(route('distributor.transfers'))->assertOk();
+        $res->assertSee('JM-VL')->assertDontSee('OTHERCAT-IN')->assertDontSee('OTHERCAT-OUT')->assertDontSee('DIRECTCAT');
+        $this->assertSame(3, (int) $res->viewData('totals')->records);
+        $this->assertSame(9, (int) $res->viewData('totals')->devices); // 5 + 3 + 1
+
+        $this->assertSame(2, (int) $this->get(route('distributor.transfers', ['direction' => 'sent']))->viewData('totals')->records);
+        $this->assertSame(1, (int) $this->get(route('distributor.transfers', ['direction' => 'received']))->viewData('totals')->records);
+        $this->assertSame(1, (int) $this->get(route('distributor.transfers', ['dealer_id' => $this->dealerA2]))->viewData('totals')->records);
+        $this->assertSame(1, (int) $this->get(route('distributor.transfers', ['from' => '2020-01-01', 'to' => '2020-01-31']))->viewData('totals')->records);
+        // asking for another network's dealer yields nothing, not their data
+        $this->assertSame(0, (int) $this->get(route('distributor.transfers', ['dealer_id' => $this->dealerB1]))->viewData('totals')->records);
+        $this->get(route('distributor.transfers', ['from' => 'not-a-date']))->assertSessionHasErrors('from');
+    }
+
+    public function test_transfer_detail_shows_exact_devices_and_is_private(): void
+    {
+        $d1 = $this->device('111', $this->distA);
+        $d2 = $this->device('222', $this->distA);
+        $this->sendAsDistA(['dealer_id' => $this->dealerA1, 'device_ids' => [$d1, $d2]]);
+        $mine = DealerTransferLedger::first();
+
+        $otherIn  = $this->ledger($this->distB, null);
+        $otherOut = $this->ledger($this->dealerB1, $this->distB);
+        $directIn = $this->ledger($this->direct, null);
+        foreach ([$otherIn, $otherOut, $directIn] as $l) {
+            DealerTransferItem::create(['ledger_id' => $l->id, 'device_id' => 99, 'imei_number' => 'SECRET-' . $l->id, 'sim_number' => 'x']);
+        }
+
+        $this->as($this->login('DISTRIBUTOR', 'dist_a', $this->distA));
+        $this->get(route('distributor.transfers.show', $mine))->assertOk()
+            ->assertSee('111')->assertSee('222')->assertSee('TR-' . str_pad((string) $mine->id, 6, '0', STR_PAD_LEFT))
+            ->assertSee('Sent to a dealer');
+
+        foreach ([$otherIn, $otherOut, $directIn] as $l) {
+            $this->get(route('distributor.transfers.show', $l))->assertNotFound();
+        }
+        $this->get(route('distributor.transfers.show', 999999))->assertNotFound();
+
+        // received from the company is visible to its receiver
+        $in = $this->ledger($this->distA, null, 1);
+        $this->get(route('distributor.transfers.show', $in))->assertOk()->assertSee('Received from the company');
+
+        // other roles cannot open it
+        $this->as($this->login('DEALER', 'dealer_u', $this->dealerA1));
+        $this->get(route('distributor.transfers.show', $mine))->assertForbidden();
+        $this->get(route('distributor.transfers'))->assertForbidden();
+    }
+
+    public function test_dealer_preselection_ignores_a_dealer_outside_the_network(): void
+    {
+        $this->device('111', $this->distA);
+        $this->as($this->login('DISTRIBUTOR', 'dist_a', $this->distA));
+
+        $this->assertSame($this->dealerA1, $this->get(route('distributor.transfer', ['dealer' => $this->dealerA1]))->viewData('preselected'));
+        foreach ([$this->dealerB1, $this->direct, $this->archivedA, 'x', -1] as $bad) {
+            $this->assertNull($this->get(route('distributor.transfer', ['dealer' => $bad]))->viewData('preselected'));
+        }
+    }
+
+    public function test_names_are_escaped_in_attributes_and_markup(): void
+    {
+        $evil = 'Evil\' "><script>alert(1)</script>';
+        DB::table('dealers')->where('id', $this->dealerA1)->update(['full_name' => $evil]);
+        $this->device('111', $this->distA);
+
+        $this->as($this->login('DISTRIBUTOR', 'dist_a', $this->distA));
+        foreach ([route('distributor.dealers'), route('distributor.transfer'), route('distributor.dashboard')] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+            $this->assertStringNotContainsString('<script>alert(1)</script>', $html, $url);
+        }
+    }
 }
+

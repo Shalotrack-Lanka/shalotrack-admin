@@ -87,6 +87,24 @@ class DistributorRoleTest extends TestCase
             $t->string('created_by')->nullable();
             $t->timestamps();
         });
+        Schema::create('dealer_transfer_ledgers', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('dealer_id');
+            $t->unsignedBigInteger('from_dealer_id')->nullable();
+            $t->string('device_category');
+            $t->integer('quantity');
+            $t->string('created_by_admin_id', 64)->nullable();
+            $t->timestamps();
+            $t->softDeletes();
+        });
+        Schema::create('dealer_transfer_items', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('ledger_id');
+            $t->unsignedBigInteger('device_id');
+            $t->string('imei_number')->nullable();
+            $t->string('sim_number')->nullable();
+            $t->timestamps();
+        });
         Schema::create('dealer_customer_ads', function (Blueprint $t) {
             $t->id();
             $t->unsignedBigInteger('dealer_id')->nullable();
