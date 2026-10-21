@@ -527,17 +527,10 @@ class CustomerDeviceManagementController extends Controller
                 'nullable',
                 'required_if:payment_status,Paid',
                 'string',
-                // One payment per device is the norm, but an owner may pay several of their own devices
-                // with one bank invoice. The same invoice on a different owner's device is still refused.
+                // One bank invoice covers exactly one device, even for the same owner
+                // (the database also enforces this with UNIQUE(bank_invoice)).
                 Rule::unique('activated_devices', 'bank_invoice')
-                    ->ignore($activatedDevice?->activated_device_id, 'activated_device_id')
-                    ->where(function ($query) use ($customerId) {
-                        if ($customerId) {
-                            $query->where(function ($q) use ($customerId) {
-                                $q->whereNull('customer_id')->orWhere('customer_id', '!=', $customerId);
-                            });
-                        }
-                    }),
+                    ->ignore($activatedDevice?->activated_device_id, 'activated_device_id'),
             ],
             'bank_slip' => ['nullable', 'image', 'max:2048'],
         ];
@@ -568,7 +561,7 @@ class CustomerDeviceManagementController extends Controller
         }
 
         return $request->validate($rules, [
-            'bank_invoice.unique' => 'This bank invoice number is already used for another customer. One invoice can only cover devices of the same owner.',
+            'bank_invoice.unique' => 'This bank invoice number is already used for another device.',
             'installed_on.before_or_equal' => 'The install date cannot be in the future.',
             'imei_number.in' => "A device's IMEI cannot be changed here: its payment and subscription belong to this device.",
             'imei_number.exists' => "This device is no longer available to activate: it may not be activated yet, already on a customer account, sitting in a dealer's unsold stock, or removed. Refresh the page and choose another device.",
