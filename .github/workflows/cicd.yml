@@ -8,24 +8,69 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+# A newer push cancels an older run of the same branch/PR (saves minutes and avoids two deploys racing).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-and-push:
+  # Runs on every pull request AND every push to main. Fast (about a minute), needs no secrets.
+  # Make this check REQUIRED in the branch protection rules of main, so a pull request cannot be
+  # merged while it is red. It catches exactly the problems that broke the image build before:
+  # a package-lock.json that `npm ci` rejects, a frontend that does not build, a PHP file that
+  # makes the application fail to boot (for example two classes with the same name).
+  check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      # Setup PHP & Composer dependencies for production optimization
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install JS dependencies (exactly as the Docker build does)
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend assets
+        run: npm run build
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, bcmath, xml, zip
+          extensions: mbstring, bcmath, xml, zip, gd, pdo_pgsql, pdo_sqlite
+          tools: composer:v2
 
-      - name: Install Composer Dependencies
+      - name: Validate composer files
+        run: composer validate --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Application boots and every route/command loads
         run: |
-          composer install --no-dev --optimize-autoloader --no-progress
+          php artisan list > /dev/null
+          php artisan route:list > /dev/null
+
+  # Only for a push to main, only after the check passed. Never runs for pull requests, so an
+  # unreviewed pull request can no longer overwrite the production image tag.
+  build-and-push:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
 
       # Authenticate securely with AWS Singapore Region
       - name: Configure AWS credentials
@@ -39,7 +84,8 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Build and push the optimized Laravel Docker container to AWS
+      # Build and push the Laravel Docker image to AWS. PHP and Node dependencies are installed
+      # inside the Dockerfile (pinned base images), so no host-side composer step is needed.
       - name: Build, tag, and push Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -50,6 +96,6 @@ jobs:
             --build-arg APP_KEY="${{ secrets.APP_KEY }}" \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-          
+
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
