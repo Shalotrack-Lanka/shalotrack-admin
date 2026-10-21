@@ -3,6 +3,7 @@
 .env
 .env.backup
 .env.production
+.env.testing
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -23,3 +24,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /storage/app/firebase_credentials.json
+*.dump
+public_schema.sql
+autotest_schema.sql
