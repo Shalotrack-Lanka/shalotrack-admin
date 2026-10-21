@@ -1,11 +1,36 @@
-FROM php:8.2-fpm-alpine
+# syntax=docker/dockerfile:1
 
-# Install system dependencies
+# ---------------------------------------------------------------------------
+# Stage 1: PHP dependencies (pinned composer major, not "latest")
+# ---------------------------------------------------------------------------
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --no-progress --ignore-platform-reqs
+
+# ---------------------------------------------------------------------------
+# Stage 2: frontend build on a pinned Node. Node and npm exist ONLY in this stage, so the
+# production image carries no Node/npm (smaller image, smaller attack surface), and the
+# lock file is always read by the same npm that CI uses.
+# ---------------------------------------------------------------------------
+FROM node:22-alpine AS assets
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY vite.config.js tailwind.config.js postcss.config.js ./
+COPY resources ./resources
+COPY public ./public
+# Tailwind scans these framework views for class names (see tailwind.config.js content).
+COPY --from=vendor /app/vendor/laravel/framework/src/Illuminate/Pagination/resources/views ./vendor/laravel/framework/src/Illuminate/Pagination/resources/views
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# Stage 3: runtime
+# ---------------------------------------------------------------------------
+FROM php:8.2-fpm-alpine
 
 RUN apk add --no-cache \
     nginx \
-    nodejs \
-    npm \
     curl \
     zip \
     unzip \
@@ -24,25 +49,18 @@ RUN apk add --no-cache \
 # (phpoffice/phpspreadsheet needs zip + gd) or PDF generation depends on is missing.
 RUN php -m | grep -qix zip && php -m | grep -qix gd
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copy composer files first for layer caching
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --ignore-platform-reqs
-
-# Copy package files and build frontend assets
-COPY package.json package-lock.json ./
-RUN npm ci
-
-# Copy rest of application
+# Application code, then the vendor directory built in stage 1 (vendor is in .dockerignore,
+# so a developer's local vendor folder can never end up in the image).
 COPY . .
-
-# Complete composer install and build
+COPY --from=vendor /app/vendor ./vendor
 RUN composer dump-autoload --optimize
-RUN npm run build
+
+# Built frontend assets from stage 2
+COPY --from=assets /app/public/build ./public/build
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
