@@ -39,22 +39,84 @@ class DistributorTransferController extends Controller
             ->get(['shdevice_id', 'device_category', 'imei_number', 'sim_number'])
             ->groupBy(fn ($d) => $d->device_category ?: 'Uncategorised');
 
-        $dealers = $network->dealers()->where('status', 'active')->orderBy('full_name')->get(['id', 'full_name']);
+        $dealers = $network->dealers()->where('status', 'active')->orderBy('full_name')->get(['id', 'full_name', 'region']);
 
-        $sent = DealerTransferLedger::with('dealer')
-            ->where('from_dealer_id', $network->distributor()->id)
-            ->latest()->limit(100)->get();
+        // Current stock of each dealer, so the distributor can see who actually needs devices.
+        $dealerStock = \App\Models\SetupShalotrackDevice::query()
+            ->whereIn('dealer_id', $dealers->pluck('id')->all() ?: [0])
+            ->whereNull('assigned_customer_id')->where('status', \App\Enums\DeviceStatus::Activated->value)
+            ->selectRaw('dealer_id, count(*) as c')->groupBy('dealer_id')->pluck('c', 'dealer_id');
 
-        $received = DealerTransferLedger::where('dealer_id', $network->distributor()->id)
-            ->whereNull('from_dealer_id')
-            ->latest()->limit(100)->get();
+        // ?dealer=ID (from the My Dealers page) preselects a dealer; an id outside the network is ignored.
+        $preselected = (int) $request->query('dealer');
+        $preselected = $dealers->contains('id', $preselected) ? $preselected : null;
 
         return view('distributor.transfer', [
+            'distributor'  => $network->distributor(),
+            'stock'        => $stock,
+            'stockTotal'   => $stock->sum(fn ($g) => $g->count()),
+            'dealers'      => $dealers,
+            'dealerStock'  => $dealerStock,
+            'preselected'  => $preselected,
+        ]);
+    }
+
+    /** All transfers this distributor sent or received, with filters. */
+    public function history(Request $request)
+    {
+        $network = $this->network($request);
+
+        $filters = $request->validate([
+            'direction' => ['nullable', 'in:all,sent,received'],
+            'dealer_id' => ['nullable', 'integer'],
+            'from'      => ['nullable', 'date'],
+            'to'        => ['nullable', 'date'],
+        ]);
+        $direction = $filters['direction'] ?? 'all';
+        $me = $network->distributor()->id;
+
+        $query = $network->transfers()->with(['dealer', 'fromDealer']);
+
+        if ($direction === 'sent') {
+            $query->where('from_dealer_id', $me);
+        } elseif ($direction === 'received') {
+            $query->whereNull('from_dealer_id');
+        }
+        if (! empty($filters['dealer_id'])) {
+            $query->where('dealer_id', $filters['dealer_id'])->where('from_dealer_id', $me);
+        }
+        if (! empty($filters['from'])) {
+            $query->whereDate('created_at', '>=', $filters['from']);
+        }
+        if (! empty($filters['to'])) {
+            $query->whereDate('created_at', '<=', $filters['to']);
+        }
+
+        // Totals for the strip above the table (same filters).
+        $totals = (clone $query)->reorder()->selectRaw('count(*) as records, coalesce(sum(quantity), 0) as devices')->first();
+
+        return view('distributor.transfers', [
             'distributor' => $network->distributor(),
-            'stock'       => $stock,
-            'dealers'     => $dealers,
-            'sent'        => $sent,
-            'received'    => $received,
+            'transfers'   => $query->latest()->paginate(20)->withQueryString(),
+            'dealers'     => $network->dealers()->orderBy('full_name')->get(['id', 'full_name']),
+            'totals'      => $totals,
+            'filters'     => ['direction' => $direction, 'dealer_id' => $filters['dealer_id'] ?? '', 'from' => $filters['from'] ?? '', 'to' => $filters['to'] ?? ''],
+        ]);
+    }
+
+    /** The exact devices of one transfer (only a transfer this distributor sent or received). */
+    public function show(Request $request, DealerTransferLedger $ledger)
+    {
+        $network = $this->network($request);
+        abort_unless($network->mayView($ledger), 404);
+
+        $ledger->load(['dealer', 'fromDealer']);
+
+        return view('distributor.transfer-show', [
+            'distributor' => $network->distributor(),
+            'ledger'      => $ledger,
+            'items'       => $ledger->items()->orderBy('imei_number')->get(),
+            'sentByMe'    => (int) $ledger->from_dealer_id === (int) $network->distributor()->id,
         ]);
     }
 

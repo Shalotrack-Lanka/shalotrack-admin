@@ -123,6 +123,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/dealers', [DistributorPortalController::class, 'dealers'])->name('dealers');
         Route::get('/stock', [DistributorPortalController::class, 'stock'])->name('stock');
         Route::get('/transfer', [DistributorTransferController::class, 'index'])->name('transfer');
+        Route::get('/transfers', [DistributorTransferController::class, 'history'])->name('transfers');
+        Route::get('/transfers/{ledger}', [DistributorTransferController::class, 'show'])->name('transfers.show');
         Route::post('/transfer', [DistributorTransferController::class, 'store'])->middleware('throttle:20,1')->name('transfer.store');
         Route::get('/profile', [AdminProfileController::class, 'show'])->name('profile');
         Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Admin;
 use App\Models\Dealer;
 use App\Models\DealerCustomerAd;
+use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
 
 /**
@@ -72,5 +73,26 @@ class DistributorNetwork
     public function dealerLeads()
     {
         return DealerCustomerAd::query()->whereIn('dealer_id', $this->dealerIds() ?: [0]);
+    }
+
+    /**
+     * Transfer records this distributor may see: the ones it sent to its dealers, and the ones the company
+     * sent to it. Never a transfer between anyone else.
+     */
+    public function transfers()
+    {
+        $me = $this->distributor->id;
+
+        return DealerTransferLedger::query()->where(function ($q) use ($me) {
+            $q->where('from_dealer_id', $me)
+                ->orWhere(function ($q2) use ($me) {
+                    $q2->where('dealer_id', $me)->whereNull('from_dealer_id');
+                });
+        });
+    }
+
+    public function mayView(DealerTransferLedger $ledger): bool
+    {
+        return $this->transfers()->whereKey($ledger->getKey())->exists();
     }
 }
