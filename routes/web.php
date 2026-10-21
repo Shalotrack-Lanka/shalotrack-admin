@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\DeveloperAccountController;
 use App\Http\Controllers\Admin\Distributor\DistributorPortalController;
+use App\Http\Controllers\Admin\Distributor\DistributorTransferController;
 use App\Http\Controllers\Account\AccountPasswordController;
 use App\Http\Controllers\Admin\DashboardController;
 
@@ -116,11 +117,13 @@ Route::middleware(['auth'])->group(function () {
     // else it needs. This is now the ONLY place dealer.dashboard is registered.
     Route::get('/dealer/dashboard', [DealerDashboardController::class, 'index'])->middleware('role:DEALER')->name('dealer.dashboard');
 
-    // Distributor portal (read-only for now). Every query is scoped inside DistributorNetwork.
+    // Distributor portal (view + transfer own stock to own dealers). Every query is scoped inside DistributorNetwork.
     Route::prefix('distributor')->name('distributor.')->middleware('role:DISTRIBUTOR')->group(function () {
         Route::get('/dashboard', [DistributorPortalController::class, 'dashboard'])->name('dashboard');
         Route::get('/dealers', [DistributorPortalController::class, 'dealers'])->name('dealers');
         Route::get('/stock', [DistributorPortalController::class, 'stock'])->name('stock');
+        Route::get('/transfer', [DistributorTransferController::class, 'index'])->name('transfer');
+        Route::post('/transfer', [DistributorTransferController::class, 'store'])->middleware('throttle:20,1')->name('transfer.store');
         Route::get('/profile', [AdminProfileController::class, 'show'])->name('profile');
         Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
     });

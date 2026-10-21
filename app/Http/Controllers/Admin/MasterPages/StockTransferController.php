@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Admin\MasterPages;
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Dealer;
+use App\Models\DealerTransferItem;
 use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
 use App\Services\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -36,9 +38,12 @@ class StockTransferController extends Controller
         // Activated, unsold company stock that cannot be transferred only because it has no SIM.
         $activatedWithoutSim = SetupShalotrackDevice::companyStockWithoutSim()->count();
 
+        // Everyone who can receive stock from the company: distributors AND dealers (including dealers that
+        // report to a distributor: the company may still send to them directly).
         $dealers = Dealer::where('status', 'active')->orderBy('full_name')->get();
+        $parents = Dealer::whereIn('id', $dealers->pluck('distributor_id')->filter())->pluck('full_name', 'id');
 
-        $transfers = DealerTransferLedger::with('dealer')->latest()->get();
+        $transfers = DealerTransferLedger::with(['dealer', 'fromDealer'])->latest()->get();
 
         $allocatedDevices = SetupShalotrackDevice::with(['dealer', 'deviceType'])
             ->whereNotNull('dealer_id')
@@ -56,7 +61,7 @@ class StockTransferController extends Controller
         return view(
             'admin.master_pages.stock_transfer',
             // simsByCategory යන්න compact එකට අනිවාර්යයෙන්ම එකතු කරන්න
-            compact('deviceCategories', 'dealers', 'transfers', 'allocatedDevices', 'simsByCategory', 'awaitingActivation', 'activatedWithoutSim')
+            compact('deviceCategories', 'dealers', 'parents', 'transfers', 'allocatedDevices', 'simsByCategory', 'awaitingActivation', 'activatedWithoutSim')
         );
     }
 
@@ -64,13 +69,16 @@ class StockTransferController extends Controller
     {
         $validated = $request->validate([
             'device_category' => 'required|string',
-            'dealer_id'       => 'required|exists:dealers,id',
+            // Only an active distributor or dealer can receive stock.
+            'dealer_id'       => ['required', Rule::exists('dealers', 'id')->where('status', 'active')],
             'sim_numbers'     => 'required|array|min:1',
             'sim_numbers.*'   => 'required|string',
         ]);
 
+        $ledger = null;
+
         try {
-            DB::transaction(function () use ($validated) {
+            DB::transaction(function () use ($validated, &$ledger) {
 
                 // The query that actually performs the transfer: it must hold the
                 // line even for a stale form (a SIM that got sold or de-activated
@@ -89,9 +97,11 @@ class StockTransferController extends Controller
                 }
 
                 $ledger = DealerTransferLedger::create([
-                    'dealer_id'       => $validated['dealer_id'],
-                    'device_category' => $validated['device_category'],
-                    'quantity'        => $devices->count(),
+                    'dealer_id'           => $validated['dealer_id'],
+                    'from_dealer_id'      => null, // the company sends
+                    'device_category'     => $validated['device_category'],
+                    'quantity'            => $devices->count(),
+                    'created_by_admin_id' => auth()->user()?->admin_id,
                 ]);
 
                 foreach ($devices as $device) {
@@ -99,10 +109,22 @@ class StockTransferController extends Controller
                     $device->transfer_id = $ledger->id;
                     $device->allocated_at = now();
                     $device->save();
+
+                    DealerTransferItem::create([
+                        'ledger_id'   => $ledger->id,
+                        'device_id'   => $device->shdevice_id,
+                        'imei_number' => $device->imei_number,
+                        'sim_number'  => $device->sim_number,
+                    ]);
                 }
             });
 
             $dealer = Dealer::findOrFail($validated['dealer_id']);
+
+            Audit::record('stock.transferred', 'transfer_ledger', $ledger->id,
+                $ledger->quantity . ' x ' . $ledger->device_category . ' to ' . $dealer->full_name,
+                [], ['from' => 'company', 'to_dealer_id' => $dealer->id, 'to_type' => $dealer->dealer_status,
+                     'to_distributor_id' => $dealer->distributor_id, 'quantity' => $ledger->quantity]);
 
             return back()->with(
                 'success',
@@ -128,8 +150,12 @@ class StockTransferController extends Controller
 
     public function update(Request $request, DealerTransferLedger $ledger)
     {
+        if ($ledger->isLocked()) {
+            return back()->withErrors(['transfer_edit' => 'This transfer can no longer be edited: some of its devices have already been passed on, sold or bound, or it was sent by a distributor. Its history is kept as it is.']);
+        }
+
         $validated = $request->validate([
-            'dealer_id'     => 'required|exists:dealers,id',
+            'dealer_id'     => ['required', Rule::exists('dealers', 'id')->where('status', 'active')],
             'sim_numbers'   => 'required|array|min:1',
             'sim_numbers.*' => 'required|string',
         ]);
@@ -156,6 +182,10 @@ class StockTransferController extends Controller
                             'transfer_id'  => null,
                             'allocated_at' => null,
                         ]);
+
+                    DealerTransferItem::where('ledger_id', $ledger->id)
+                        ->whereIn('device_id', $currentDevices->whereIn('sim_number', $simsToRemove)->pluck('shdevice_id'))
+                        ->delete();
                 }
 
                 // Attach newly selected devices — must still be available and
@@ -178,6 +208,13 @@ class StockTransferController extends Controller
                         $device->transfer_id = $ledger->id;
                         $device->allocated_at = now();
                         $device->save();
+
+                        DealerTransferItem::create([
+                            'ledger_id'   => $ledger->id,
+                            'device_id'   => $device->shdevice_id,
+                            'imei_number' => $device->imei_number,
+                            'sim_number'  => $device->sim_number,
+                        ]);
                     }
                 }
 
@@ -204,6 +241,10 @@ class StockTransferController extends Controller
 
     public function destroy(DealerTransferLedger $ledger)
     {
+        if ($ledger->isLocked()) {
+            return back()->withErrors(['transfer' => 'This transfer cannot be removed from the history: some of its devices have already been passed on, sold or bound, or it was sent by a distributor.']);
+        }
+
         // Only the history row is hidden — the linked devices keep their
         // dealer assignment, per business decision: a deleted history record
         // does not undo a transfer that already happened. The row is
@@ -262,7 +303,7 @@ class StockTransferController extends Controller
     public function generateReport()
     {
         // 1. Fetch Transferred Device History
-        $transfers = DealerTransferLedger::with('dealer')->latest()->get();
+        $transfers = DealerTransferLedger::with(['dealer', 'fromDealer'])->latest()->get();
 
         // 2. Fetch Transferred IMEI / Devices
         $allocatedDevices = SetupShalotrackDevice::with(['dealer', 'deviceType'])

@@ -1,86 +1,59 @@
 <?php
 
-namespace App\Http\Controllers\Admin\Distributor;
+namespace App\Console\Commands;
 
-use App\Enums\DeviceStatus;
-use App\Http\Controllers\Controller;
-use App\Models\SetupShalotrackDevice;
-use App\Services\DistributorNetwork;
-use Illuminate\Http\Request;
+use App\Models\Admin;
+use App\Services\Audit;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 /**
- * The distributor's own portal (route middleware: role:DISTRIBUTOR). Read-only in this version: it shows
- * what the distributor holds and which dealers report to it. Every query goes through DistributorNetwork,
- * so a distributor can only ever see its own business and its own dealers.
+ * Distributors that existed before the DISTRIBUTOR role still sign in as DEALER. This lists them and, only
+ * with --apply, switches their login to the distributor portal. It never runs by itself: moving a login
+ * changes what that person can do (they lose the dealer portal), so a person decides when.
+ *
+ *   php artisan distributors:sync-logins            (dry run: only lists)
+ *   php artisan distributors:sync-logins --apply    (changes the role, audited)
  */
-class DistributorPortalController extends Controller
+class SyncDistributorLogins extends Command
 {
-    private function network(Request $request): DistributorNetwork
+    protected $signature = 'distributors:sync-logins {--apply : actually change the login role}';
+
+    protected $description = 'List (or with --apply, convert) DEALER logins whose dealer record is of type distributor';
+
+    public function handle(): int
     {
-        $network = DistributorNetwork::forUser($request->user());
+        $logins = Admin::query()
+            ->where('role', 'DEALER')
+            ->whereIn('dealer_id', DB::table('dealers')->where('dealer_status', 'distributor')->select('id'))
+            ->orderBy('username')
+            ->get();
 
-        // A DISTRIBUTOR login that does not point at an active distributor record sees nothing at all.
-        abort_if($network === null, 403, 'This login is not linked to an active distributor. Please contact the company.');
+        if ($logins->isEmpty()) {
+            $this->info('Nothing to do: no DEALER login points at a distributor-type dealer.');
 
-        return $network;
-    }
+            return self::SUCCESS;
+        }
 
-    public function dashboard(Request $request)
-    {
-        $network = $this->network($request);
+        $this->table(['username', 'name', 'dealer_id', 'status'], $logins->map(fn ($l) => [$l->username, $l->full_name, $l->dealer_id, $l->status])->all());
 
-        $dealerIds = $network->dealerIds();
+        if (! $this->option('apply')) {
+            $this->warn('Dry run. Re-run with --apply to switch these logins to DISTRIBUTOR.');
 
-        return view('distributor.dashboard', [
-            'distributor'      => $network->distributor(),
-            'ownStock'         => $network->ownAvailableStock()->count(),
-            'ownSold'          => $network->ownDevices()->whereNotNull('assigned_customer_id')->where('assigned_customer_id', '>', 0)->count(),
-            'dealerCount'      => count($dealerIds),
-            'dealerStock'      => $network->dealerDevices()->whereNull('assigned_customer_id')->where('status', DeviceStatus::Activated->value)->count(),
-            'dealerSold'       => $network->dealerDevices()->whereNotNull('assigned_customer_id')->where('assigned_customer_id', '>', 0)->count(),
-            'dealerCustomers'  => $network->dealerLeads()->count(),
-        ]);
-    }
+            return self::SUCCESS;
+        }
 
-    public function dealers(Request $request)
-    {
-        $network = $this->network($request);
+        foreach ($logins as $login) {
+            $login->role = 'DISTRIBUTOR';
+            $login->save();
 
-        $dealers = $network->dealers()->orderBy('full_name')->get();
-        $ids = $dealers->pluck('id')->all() ?: [0];
+            Audit::record('account.role_changed', 'admin', $login->admin_id, $login->username,
+                ['role' => ['from' => 'DEALER', 'to' => 'DISTRIBUTOR']],
+                ['reason' => 'distributors:sync-logins', 'dealer_id' => $login->dealer_id]);
+        }
 
-        $stockByDealer = SetupShalotrackDevice::query()
-            ->whereIn('dealer_id', $ids)
-            ->whereNull('assigned_customer_id')
-            ->where('status', DeviceStatus::Activated->value)
-            ->selectRaw('dealer_id, count(*) as c')->groupBy('dealer_id')->pluck('c', 'dealer_id');
+        $this->info("Converted {$logins->count()} login(s) to DISTRIBUTOR.");
 
-        $soldByDealer = SetupShalotrackDevice::query()
-            ->whereIn('dealer_id', $ids)
-            ->whereNotNull('assigned_customer_id')->where('assigned_customer_id', '>', 0)
-            ->selectRaw('dealer_id, count(*) as c')->groupBy('dealer_id')->pluck('c', 'dealer_id');
-
-        $leadsByDealer = $network->dealerLeads()
-            ->selectRaw('dealer_id, count(*) as c')->groupBy('dealer_id')->pluck('c', 'dealer_id');
-
-        return view('distributor.dealers', [
-            'distributor'   => $network->distributor(),
-            'dealers'       => $dealers,
-            'stockByDealer' => $stockByDealer,
-            'soldByDealer'  => $soldByDealer,
-            'leadsByDealer' => $leadsByDealer,
-        ]);
-    }
-
-    public function stock(Request $request)
-    {
-        $network = $this->network($request);
-
-        $devices = $network->ownDevices()->latest('shdevice_id')->paginate(50);
-
-        return view('distributor.stock', [
-            'distributor' => $network->distributor(),
-            'devices'     => $devices,
-        ]);
+        return self::SUCCESS;
     }
 }
