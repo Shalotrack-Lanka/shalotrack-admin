@@ -20,6 +20,7 @@
                 <a href="{{ route('distributor.dashboard') }}" class="{{ request()->routeIs('distributor.dashboard') ? 'font-semibold underline' : 'hover:underline' }}">Dashboard</a>
                 <a href="{{ route('distributor.dealers') }}" class="{{ request()->routeIs('distributor.dealers') ? 'font-semibold underline' : 'hover:underline' }}">My dealers</a>
                 <a href="{{ route('distributor.stock') }}" class="{{ request()->routeIs('distributor.stock') ? 'font-semibold underline' : 'hover:underline' }}">My stock</a>
+                <a href="{{ route('distributor.transfer') }}" class="{{ request()->routeIs('distributor.transfer*') ? 'font-semibold underline' : 'hover:underline' }}">Transfer</a>
                 <a href="{{ route('distributor.profile') }}" class="{{ request()->routeIs('distributor.profile') ? 'font-semibold underline' : 'hover:underline' }}">Profile</a>
                 <span class="hidden md:inline text-blue-200">{{ $me->full_name }}</span>
                 <form method="POST" action="{{ route('logout') }}">

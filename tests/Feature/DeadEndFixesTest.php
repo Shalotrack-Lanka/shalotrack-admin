@@ -69,6 +69,7 @@ class DeadEndFixesTest extends TestCase
         Schema::create('dealers', function (Blueprint $t) {
             $t->id();
             $t->string('full_name');
+            $t->string('status')->default('active');
             $t->timestamps();
         });
         Schema::create('setup_shalotrack_devices', function (Blueprint $t) {

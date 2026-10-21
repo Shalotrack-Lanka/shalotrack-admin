@@ -79,7 +79,7 @@
 
                         @foreach($dealers as $dealer)
                         <option value="{{ $dealer->id }}">
-                            {{ $dealer->full_name }}
+                            {{ $dealer->full_name }}@if($dealer->dealer_status === 'distributor') (Distributor)@elseif($dealer->distributor_id) (dealer under {{ $parents[$dealer->distributor_id] ?? 'a distributor' }})@endif
                         </option>
                         @endforeach
 
@@ -119,7 +119,8 @@
                     <thead class="bg-gray-50 border-b border-gray-200 text-xs text-gray-700 uppercase">
                         <tr>
                             <th class="p-4">Date & time</th>
-                            <th class="p-4">Dealer</th>
+                            <th class="p-4">From</th>
+                            <th class="p-4">To</th>
                             <th class="p-4">Device Category / Type</th>
                             <th class="p-4 text-center">Nu of Devices</th>
                             <th class="p-4 text-center">Delete & Edit</th>
@@ -129,10 +130,14 @@
                         @forelse($transfers as $transfer)
                         <tr class="hover:bg-gray-50 transition">
                             <td class="p-4 text-xs text-gray-500">{{ $transfer->created_at->local()->format('Y-m-d h:i A') }}</td>
+                            <td class="p-4 text-xs">{{ $transfer->senderName() }}</td>
                             <td class="p-4 font-bold">{{ $transfer->dealer->full_name ?? '-' }}</td>
                             <td class="p-4">{{ $transfer->device_category }}</td>
                             <td class="p-4 text-center font-bold text-blue-600 bg-blue-50">{{ $transfer->quantity }}</td>
                             <td class="p-4 text-center">
+                                @if($transfer->from_dealer_id)
+                                <span class="text-xs text-gray-400">Sent by distributor (locked)</span>
+                                @else
                                 <div class="inline-flex items-center gap-2">
                                     <button type="button"
                                         class="edit-transfer-btn px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold"
@@ -148,11 +153,12 @@
                                         <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold">Delete</button>
                                     </form>
                                 </div>
+                                @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="p-8 text-center text-gray-400">No stock transfers found.</td>
+                            <td colspan="6" class="p-8 text-center text-gray-400">No stock transfers found.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -241,7 +247,7 @@
                 <select id="edit_dealer_id" name="dealer_id" required
                     class="w-full rounded-lg border-gray-300 h-10 text-xs">
                     @foreach($dealers as $dealer)
-                    <option value="{{ $dealer->id }}">{{ $dealer->full_name }}</option>
+                    <option value="{{ $dealer->id }}">{{ $dealer->full_name }}@if($dealer->dealer_status === 'distributor') (Distributor)@elseif($dealer->distributor_id) (dealer under {{ $parents[$dealer->distributor_id] ?? 'a distributor' }})@endif</option>
                     @endforeach
                 </select>
             </div>

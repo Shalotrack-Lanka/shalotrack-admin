@@ -90,23 +90,25 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 25%;">Date & Time</th>
-                <th style="width: 25%;">Dealer Name</th>
-                <th style="width: 30%;">Device Category / Type</th>
-                <th style="width: 20%;" class="text-center">Quantity</th>
+                <th style="width: 20%;">Date & Time</th>
+                <th style="width: 20%;">From</th>
+                <th style="width: 20%;">To</th>
+                <th style="width: 25%;">Device Category / Type</th>
+                <th style="width: 15%;" class="text-center">Quantity</th>
             </tr>
         </thead>
         <tbody>
             @forelse($transfers as $transfer)
                 <tr>
                     <td>{{ $transfer->created_at->local()->format('Y-m-d h:i A') }}</td>
+                    <td>{{ $transfer->senderName() }}</td>
                     <td><strong>{{ $transfer->dealer->full_name ?? '-' }}</strong></td>
                     <td>{{ $transfer->device_category }}</td>
                     <td class="text-center"><strong>{{ $transfer->quantity }}</strong></td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4" class="text-center" style="color: #999;">No stock transfers found.</td>
+                    <td colspan="5" class="text-center" style="color: #999;">No stock transfers found.</td>
                 </tr>
             @endforelse
         </tbody>

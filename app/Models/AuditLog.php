@@ -55,6 +55,7 @@ class AuditLog extends Model
         'device.marked_broken'       => [self::CATEGORY_DEVICE, 'Dealer marked a device broken'],
         'device.moved_to_pending'    => [self::CATEGORY_DEVICE, 'Dealer moved a device to pending'],
         'ledger.stock_deleted'       => [self::CATEGORY_DEVICE, 'Stock ledger record removed'],
+        'stock.transferred'          => [self::CATEGORY_DEVICE, 'Devices transferred (company or distributor to distributor / dealer)'],
         'ledger.transfer_deleted'    => [self::CATEGORY_DEVICE, 'Dealer transfer history record removed'],
 
         'technician.created'         => [self::CATEGORY_ACCOUNT, 'Technician added'],
