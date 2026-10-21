@@ -18,7 +18,7 @@ use Tests\TestCase;
 class RoleGatingTest extends TestCase
 {
     /** Routes any logged-in account may use (account plumbing, no business data). */
-    private const ANY_LOGGED_IN = ['GET dashboard', 'POST logout'];
+    private const ANY_LOGGED_IN = ['GET dashboard', 'POST logout', 'GET account/password', 'PUT account/password'];
 
     private function roleMiddleware(LaravelRoute $route): ?array
     {
@@ -80,6 +80,7 @@ class RoleGatingTest extends TestCase
                 (bool) preg_match('#^admin/dealer/customer-ad(/|$)#', $uri),
                 in_array($uri, ['admin/dealer/unassign-device/{id}', 'admin/dealer/assign-device'], true),
                 str_starts_with($uri, 'admin/dealer/dealer/') => ['DEALER'],
+                str_starts_with($uri, 'distributor/') => ['DISTRIBUTOR'],
                 str_starts_with($uri, 'dealer/') => ['DEALER'],
                 $uri === 'admin/customer/device-management/{activatedDevice}/bank-slip' => ['ADMIN', 'FINANCE'],
                 $uri === 'finance/dashboard', $uri === 'finance/profile' => ['FINANCE'],
@@ -147,7 +148,7 @@ class RoleGatingTest extends TestCase
     public static function blockedProvider(): array
     {
         $cases = [];
-        foreach (['DEALER', 'FINANCE', 'TECHNICIAN', 'SUPPLIER'] as $role) {
+        foreach (['DEALER', 'DISTRIBUTOR', 'FINANCE', 'TECHNICIAN', 'SUPPLIER'] as $role) {
             foreach ([
                 ['POST', '/admin/master-pages/stock-transfer'],
                 ['POST', '/admin/master-pages/devices/import'],
@@ -167,6 +168,10 @@ class RoleGatingTest extends TestCase
         }
         // portal-only routes are closed to the wrong role too
         $cases['FINANCE POST dealer assign'] = ['FINANCE', 'POST', '/admin/dealer/assign-device'];
+        $cases['DEALER GET distributor dashboard'] = ['DEALER', 'GET', '/distributor/dashboard'];
+        $cases['ADMIN GET distributor stock'] = ['ADMIN', 'GET', '/distributor/stock'];
+        $cases['DISTRIBUTOR GET dealer dashboard'] = ['DISTRIBUTOR', 'GET', '/dealer/dashboard'];
+        $cases['DISTRIBUTOR GET dealer command centre'] = ['DISTRIBUTOR', 'GET', '/dealer/device-commands'];
         $cases['DEALER GET supplier dashboard'] = ['DEALER', 'GET', '/admin/supplier/dashboard'];
         $cases['SUPPLIER GET dealer dashboard'] = ['SUPPLIER', 'GET', '/dealer/dashboard'];
         $cases['DEALER PUT supplier profile'] = ['DEALER', 'PUT', '/admin/supplier/profile'];
