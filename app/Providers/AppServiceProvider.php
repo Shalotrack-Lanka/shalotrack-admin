@@ -28,6 +28,15 @@ class AppServiceProvider extends ServiceProvider
         // recorded by LoginRequest). Registered here, not in app/Listeners, so it cannot register twice.
         \Illuminate\Support\Facades\Event::subscribe(\App\Services\AuthAudit::class);
 
+        // Billing abilities: checks use ability names, config/billing.php says which role has which.
+        foreach (collect(config('billing.abilities'))->flatten()->unique() as $ability) {
+            \Illuminate\Support\Facades\Gate::define($ability, fn ($user) => in_array(
+                $ability,
+                config('billing.abilities.' . ($user->role ?? ''), []),
+                true
+            ));
+        }
+
         // Timestamps are stored and computed in UTC (config('app.timezone')). Screens and reports for
         // people in Sri Lanka show them through ->local(), which only changes how a time is displayed.
         Carbon::macro('local', function () {

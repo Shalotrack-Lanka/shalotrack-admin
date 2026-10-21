@@ -57,6 +57,12 @@ class DealerTransferLedger extends Model
             return true;
         }
 
+        // Once a transfer is on an invoice, the invoice stands on it: corrections go through a credit note.
+        if (\Illuminate\Support\Facades\Schema::hasTable('invoice_lines')
+            && \Illuminate\Support\Facades\DB::table('invoice_lines')->where('transfer_ledger_id', $this->id)->exists()) {
+            return true;
+        }
+
         $moved = $this->items()
             ->join('setup_shalotrack_devices as d', 'd.shdevice_id', '=', 'dealer_transfer_items.device_id')
             ->where(function ($q) {

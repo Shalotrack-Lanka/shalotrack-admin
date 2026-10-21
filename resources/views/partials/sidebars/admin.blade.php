@@ -232,6 +232,22 @@
         </div>
 
 
+        <!-- BILLING (wholesale invoices and payments) -->
+        @can('billing.view')
+        <div x-data="{ open: {{ request()->routeIs('admin.billing.*') ? 'true' : 'false' }} }">
+            <button @click="open=!open" class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
+                <span>Billing</span>
+                <svg :class="open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div x-show="open" class="ml-5 text-sm">
+                <a href="{{ route('admin.billing.home') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.billing.home', 'admin.billing.statement') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Overview &amp; Accounts</a>
+                <a href="{{ route('admin.billing.invoices.index') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.billing.invoices.*', 'admin.billing.credit-notes.*') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Invoices</a>
+                <a href="{{ route('admin.billing.receipts.index') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.billing.receipts.*') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Payments</a>
+                <a href="{{ route('admin.billing.settings') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.billing.settings') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Billing Settings</a>
+            </div>
+        </div>
+        @endcan
+
            <!-- DEALERS -->
         <div x-data="{ open: {{ (request()->is('admin/dealer*') || request()->routeIs('admin.commission-payouts*')) ? 'true' : 'false' }} }">
 

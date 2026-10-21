@@ -54,9 +54,14 @@
             </div>
         </div>
 
+        <!-- BILLING -->
+        <a href="{{ route('distributor.billing.index') }}"
+           class="block p-3 rounded text-white hover:bg-blue-900 {{ request()->routeIs('distributor.billing*') ? 'bg-blue-800' : '' }}">
+            Billing &amp; Invoices
+        </a>
+
         <!-- COMING SOON (shown so the roadmap is visible; not clickable) -->
         <p class="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-blue-300/70">Coming soon</p>
-        <div class="{{ $soon }}"><span>Billing &amp; Invoices</span><span class="text-[10px] rounded-full bg-blue-900 px-2 py-0.5">Soon</span></div>
         <div class="{{ $soon }}"><span>Activate &amp; Renew Devices</span><span class="text-[10px] rounded-full bg-blue-900 px-2 py-0.5">Soon</span></div>
         <div class="{{ $soon }}"><span>Device Commands</span><span class="text-[10px] rounded-full bg-blue-900 px-2 py-0.5">Soon</span></div>
 
