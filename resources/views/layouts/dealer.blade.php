@@ -147,6 +147,10 @@
                 <span>Commission statements</span>
             </a>
 
+            <a href="{{ route('dealer.billing.index') }}" class="flex items-center justify-between p-3 text-white hover:bg-blue-900 rounded {{ request()->routeIs('dealer.billing*') ? 'bg-blue-900' : '' }}">
+                <span>My billing</span>
+            </a>
+
             {{-- NEW: Complaints link -- route/controller/view already existed
      (dealer.complaints, DealerComplaintController, dealer/complaints
      view) but nothing in this sidebar ever linked to them. --}}

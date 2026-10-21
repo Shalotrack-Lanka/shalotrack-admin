@@ -32,6 +32,10 @@ use App\Http\Controllers\Admin\Dealer\AssignedDevicesController;
 use App\Http\Controllers\Admin\Dealer\DealerComplaintController;
 use App\Http\Controllers\Admin\Dealer\DealerScorecardController;
 use App\Http\Controllers\Admin\Dealer\CommissionPayoutController;
+use App\Http\Controllers\Admin\Billing\BillingController;
+use App\Http\Controllers\Admin\Billing\InvoiceController as BillingInvoiceController;
+use App\Http\Controllers\Admin\Billing\ReceiptController as BillingReceiptController;
+use App\Http\Controllers\Billing\PortalBillingController;
 use App\Http\Controllers\Admin\AuditLogController;
 
 // FIX: this was pointing at Admin\Dealer\DealerDashboardController, a class
@@ -128,6 +132,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/transfer', [DistributorTransferController::class, 'store'])->middleware('throttle:20,1')->name('transfer.store');
         Route::get('/profile', [AdminProfileController::class, 'show'])->name('profile');
         Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
+ 
+        // Billing: read-only view of what the company has invoiced and been paid (own + own dealers).
+        Route::prefix('billing')->name('billing.')->middleware('can:billing.view')->group(function () {
+            Route::get('/', [PortalBillingController::class, 'index'])->name('index');
+            Route::get('/invoices/{invoice}', [PortalBillingController::class, 'invoice'])->name('invoices.show');
+            Route::get('/invoices/{invoice}/pdf', [PortalBillingController::class, 'invoicePdf'])->middleware(['can:billing.statement.export', 'throttle:30,1'])->name('invoices.pdf');
+            Route::get('/statement/{dealer?}', [PortalBillingController::class, 'statement'])->name('statement');
+        });
     });
 
     Route::view('/finance/dashboard', 'finance.dashboard')->middleware('role:FINANCE')->name('finance.dashboard');
@@ -256,6 +268,41 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/technician-jobs/{job}/cancel', [TechnicianJobController::class, 'cancel'])->middleware('role:ADMIN')->name('admin.technician-jobs.cancel');
     Route::get('/admin/device-health', [DeviceHealthController::class, 'admin'])->middleware('role:ADMIN')->name('admin.device-health');
     Route::get('/admin/dealer-scorecard', [DealerScorecardController::class, 'admin'])->middleware('role:ADMIN')->name('admin.dealer-scorecard');
+
+    // Wholesale billing (ADMIN today; checks use abilities from config/billing.php so Finance can be added later).
+    Route::prefix('admin/billing')->name('admin.billing.')->middleware('role:ADMIN')->group(function () {
+        Route::get('/', [BillingController::class, 'home'])->middleware('can:billing.view')->name('home');
+
+        Route::get('/invoices', [BillingInvoiceController::class, 'index'])->middleware('can:billing.view')->name('invoices.index');
+        Route::get('/invoices/new', [BillingInvoiceController::class, 'create'])->middleware('can:billing.invoice.issue')->name('invoices.new');
+        Route::post('/invoices/review', [BillingInvoiceController::class, 'review'])->middleware(['can:billing.invoice.issue', 'throttle:30,1'])->name('invoices.review');
+        Route::post('/invoices', [BillingInvoiceController::class, 'store'])->middleware(['can:billing.invoice.issue', 'throttle:20,1'])->name('invoices.store');
+        Route::get('/invoices/{invoice}', [BillingInvoiceController::class, 'show'])->middleware('can:billing.view')->name('invoices.show');
+        Route::get('/invoices/{invoice}/pdf', [BillingInvoiceController::class, 'pdf'])->middleware(['can:billing.statement.export', 'throttle:30,1'])->name('invoices.pdf');
+        Route::get('/invoices/{invoice}/credit', [BillingInvoiceController::class, 'creditForm'])->middleware('can:billing.invoice.credit')->name('invoices.credit');
+        Route::post('/invoices/{invoice}/credit', [BillingInvoiceController::class, 'creditStore'])->middleware(['can:billing.invoice.credit', 'throttle:20,1'])->name('invoices.credit.store');
+        Route::get('/credit-notes/{creditNote}', [BillingInvoiceController::class, 'creditShow'])->middleware('can:billing.view')->name('credit-notes.show');
+        Route::get('/credit-notes/{creditNote}/pdf', [BillingInvoiceController::class, 'creditPdf'])->middleware(['can:billing.statement.export', 'throttle:30,1'])->name('credit-notes.pdf');
+
+        Route::get('/receipts', [BillingReceiptController::class, 'index'])->middleware('can:billing.view')->name('receipts.index');
+        Route::get('/receipts/new', [BillingReceiptController::class, 'create'])->middleware('can:billing.receipt.record')->name('receipts.new');
+        Route::post('/receipts', [BillingReceiptController::class, 'store'])->middleware(['can:billing.receipt.record', 'throttle:20,1'])->name('receipts.store');
+        Route::get('/receipts/{receipt}', [BillingReceiptController::class, 'show'])->middleware('can:billing.view')->name('receipts.show');
+        Route::get('/receipts/{receipt}/pdf', [BillingReceiptController::class, 'pdf'])->middleware(['can:billing.statement.export', 'throttle:30,1'])->name('receipts.pdf');
+        Route::post('/receipts/{receipt}/approve', [BillingReceiptController::class, 'approve'])->middleware(['can:billing.receipt.approve', 'throttle:20,1'])->name('receipts.approve');
+        Route::post('/receipts/{receipt}/reject', [BillingReceiptController::class, 'reject'])->middleware(['can:billing.receipt.approve', 'throttle:20,1'])->name('receipts.reject');
+        Route::post('/receipts/{receipt}/reverse', [BillingReceiptController::class, 'reverse'])->middleware(['can:billing.receipt.reverse', 'throttle:20,1'])->name('receipts.reverse');
+
+        Route::get('/accounts', [BillingController::class, 'accounts'])->middleware('can:billing.view')->name('accounts');
+        Route::get('/accounts/{dealer}', [BillingController::class, 'statement'])->middleware('can:billing.view')->name('statement');
+        Route::get('/accounts/{dealer}/csv', [BillingController::class, 'statementCsv'])->middleware(['can:billing.statement.export', 'throttle:30,1'])->name('statement.csv');
+        Route::get('/accounts/{dealer}/pdf', [BillingController::class, 'statementPdf'])->middleware(['can:billing.statement.export', 'throttle:30,1'])->name('statement.pdf');
+        Route::put('/accounts/{dealer}/party', [BillingController::class, 'partyUpdate'])->middleware('can:billing.settings.manage')->name('party.update');
+
+        Route::get('/settings', [BillingController::class, 'settings'])->middleware('can:billing.settings.manage')->name('settings');
+        Route::put('/settings', [BillingController::class, 'settingsUpdate'])->middleware('can:billing.settings.manage')->name('settings.update');
+        Route::post('/verify', [BillingController::class, 'verify'])->middleware(['can:billing.settings.manage', 'throttle:6,1'])->name('verify');
+    });
 
     Route::get('/admin/audit-log', [AuditLogController::class, 'index'])->middleware('role:ADMIN')->name('admin.audit-log');
 
@@ -647,6 +694,14 @@ Route::middleware(['auth'])->prefix('dealer')->name('dealer.')->group(function (
         Route::get('/commission-earnings', [CommissionPayoutController::class, 'dealerEarnings'])->name('commission-earnings');
         Route::get('/commission-statements', [CommissionPayoutController::class, 'dealerIndex'])->name('commission-statements');
         Route::get('/commission-statements/{month}', [CommissionPayoutController::class, 'dealerShow'])->name('commission-statement');
+
+        // Billing (read-only): what the company invoiced this dealer and what was paid.
+        Route::middleware('can:billing.view')->group(function () {
+            Route::get('/billing', [PortalBillingController::class, 'index'])->name('billing.index');
+            Route::get('/billing/invoices/{invoice}', [PortalBillingController::class, 'invoice'])->name('billing.invoices.show');
+            Route::get('/billing/invoices/{invoice}/pdf', [PortalBillingController::class, 'invoicePdf'])->middleware(['can:billing.statement.export', 'throttle:30,1'])->name('billing.invoices.pdf');
+            Route::get('/billing/statement', [PortalBillingController::class, 'statement'])->name('billing.statement');
+        });
 
         Route::get('/complaints', [DealerComplaintController::class, 'index'])->name('complaints');
         Route::post('/complaints/{complaintId}/reply', [DealerComplaintController::class, 'reply'])->name('complaints.reply');
