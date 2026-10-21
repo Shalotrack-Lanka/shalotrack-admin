@@ -64,6 +64,7 @@ class AuditLog extends Model
         'dealer.status_changed'      => [self::CATEGORY_ACCOUNT, 'Dealer enabled / disabled'],
         'customer_lead.deleted'      => [self::CATEGORY_ACCOUNT, 'Dealer removed a customer'],
         'account.profile_updated'    => [self::CATEGORY_ACCOUNT, 'Own profile edited'],
+        'account.role_changed'       => [self::CATEGORY_ACCOUNT, 'Login role changed (dealer / distributor)'],
         'account.password_reset'     => [self::CATEGORY_ACCOUNT, 'Password reset (temporary password set by an administrator)'],
         'account.password_changed'   => [self::CATEGORY_ACCOUNT, 'Own password changed'],
         'account.password_reset_dismissed' => [self::CATEGORY_ACCOUNT, 'Password reset request dismissed'],

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class DealerManagementController extends Controller
 {
@@ -43,7 +44,7 @@ class DealerManagementController extends Controller
             'full_name'        => 'required|string|max:255',
             'address'          => 'nullable|string|max:500',
             'qualification'    => 'nullable|string|max:255',
-            'dealer_status'    => ['required', 'string'],
+            'dealer_status'    => ['required', 'string', Rule::in(self::VALID_DEALER_STATUSES)],
             'region'           => ['required', 'string'],
             'country'          => 'nullable|string|max:100',
             'pin_code'         => 'nullable|string|max:50',
@@ -65,7 +66,10 @@ class DealerManagementController extends Controller
         $generatedPassword = null;
         $createdDealerId = null;
 
-        DB::transaction(function () use ($validated, $dealerFormPassword, &$generatedUsername, &$generatedPassword, &$createdDealerId) {
+        // A distributor signs in to its own portal (role DISTRIBUTOR); every other type is a dealer login.
+        $loginRole = $validated['dealer_status'] === 'distributor' ? 'DISTRIBUTOR' : 'DEALER';
+
+        DB::transaction(function () use ($validated, $dealerFormPassword, $loginRole, &$generatedUsername, &$generatedPassword, &$createdDealerId) {
             $dealer = Dealer::create($validated);
             $dealer->refresh();
             $createdDealerId = $dealer->id;
@@ -79,7 +83,7 @@ class DealerManagementController extends Controller
                     'password'  => Hash::make($generatedPassword),
                     'full_name' => $dealer->full_name,
                     'email'     => $dealer->contact_email,
-                    'role'      => 'DEALER',
+                    'role'      => $loginRole,
                     'status'    => 'ACTIVE',
                     'dealer_id' => $dealer->id,
                 ]);
@@ -106,6 +110,7 @@ class DealerManagementController extends Controller
             'dealer_status'         => $validated['dealer_status'],
             'region'                => $validated['region'],
             'login_username'        => $generatedUsername,
+            'login_role'            => $loginRole,
             'password_set_by_admin' => $dealerFormPassword !== null,
         ]);
 

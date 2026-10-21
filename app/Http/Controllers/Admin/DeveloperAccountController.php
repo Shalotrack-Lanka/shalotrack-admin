@@ -21,7 +21,7 @@ use Illuminate\Http\Request;
 class DeveloperAccountController extends Controller
 {
     private const PER_PAGE = 25;
-    private const ROLES = ['ADMIN', 'DEALER', 'FINANCE', 'TECHNICIAN', 'SUPPLIER'];
+    private const ROLES = ['ADMIN', 'DEALER', 'DISTRIBUTOR', 'FINANCE', 'TECHNICIAN', 'SUPPLIER'];
 
     public function index(Request $request)
     {

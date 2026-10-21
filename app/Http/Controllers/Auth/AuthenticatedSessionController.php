@@ -39,6 +39,10 @@ public function store(LoginRequest $request): RedirectResponse
         return redirect()->route('dealer.dashboard');
     }
 
+    if ($user->role === 'DISTRIBUTOR') {
+        return redirect()->route('distributor.dashboard');
+    }
+
     if ($user->role === 'FINANCE') {
         return redirect()->route('finance.dashboard');
     }

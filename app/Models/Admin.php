@@ -59,6 +59,7 @@ class Admin extends Authenticatable
         return match ($this->role) {
             'ADMIN'      => 'admin.dashboard',
             'DEALER'     => 'dealer.dashboard',
+            'DISTRIBUTOR' => 'distributor.dashboard',
             'FINANCE'    => 'finance.dashboard',
             'TECHNICIAN' => 'technician.dashboard',
             'SUPPLIER'   => 'supplier.dashboard',
@@ -71,6 +72,7 @@ class Admin extends Authenticatable
     {
         return match ($this->role) {
             'ADMIN'      => 'admin.profile',
+            'DISTRIBUTOR' => 'distributor.profile',
             'FINANCE'    => 'finance.profile',
             'TECHNICIAN' => 'technician.profile',
             default      => null,
@@ -80,6 +82,27 @@ class Admin extends Authenticatable
     public function dealer()
     {
         return $this->belongsTo(Dealer::class);
+    }
+
+    public function isDistributor(): bool
+    {
+        return $this->role === 'DISTRIBUTOR' && $this->status === 'ACTIVE';
+    }
+
+    /**
+     * The distributor's own business record (its dealers row), or null. A DISTRIBUTOR login only counts
+     * while it points at an ACTIVE dealers row whose type really is "distributor"; anything else gets
+     * nothing, so a mis-linked login can never see another business's stock or dealers.
+     */
+    public function distributorDealer(): ?Dealer
+    {
+        if (! $this->isDistributor() || empty($this->dealer_id)) {
+            return null;
+        }
+
+        $dealer = Dealer::find($this->dealer_id);
+
+        return $dealer && $dealer->dealer_status === 'distributor' && $dealer->status === 'active' ? $dealer : null;
     }
 
     public function supplier()
