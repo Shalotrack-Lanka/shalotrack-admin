@@ -32,7 +32,11 @@ class DealerManagementController extends Controller
         $dealers         = Dealer::where('status', 'active')->latest()->get();
         $archivedDealers = Dealer::where('status', 'archived')->latest()->get();
 
-        return view('admin.dealer.dealer_management', compact('dealers', 'archivedDealers'));
+        // Distributors a new dealer can be attached to, and the parent shown under each dealer in the list.
+        $distributorOptions = Dealer::where('dealer_status', 'distributor')->where('status', 'active')->orderBy('full_name')->get(['id', 'full_name']);
+        $distributorNames   = Dealer::where('dealer_status', 'distributor')->pluck('full_name', 'id');
+
+        return view('admin.dealer.dealer_management', compact('dealers', 'archivedDealers', 'distributorOptions', 'distributorNames'));
     }
 
     /**
@@ -40,11 +44,27 @@ class DealerManagementController extends Controller
      */
     public function store(Request $request)
     {
+        // The page has one form for distributors and one for dealers. The distributor form cannot choose a
+        // type (it is forced here), and the dealer form can never create a distributor, whatever is posted.
+        $kind = $request->input('form_kind');
+        abort_unless(in_array($kind, [null, 'distributor', 'dealer'], true), 422);
+        if ($kind === 'distributor') {
+            $request->merge(['dealer_status' => 'distributor', 'distributor_id' => null]);
+        }
+        // The dealer form has no type choice either: everyone it creates is a plain "Authorized Dealer"
+        // (the type can still be changed later on the dealer's profile page).
+        if ($kind === 'dealer') {
+            $request->merge(['dealer_status' => 'Authorized Dealer']);
+        }
+        $allowedStatuses = self::VALID_DEALER_STATUSES;
+
         $validated = $request->validate([
             'full_name'        => 'required|string|max:255',
             'address'          => 'nullable|string|max:500',
             'qualification'    => 'nullable|string|max:255',
-            'dealer_status'    => ['required', 'string', Rule::in(self::VALID_DEALER_STATUSES)],
+            'dealer_status'    => ['required', 'string', Rule::in($allowedStatuses)],
+            // The distributor this dealer reports to: a real, active distributor, or nobody (direct).
+            'distributor_id'   => ['nullable', 'integer', Rule::exists('dealers', 'id')->where('dealer_status', 'distributor')->where('status', 'active')],
             'region'           => ['required', 'string'],
             'country'          => 'nullable|string|max:100',
             'pin_code'         => 'nullable|string|max:50',
@@ -108,13 +128,18 @@ class DealerManagementController extends Controller
 
         Audit::record('dealer.created', 'dealer', $createdDealerId, $validated['full_name'], [], [
             'dealer_status'         => $validated['dealer_status'],
+            'distributor_id'        => $validated['distributor_id'] ?? null,
             'region'                => $validated['region'],
             'login_username'        => $generatedUsername,
             'login_role'            => $loginRole,
             'password_set_by_admin' => $dealerFormPassword !== null,
         ]);
 
-        return redirect()->back()->with('success', "Dealer '{$validated['full_name']}' saved successfully.");
+        $label = $validated['dealer_status'] === 'distributor' ? 'Distributor' : 'Dealer';
+
+        return redirect()->back()
+            ->with('success', "{$label} '{$validated['full_name']}' saved successfully.")
+            ->with('saved_kind', $validated['dealer_status'] === 'distributor' ? 'distributor' : 'dealer');
     }
 
     private function generateUniqueUsername(string $fullName): string
