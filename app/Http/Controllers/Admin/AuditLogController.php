@@ -99,14 +99,14 @@ class AuditLogController extends Controller
         if ($f['actor'] !== '') {
             $like = '%' . $this->escapeLike(mb_strtolower($f['actor'])) . '%';
             $q->where(fn ($w) => $w
-                ->whereRaw("LOWER(actor_name) LIKE ? ESCAPE '\\'", [$like])
-                ->orWhereRaw("LOWER(actor_id) LIKE ? ESCAPE '\\'", [$like]));
+                ->whereRaw("LOWER(actor_name) LIKE ? ESCAPE '!'", [$like])
+                ->orWhereRaw("LOWER(actor_id) LIKE ? ESCAPE '!'", [$like]));
         }
         if ($f['q'] !== '') {
             $like = '%' . $this->escapeLike(mb_strtolower($f['q'])) . '%';
             $q->where(fn ($w) => $w
-                ->whereRaw("LOWER(subject_label) LIKE ? ESCAPE '\\'", [$like])
-                ->orWhereRaw("LOWER(subject_id) LIKE ? ESCAPE '\\'", [$like]));
+                ->whereRaw("LOWER(subject_label) LIKE ? ESCAPE '!'", [$like])
+                ->orWhereRaw("LOWER(subject_id) LIKE ? ESCAPE '!'", [$like]));
         }
         // Days are Sri Lanka days; rows are stored in UTC.
         if ($f['from']) {
@@ -121,7 +121,7 @@ class AuditLogController extends Controller
 
     private function escapeLike(string $s): string
     {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $s);
+        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $s);
     }
 
     private function csv($query): StreamedResponse

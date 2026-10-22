@@ -10,6 +10,8 @@ use App\Support\PasswordPolicy;
 use App\Support\ReauthGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Developer account only (route middleware: role:ADMIN + developer, see Admin::isDeveloper()).
@@ -32,10 +34,10 @@ class DeveloperAccountController extends Controller
         $query = Admin::query()->orderBy('role')->orderBy('full_name')->orderBy('username');
 
         if ($q !== '') {
-            $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtolower($q)) . '%';
+            $like = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($q)) . '%';
             $query->where(function ($w) use ($like) {
                 foreach (['username', 'full_name', 'email', 'phone_number'] as $col) {
-                    $w->orWhereRaw("LOWER(COALESCE({$col}, '')) LIKE ? ESCAPE '\\'", [$like]);
+                    $w->orWhereRaw("LOWER(COALESCE({$col}, '')) LIKE ? ESCAPE '!'", [$like]);
                 }
             });
         }
@@ -75,6 +77,11 @@ class DeveloperAccountController extends Controller
         ReauthGuard::confirm($request, 'resetAccount', 'set temporary password (account directory)');
 
         $me = $request->user();
+        // Admins.admin_id is a uuid column on Postgres: a malformed id must be a plain 404, not a database error.
+        if (DB::getDriverName() === 'pgsql' && ! Str::isUuid($adminId)) {
+            abort(404);
+        }
+
         $target = Admin::find($adminId);
 
         if (! $target) {
