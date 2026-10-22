@@ -250,7 +250,7 @@ class PaidActivationTest extends PgsqlTestCase
         $this->assertSame(0, PackagePayment::where('imei_number', $d2->imei_number)->count());
     }
 
-    public function test_one_owner_may_pay_several_of_their_own_devices_with_one_invoice(): void
+        public function test_one_bank_invoice_cannot_cover_two_devices_even_for_the_same_owner(): void
     {
         $this->oneYearPackage();
         $retailer = $this->makeDealer('fleet');
@@ -261,12 +261,12 @@ class PaidActivationTest extends PgsqlTestCase
         $d2 = $this->makeDevice('09', $retailer->id);
 
         $this->activate($v1, $this->paidPayload($d1, 'AUTOTEST-INV-FLEET'))->assertSessionHasNoErrors();
-        $this->activate($v2, $this->paidPayload($d2, 'AUTOTEST-INV-FLEET'))->assertSessionHasNoErrors();
+
+        $this->activate($v2, $this->paidPayload($d2, 'AUTOTEST-INV-FLEET'))->assertSessionHasErrors('bank_invoice');
 
         $this->assertSame(1, ActivatedDevice::where('vehicle_id', $v1->vehicle_id)->count());
-        $this->assertSame(1, ActivatedDevice::where('vehicle_id', $v2->vehicle_id)->count());
-        $this->assertSame(1, PackagePayment::where('imei_number', $d1->imei_number)->count());
-        $this->assertSame(1, PackagePayment::where('imei_number', $d2->imei_number)->count());
+        $this->assertSame(0, ActivatedDevice::where('vehicle_id', $v2->vehicle_id)->count());
+        $this->assertSame(0, PackagePayment::where('imei_number', $d2->imei_number)->count());
     }
 
     public function test_un_marking_a_payment_reverses_it_and_claws_the_commission_back(): void

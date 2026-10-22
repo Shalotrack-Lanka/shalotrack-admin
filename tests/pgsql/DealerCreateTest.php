@@ -24,7 +24,7 @@ class DealerCreateTest extends PgsqlTestCase
 
         return array_merge([
             'full_name'     => 'Autotest Dealer ' . $tag,
-            'dealer_status' => 'distributor',
+            'dealer_status' => 'retailer',
             'region'        => 'colombo',
             'country'       => 'Sri Lanka',
             'contact_email' => "autotest+dealer-{$tag}@example.test",
@@ -58,6 +58,26 @@ class DealerCreateTest extends PgsqlTestCase
         $this->assertSame('DEALER', $login->role);
         $this->assertSame('ACTIVE', $login->status);
         $this->assertNotSame($data['password'], $login->password, 'password must be hashed');
+    }
+
+        public function test_a_distributor_gets_a_distributor_login(): void
+    {
+        $admin = $this->makeAdmin('ADMIN');
+        $data  = $this->payload(['dealer_status' => 'distributor']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.dealer.store'), $data)
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+
+        $dealer = Dealer::where('contact_email', $data['contact_email'])->first();
+        $this->assertNotNull($dealer, 'distributor row was not created');
+        $this->assertSame('distributor', $dealer->dealer_status);
+
+        $login = Admin::where('dealer_id', $dealer->id)->first();
+        $this->assertNotNull($login, 'linked DISTRIBUTOR login was not created');
+        $this->assertSame('DISTRIBUTOR', $login->role);
+        $this->assertSame('ACTIVE', $login->status);
     }
 
     public function test_duplicate_contact_email_is_rejected_and_creates_nothing_new(): void
