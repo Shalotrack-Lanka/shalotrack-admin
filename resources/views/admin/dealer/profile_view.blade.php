@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', $dealer->full_name . ' — Dealer Profile')
+@php($noun = $dealer->dealer_status === 'distributor' ? 'Distributor' : 'Dealer')
+@section('title', $dealer->full_name . ' — ' . $noun . ' Profile')
 
 @section('content')
 
@@ -51,7 +52,7 @@
             <div class="flex gap-2 flex-wrap">
                 {{-- Toggle active / archived --}}
                 <form action="{{ route('admin.dealer.toggle-status', $dealer->id) }}" method="POST"
-                      onsubmit="return confirm('{{ $dealer->status === 'active' ? 'Deactivate' : 'Activate' }} this dealer?');">
+                      onsubmit="return confirm('{{ $dealer->status === 'active' ? 'Deactivate' : 'Activate' }} this {{ strtolower($noun) }}?');">
                     @csrf
                     @method('PATCH')
                     <button type="submit"
@@ -59,7 +60,7 @@
                         {{ $dealer->status === 'active'
                             ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
                             : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100' }}">
-                        {{ $dealer->status === 'active' ? 'Deactivate Dealer' : 'Activate Dealer' }}
+                        {{ ($dealer->status === 'active' ? 'Deactivate ' : 'Activate ') . $noun }}
                     </button>
                 </form>
 
@@ -67,7 +68,7 @@
                 <button @click="editOpen = !editOpen"
                     :class="editOpen ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
                     class="px-4 py-2 rounded-lg text-sm font-semibold border shadow-sm transition-colors">
-                    <span x-text="editOpen ? 'Close Edit' : 'Edit Dealer'"></span>
+                    <span x-text="editOpen ? 'Close Edit' : 'Edit {{ $noun }}'"></span>
                 </button>
 
                 {{-- Back to dealer management --}}
@@ -89,7 +90,7 @@
          class="bg-white p-6 border border-cyan-100 rounded-2xl shadow-sm">
 
         <div class="flex items-center justify-between mb-5">
-            <h2 class="font-bold text-gray-800 text-sm uppercase tracking-wide">Edit Dealer Details</h2>
+            <h2 class="font-bold text-gray-800 text-sm uppercase tracking-wide">Edit {{ $noun }} Details</h2>
             <div class="flex gap-2">
                 <button type="button" @click="tab = 'basic'"
                     :class="tab === 'basic' ? 'bg-cyan-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
@@ -122,7 +123,7 @@
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">Dealer Type <span class="text-red-500">*</span></label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">{{ $noun }} Type <span class="text-red-500">*</span></label>
                         <select name="dealer_status" required
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none bg-white">
                             @foreach(['lbc' => 'LBC','distributor' => 'Distributor','retailer' => 'Retailer','dsa' => 'DSA','ba' => 'BA','csa' => 'CSA','lt_point' => 'LT Point', 'Authorized Dealer' => 'Authorized Dealer'] as $val => $label)

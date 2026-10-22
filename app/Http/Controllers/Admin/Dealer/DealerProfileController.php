@@ -179,10 +179,10 @@ class DealerProfileController extends Controller
         }
 
         if ($passwordChanged) {
-            return back()->with('success', "Dealer '{$dealer->full_name}' profile and password updated successfully.");
+            return back()->with('success', "{$this->noun($dealer)} '{$dealer->full_name}' profile and password updated successfully.");
         }
 
-        return back()->with('success', "Dealer '{$dealer->full_name}' updated successfully.");
+        return back()->with('success', "{$this->noun($dealer)} '{$dealer->full_name}' updated successfully.");
     }
 
     public function toggleStatus(Request $request, $id)
@@ -202,6 +202,12 @@ class DealerProfileController extends Controller
 
         $label = $dealer->status === 'active' ? 'activated' : 'deactivated';
 
-        return back()->with('success', "Dealer account {$label}. Portal login is now " . ($dealer->status === 'active' ? 'enabled' : 'blocked') . '.');
+        return back()->with('success', "{$this->noun($dealer)} account {$label}. Portal login is now " . ($dealer->status === 'active' ? 'enabled' : 'blocked') . '.');
+    }
+
+    /** "Distributor" or "Dealer", for messages shown to the admin. */
+    private function noun(\App\Models\Dealer $dealer): string
+    {
+        return $dealer->dealer_status === 'distributor' ? 'Distributor' : 'Dealer';
     }
 }
