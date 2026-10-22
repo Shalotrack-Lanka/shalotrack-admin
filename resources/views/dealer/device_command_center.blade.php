@@ -1,4 +1,4 @@
-@extends('layouts.dealer')
+@extends($layout ?? 'layouts.dealer')
 
 @section('title', 'Device Command Center')
 
@@ -282,8 +282,8 @@
 {{-- ── JavaScript ───────────────────────────────────────────────────────────── --}}
 <script>
     var CSRF_TOKEN   = '{{ csrf_token() }}';
-    var SEND_URL     = '{{ route("dealer.device-commands.send") }}';
-    var HISTORY_BASE = '{{ url("/dealer/device-commands/history") }}';
+    var SEND_URL     = '{{ $sendUrl ?? route("dealer.device-commands.send") }}';
+    var HISTORY_BASE = '{{ $historyBase ?? url("/dealer/device-commands/history") }}';
 
     // ── Command Panel ─────────────────────────────────────────────────────────
 

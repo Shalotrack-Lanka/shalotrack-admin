@@ -22,7 +22,19 @@ class DealerCustomerScope
     /** @return list<string> customer_id values that belong to this dealer */
     public function customerIds(Dealer $dealer): array
     {
-        $leads = DealerCustomerAd::where('dealer_id', $dealer->id)->get();
+        return $this->customerIdsForLeads(DealerCustomerAd::where('dealer_id', $dealer->id)->get());
+    }
+
+    /**
+     * App customers matching the given leads by email or phone. Fails closed: leads with nothing usable to
+     * match on give an empty list, never "everyone".
+     *
+     * @param  iterable<DealerCustomerAd>  $leads
+     * @return list<string>
+     */
+    public function customerIdsForLeads(iterable $leads): array
+    {
+        $leads = collect($leads);
 
         $emails = $leads->pluck('email')->filter()
             ->map(fn ($e) => strtolower(trim($e)))
@@ -56,7 +68,17 @@ class DealerCustomerScope
     /** Vehicles carrying a device IMEI that belong to this dealer's customers. */
     public function gpsVehicles(Dealer $dealer)
     {
-        $ids = $this->customerIds($dealer);
+        return $this->gpsVehiclesForCustomers($this->customerIds($dealer));
+    }
+
+    /** Same, for an arbitrary set of leads (a distributor's network). Fails closed on an empty match. */
+    public function gpsVehiclesForLeads(iterable $leads)
+    {
+        return $this->gpsVehiclesForCustomers($this->customerIdsForLeads($leads));
+    }
+
+    private function gpsVehiclesForCustomers(array $ids)
+    {
 
         if (empty($ids)) {
             return VehicleAd::query()->whereRaw('1 = 0')->get();

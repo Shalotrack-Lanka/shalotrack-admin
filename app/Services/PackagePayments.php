@@ -30,6 +30,8 @@ class PackagePayments
     public const SOURCE_ACTIVATION = 'activation';
     public const SOURCE_EDIT = 'admin_edit';
     public const SOURCE_REACTIVATION = 'reactivation';
+    public const SOURCE_DISTRIBUTOR = 'distributor';
+    public const SOURCE_DISTRIBUTOR_RENEWAL = 'distributor_renewal';
 
     public const TZ = 'Asia/Colombo';
 

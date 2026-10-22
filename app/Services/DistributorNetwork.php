@@ -75,6 +75,12 @@ class DistributorNetwork
         return DealerCustomerAd::query()->whereIn('dealer_id', $this->dealerIds() ?: [0]);
     }
 
+    /** The distributor's own customers plus those of its dealers. */
+    public function customerLeads()
+    {
+        return DealerCustomerAd::query()->whereIn('dealer_id', array_merge([(int) $this->distributor->id], $this->dealerIds()));
+    }
+
     /**
      * Transfer records this distributor may see: the ones it sent to its dealers, and the ones the company
      * sent to it. Never a transfer between anyone else.

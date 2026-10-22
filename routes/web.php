@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\DeveloperAccountController;
+use App\Http\Controllers\Admin\Distributor\DistributorDeviceController;
 use App\Http\Controllers\Admin\Distributor\DistributorPortalController;
 use App\Http\Controllers\Admin\Distributor\DistributorTransferController;
 use App\Http\Controllers\Account\AccountPasswordController;
@@ -132,7 +133,21 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/transfer', [DistributorTransferController::class, 'store'])->middleware('throttle:20,1')->name('transfer.store');
         Route::get('/profile', [AdminProfileController::class, 'show'])->name('profile');
         Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
- 
+
+        // Activate / bind / renew devices of the network, and the customers of the network.
+        Route::get('/devices', [DistributorDeviceController::class, 'index'])->name('devices');
+        Route::get('/devices/{device}/activate', [DistributorDeviceController::class, 'activateForm'])->whereNumber('device')->name('devices.activate');
+        Route::post('/devices/{device}/activate', [DistributorDeviceController::class, 'activate'])->whereNumber('device')->middleware('throttle:30,1')->name('devices.activate.store');
+        Route::get('/subscriptions/{activated}/renew', [DistributorDeviceController::class, 'renewForm'])->whereNumber('activated')->name('devices.renew');
+        Route::post('/subscriptions/{activated}/renew', [DistributorDeviceController::class, 'renew'])->whereNumber('activated')->middleware('throttle:30,1')->name('devices.renew.store');
+        // Device commands for the network's customers (ownership is decided inside DeviceCommandController).
+        Route::get('/device-commands', [DeviceCommandController::class, 'distributorIndex'])->name('device-commands');
+        Route::post('/device-commands/send', [DeviceCommandController::class, 'sendCommand'])->middleware('throttle:60,1')->name('device-commands.send');
+        Route::get('/device-commands/status/{imei}', [DeviceCommandController::class, 'deviceStatus'])->name('device-commands.status');
+        Route::get('/device-commands/history/{vehicleId}', [DeviceCommandController::class, 'commandHistory'])->name('device-commands.history');
+        Route::get('/customers', [DistributorDeviceController::class, 'customers'])->name('customers');
+        Route::post('/customers', [DistributorDeviceController::class, 'storeCustomer'])->middleware('throttle:20,1')->name('customers.store');
+
         // Billing: read-only view of what the company has invoiced and been paid (own + own dealers).
         Route::prefix('billing')->name('billing.')->middleware('can:billing.view')->group(function () {
             Route::get('/', [PortalBillingController::class, 'index'])->name('index');

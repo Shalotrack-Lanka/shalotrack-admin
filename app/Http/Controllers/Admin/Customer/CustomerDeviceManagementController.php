@@ -31,10 +31,10 @@ class CustomerDeviceManagementController extends Controller
     {
     }
 
-    private const SUBSCRIPTION_MODELS = ['3 Months', '6 Months', '1 Year', '2 Year', '3 Year', '6 Year'];
+    public const SUBSCRIPTION_MODELS = ['3 Months', '6 Months', '1 Year', '2 Year', '3 Year', '6 Year'];
 
     // 30 days per month, per the spec.
-    private const SUBSCRIPTION_DAYS = [
+    public const SUBSCRIPTION_DAYS = [
         '3 Months' => 90,
         '6 Months' => 180,
         '1 Year'   => 360,

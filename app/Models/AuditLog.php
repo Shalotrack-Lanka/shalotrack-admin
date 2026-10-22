@@ -29,6 +29,9 @@ class AuditLog extends Model
 
     /** action => [category, human label]. The viewer's filter and labels come from here. */
     public const ACTIONS = [
+        'distributor.device_activated' => [self::CATEGORY_MONEY, 'Distributor activated a device and recorded its payment'],
+        'distributor.subscription_renewed' => [self::CATEGORY_MONEY, 'Distributor renewed a subscription'],
+        'distributor.customer_registered' => [self::CATEGORY_ACCOUNT, 'Distributor registered a customer'],
         'subscription.updated'       => [self::CATEGORY_MONEY, 'Payment / subscription edited'],
         'bank_slip.viewed'           => [self::CATEGORY_MONEY, 'Bank slip viewed'],
         'renewal.approved'           => [self::CATEGORY_MONEY, 'Customer renewal approved'],
@@ -49,6 +52,8 @@ class AuditLog extends Model
         'billing.document_downloaded' => [self::CATEGORY_MONEY, 'Invoice / statement downloaded'],
 
         'device.intake_committed'    => [self::CATEGORY_DEVICE, 'Devices registered (scan intake)'],
+        'device.command_sent'        => [self::CATEGORY_DEVICE, 'Dealer or distributor sent a command to a device'],
+        'device.command_denied'      => [self::CATEGORY_SECURITY, 'Command to a device refused (not their customer)'],
         'device.activated'           => [self::CATEGORY_DEVICE, 'Device bound to a customer'],
         'device.reactivated'         => [self::CATEGORY_DEVICE, 'Expired device reactivated'],
         'device.replaced'            => [self::CATEGORY_DEVICE, 'Device replaced'],

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerAd;
 use App\Models\DealerCustomerAd;
 use App\Models\VehicleAd;
+use App\Services\Audit;
+use App\Services\DistributorNetwork;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -107,13 +109,61 @@ class DeviceCommandController extends Controller
         ));
     }
 
+    /**
+     * Distributor Device Command Center: the same page as the dealer's, listing only vehicles of the
+     * distributor's own customers and those of its dealers (the rule sendCommand enforces server-side).
+     */
+    public function distributorIndex(Request $request)
+    {
+        $network = DistributorNetwork::forUser($request->user());
+        abort_if($network === null, 403, 'This login is not linked to an active distributor. Please contact the company.');
+
+        $connectedDevices = collect();
+        $gatewayOnline    = false;
+
+        try {
+            $response = Http::timeout(3)->get("{$this->gatewayUrl}/devices");
+            if ($response->successful()) {
+                $connectedDevices = collect($response->json('connected_devices') ?? []);
+                $gatewayOnline    = true;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Gateway /devices unreachable for distributor view: ' . $e->getMessage());
+        }
+
+        $onlineImeis = $connectedDevices->pluck('imei')->toArray();
+        $vehicles = $this->networkVehicles($network)->map(function ($vehicle) use ($onlineImeis, $connectedDevices) {
+            $vehicle->is_online = in_array($vehicle->imei, $onlineImeis);
+            $vehicle->last_seen = $connectedDevices->firstWhere('imei', $vehicle->imei)['last_seen'] ?? null;
+            return $vehicle;
+        });
+
+        return view('dealer.device_command_center', [
+            'vehicles'         => $vehicles,
+            'connectedDevices' => $connectedDevices,
+            'gatewayOnline'    => $gatewayOnline,
+            'layout'           => 'layouts.distributor',
+            'sendUrl'          => route('distributor.device-commands.send'),
+            'historyBase'      => url('/distributor/device-commands/history'),
+        ]);
+    }
+
     public function sendCommand(Request $request)
     {
+        $role = $request->user()?->role;
+
         $validated = $request->validate([
             'imei'    => ['required', 'string', 'regex:/^\d{15}$/'],
-            'command' => ['required', 'string', 'in:' . implode(',', $this->allowedCommands())],
+            'command' => ['required', 'string', 'in:' . implode(',', $this->allowedCommands($role))],
             'params'  => ['sometimes', 'array'],
         ]);
+
+        // Only the company may attach its own parameters (server address, APN, numbers...). Dealers and
+        // distributors send the plain command: the screen never sends parameters, so nothing is lost,
+        // and a hand-made request cannot repoint a customer's device.
+        if ($role !== 'ADMIN') {
+            $validated['params'] = [];
+        }
 
         // Server-side ownership check. The UI only lists a dealer's own devices,
         // but the endpoint is reachable by any signed-in user, so it must decide.
@@ -139,6 +189,8 @@ class DeviceCommandController extends Controller
             $response = Http::timeout(10)->post("{$this->gatewayUrl}/command", $payload);
 
             if ($response->successful()) {
+                $this->auditCommand($validated, 'delivered');
+
                 return response()->json([
                     'success' => true,
                     'message' => "Command '{$validated['command']}' sent to device successfully.",
@@ -148,11 +200,15 @@ class DeviceCommandController extends Controller
             $error = $response->json('error') ?? 'Command could not be delivered.';
 
             if ($response->status() === 503) {
+                $this->auditCommand($validated, 'device_offline');
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Device is currently offline.',
                 ], 503);
             }
+
+            $this->auditCommand($validated, 'failed');
 
             return response()->json([
                 'success' => false,
@@ -161,11 +217,27 @@ class DeviceCommandController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('Gateway command failed: ' . $e->getMessage());
+            $this->auditCommand($validated, 'gateway_unavailable');
+
             return response()->json([
                 'success' => false,
                 'message' => 'Gateway is temporarily unavailable. Please try again.',
             ], 503);
         }
+    }
+
+    /** Every command sent by a dealer or distributor is on the audit trail, delivered or not. */
+    private function auditCommand(array $validated, string $result): void
+    {
+        $user = auth()->user();
+        if (! $user || $user->role === 'ADMIN') {
+            return;
+        }
+
+        Audit::record('device.command_sent', 'device', $validated['imei'], $validated['imei'], [], [
+            'command' => $validated['command'],
+            'result'  => $result,
+        ]);
     }
 
     public function deviceStatus(string $imei)
@@ -237,8 +309,15 @@ class DeviceCommandController extends Controller
         return app(\App\Services\DealerCustomerScope::class)->gpsVehicles($dealer);
     }
 
+    /** Vehicles (with a device IMEI) of the distributor's own customers and its dealers' customers. */
+    private function networkVehicles(DistributorNetwork $network)
+    {
+        return app(\App\Services\DealerCustomerScope::class)->gpsVehiclesForLeads($network->customerLeads()->get());
+    }
+
     /**
-     * Who may command / inspect a device? ADMIN: any. DEALER: only devices of
+     * Who may command / inspect a device? ADMIN: any. DISTRIBUTOR: devices of its own and its dealers'
+     * customers. DEALER: only devices of
      * their own customers. Every other role (FINANCE, TECHNICIAN, SUPPLIER…): none.
      * Returns null when allowed, otherwise the 403 JSON response to send back.
      * Comparison is strict on purpose: "0123" must never match "123".
@@ -265,6 +344,21 @@ class DeviceCommandController extends Controller
             }
         }
 
+        if ($role === 'DISTRIBUTOR' && ($network = DistributorNetwork::forUser($user))) {
+            $ok = $this->networkVehicles($network)->contains(function ($v) use ($imei, $vehicleId) {
+                return ($imei !== null && (string) $v->imei === $imei)
+                    || ($vehicleId !== null && (string) $v->vehicle_id === $vehicleId);
+            });
+
+            if ($ok) {
+                return null;
+            }
+        }
+
+        if ($user && $role !== 'ADMIN') {
+            Audit::record('device.command_denied', 'device', $imei ?? $vehicleId, $imei ?? $vehicleId, [], ['route' => request()->route()?->getName()]);
+        }
+
         Log::warning('Device command access denied', [
             'user_id'    => auth()->id(),
             'role'       => $role,
@@ -281,8 +375,21 @@ class DeviceCommandController extends Controller
         ], 403);
     }
 
-    private function allowedCommands(): array
+    /**
+     * ADMIN: everything the gateway understands. Dealers and distributors: what the command screen offers
+     * (queries, relay restore, reset, alarms and timers) and not the commands that can repoint or rewrite a
+     * customer's device (url, fence_circle, sos_add, distance).
+     */
+    private function allowedCommands(?string $role = 'ADMIN'): array
     {
+        if ($role !== 'ADMIN') {
+            return [
+                'where', 'status', 'version', 'imei', 'params', 'gprsset', 'position',
+                'fence_query', 'moving_query', 'speed_query', 'sos_query', 'timer_query', 'apn_query', 'server_query',
+                'relay_on', 'sos_delete', 'timer', 'speed_alarm', 'moving_alarm', 'batalm', 'poweralm', 'reset',
+            ];
+        }
+
         return [
             'where', 'status', 'version', 'imei', 'params', 'gprsset',
             'url', 'position', 'fence_query', 'moving_query', 'speed_query',
