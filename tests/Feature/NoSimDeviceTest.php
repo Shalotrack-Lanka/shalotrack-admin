@@ -49,6 +49,7 @@ class NoSimDeviceTest extends TestCase
             $t->string('device_category');
             $t->integer('quantity');
             $t->timestamps();
+            $t->softDeletes();
         });
         Schema::create('setup_shalotrack_devices', function (Blueprint $t) {
             $t->id('shdevice_id');
