@@ -363,6 +363,146 @@ class DistributorRoleTest extends TestCase
         ])->assertSessionHasErrors('dealer_status');
     }
 
+    // ---- Dealer Management page: separate distributor and dealer forms ---------------------------------
+
+    public function test_distributor_form_forces_the_distributor_type_and_ignores_a_posted_status(): void
+    {
+        $this->actingAs($this->login('ADMIN', 'boss'));
+
+        $this->post(route('admin.dealer.store'), [
+            'form_kind' => 'distributor', 'full_name' => 'Form Distro', 'dealer_status' => 'retailer',
+            'distributor_id' => $this->distA, 'region' => 'western', 'contact_email' => 'formdistro@example.com',
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $d = DB::table('dealers')->where('contact_email', 'formdistro@example.com')->first();
+        $this->assertSame('distributor', $d->dealer_status);
+        $this->assertNull($d->distributor_id); // a distributor reports to nobody
+        $this->assertSame('DISTRIBUTOR', Admin::where('dealer_id', $d->id)->value('role'));
+    }
+
+    public function test_dealer_form_can_never_create_a_distributor_and_always_makes_an_authorized_dealer(): void
+    {
+        $this->actingAs($this->login('ADMIN', 'boss'));
+
+        foreach (['distributor', 'lbc', ''] as $i => $posted) {
+            $this->post(route('admin.dealer.store'), [
+                'form_kind' => 'dealer', 'full_name' => 'Sneaky' . $i, 'dealer_status' => $posted,
+                'region' => 'western', 'contact_email' => "sneaky{$i}@example.com",
+            ])->assertSessionHasNoErrors();
+
+            $row = DB::table('dealers')->where('contact_email', "sneaky{$i}@example.com")->first();
+            $this->assertSame('Authorized Dealer', $row->dealer_status);
+            $this->assertSame('DEALER', Admin::where('dealer_id', $row->id)->value('role'));
+        }
+    }
+
+    public function test_dealer_form_attaches_to_a_real_active_distributor_only(): void
+    {
+        $this->actingAs($this->login('ADMIN', 'boss'));
+        $archivedDist = $this->dealer('Old Distro', 'distributor', null, 'archived');
+
+        $this->post(route('admin.dealer.store'), [
+            'form_kind' => 'dealer', 'full_name' => 'Under Alpha', 'dealer_status' => 'retailer',
+            'distributor_id' => $this->distA, 'region' => 'western', 'contact_email' => 'underalpha@example.com',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame($this->distA, (int) DB::table('dealers')->where('contact_email', 'underalpha@example.com')->value('distributor_id'));
+
+        // a plain retailer, an archived distributor and a made-up id are all refused
+        foreach ([$this->direct, $archivedDist, 99999] as $bad) {
+            $this->post(route('admin.dealer.store'), [
+                'form_kind' => 'dealer', 'full_name' => 'Bad ' . $bad, 'dealer_status' => 'retailer',
+                'distributor_id' => $bad, 'region' => 'western', 'contact_email' => "bad{$bad}@example.com",
+            ])->assertSessionHasErrors('distributor_id');
+        }
+
+        // empty means a direct dealer
+        $this->post(route('admin.dealer.store'), [
+            'form_kind' => 'dealer', 'full_name' => 'Direct New', 'dealer_status' => 'lbc',
+            'distributor_id' => '', 'region' => 'western', 'contact_email' => 'directnew@example.com',
+        ])->assertSessionHasNoErrors();
+        $this->assertNull(DB::table('dealers')->where('contact_email', 'directnew@example.com')->value('distributor_id'));
+    }
+
+    public function test_failed_submit_keeps_what_was_typed_in_the_form_that_was_submitted(): void
+    {
+        \Illuminate\Support\Facades\Http::fake();
+        \Illuminate\Support\Facades\Cache::flush();
+        $this->withoutVite();
+        $this->actingAs($this->login('ADMIN', 'boss'));
+
+        // email missing -> refused; everything else typed must come back
+        $this->from(route('admin.dealer-management'))->post(route('admin.dealer.store'), [
+            'form_kind' => 'dealer', 'full_name' => 'Keep Me', 'address' => 'Kept Street', 'qualification' => 'Kept Q',
+            'region' => 'southern', 'pin_code' => 'PIN-77', 'distributor_id' => $this->distA, 'login_id' => 'keeper',
+            'payment_modes' => ['Cheque'], 'password' => 'secret-pass-123',
+        ])->assertRedirect(route('admin.dealer-management'))->assertSessionHasErrors('contact_email');
+
+        $html = $this->get(route('admin.dealer-management'))->assertOk()->getContent();
+        $decoded = html_entity_decode($html);
+        foreach (['Keep Me', 'Kept Street', 'Kept Q', 'southern', 'PIN-77', 'keeper', 'Cheque'] as $typed) {
+            $this->assertStringContainsString($typed, $decoded, "'{$typed}' was lost after the failed submit");
+        }
+        $this->assertStringNotContainsString('secret-pass-123', $decoded); // a password is never sent back
+    }
+
+    public function test_profile_page_words_follow_the_type_distributor_or_dealer(): void
+    {
+        \Illuminate\Support\Facades\Http::fake();
+        \Illuminate\Support\Facades\Cache::flush();
+        $this->withoutVite();
+        $this->actingAs($this->login('ADMIN', 'boss'));
+
+        $dist = $this->get(route('admin.dealer.profile', $this->distA))->assertOk()->getContent();
+        $this->assertStringContainsString('Dist Alpha — Distributor Profile', $dist);
+        foreach (['Deactivate Distributor', 'Edit Distributor', 'Edit Distributor Details', 'Distributor Type'] as $t) {
+            $this->assertStringContainsString($t, $dist);
+        }
+        $this->assertStringNotContainsString('Deactivate Dealer', $dist);
+
+        $dealer = $this->get(route('admin.dealer.profile', $this->dealerA1))->assertOk()->getContent();
+        $this->assertStringContainsString('Alpha One — Dealer Profile', $dealer);
+        foreach (['Deactivate Dealer', 'Edit Dealer', 'Edit Dealer Details', 'Dealer Type'] as $t) {
+            $this->assertStringContainsString($t, $dealer);
+        }
+        $this->assertStringNotContainsString('Deactivate Distributor', $dealer);
+    }
+
+    public function test_unknown_form_kind_is_rejected(): void
+    {
+        $this->actingAs($this->login('ADMIN', 'boss'));
+
+        $this->post(route('admin.dealer.store'), [
+            'form_kind' => 'god', 'full_name' => 'X', 'dealer_status' => 'retailer', 'region' => 'western', 'contact_email' => 'x@example.com',
+        ])->assertStatus(422);
+    }
+
+    public function test_page_shows_distributor_form_then_dealer_form_then_the_table(): void
+    {
+        \Illuminate\Support\Facades\Http::fake();
+        \Illuminate\Support\Facades\Cache::flush();
+        $this->withoutVite();
+        $this->actingAs($this->login('ADMIN', 'boss'));
+
+        $html = $this->get(route('admin.dealer-management'))->assertOk()->getContent();
+
+        $distForm = strpos($html, 'name="form_kind" value="distributor"');
+        $dealerForm = strpos($html, 'name="form_kind" value="dealer"');
+        $table = strpos($html, 'Dealer Info');
+        $this->assertNotFalse($distForm);
+        $this->assertTrue($distForm < $dealerForm && $dealerForm < $table, 'order must be distributor form, dealer form, table');
+
+        // the dealer form offers the distributors to attach to, and no type dropdown at all
+        $this->assertStringContainsString('Dist Alpha', $html);
+        $this->assertStringNotContainsString('name="dealer_status"', $html);
+        $this->assertSame(1, substr_count($html, '<option value="distributor">Distributors only</option>'));
+        $this->assertStringNotContainsString('<option value="distributor">Distributor</option>', $html);
+        // every column of the old table is still there
+        foreach (['Login / Region', 'Type', 'Created By', 'Date', 'Archived'] as $col) {
+            $this->assertStringContainsString($col, $html);
+        }
+        $this->assertStringContainsString('under Dist Alpha', $html); // dealers show their distributor
+    }
+
     private function profilePayload(int $id, array $over = []): array
     {
         $d = DB::table('dealers')->find($id);

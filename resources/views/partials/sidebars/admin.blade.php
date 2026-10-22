@@ -255,7 +255,7 @@
                 @click="open=!open"
                 class="w-full flex justify-between items-center p-3 text-white hover:bg-blue-900 rounded">
 
-                <span>Dealers</span>
+                <span>Dealers and Distributors</span>
 
                 <svg :class="open ? 'rotate-180' : ''"
                      class="w-4 h-4 transition-transform duration-200"
@@ -274,7 +274,7 @@
 
             <div x-show="open" class="ml-5 text-sm">
 
-                <a href="{{ route('admin.dealer-management') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealer-management') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer Management</a>
+                <a href="{{ route('admin.dealer-management') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealer-management') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer and Distributor Management</a>
                 <a href="{{ route('admin.dealers.customer-ads') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealers.customer-ads') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer customers</a>
                 <a href="{{ route('admin.dealer-scorecard') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.dealer-scorecard') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Dealer scorecard</a>
                 <a href="{{ route('admin.commission-payouts') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.commission-payouts*') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">Commission payouts</a>
