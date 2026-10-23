@@ -14,4 +14,4 @@ storage/framework/views/*
 *.dump
 *.sql
 phpunit*.xml
-tests/pgsql
+tests/Pgsql
