@@ -57,6 +57,7 @@ class AuditFixesTest extends TestCase
             $t->string('email')->nullable();
             $t->string('contact')->nullable();
             $t->timestamps();
+            $t->softDeletes();
         });
         Schema::create('Customer-ad', function (Blueprint $t) {
             $t->string('customer_id')->primary();
@@ -244,8 +245,49 @@ class AuditFixesTest extends TestCase
 
     // ------------------------------------------- dealer stock == assignable stock
 
+    /** Minimal copy of the live activated_devices / sims tables (the pages read from both). */
+    private function createActivatedDevicesAndSims(): void
+    {
+        Schema::create('activated_devices', function (Blueprint $t) {
+            $t->id('activated_device_id');
+            $t->string('vehicle_id')->unique();
+            $t->string('customer_id')->nullable();
+            $t->string('customer_name')->nullable();
+            $t->string('vehicle_number')->nullable();
+            $t->string('model')->nullable();
+            $t->boolean('has_gps_device')->default(false);
+            $t->string('imei_number')->nullable();
+            $t->string('sim_number')->nullable();
+            $t->string('device_category')->nullable();
+            $t->string('payment_status')->nullable();
+            $t->string('subscription_model')->nullable();
+            $t->date('subscription_start_date')->nullable();
+            $t->timestamp('subscription_end_date')->nullable();
+            $t->string('bank_invoice')->nullable();
+            $t->string('bank_slip')->nullable();
+            $t->string('status')->nullable();
+            $t->date('installed_on')->nullable();
+            $t->string('installed_by')->nullable();
+            $t->text('install_notes')->nullable();
+            $t->timestamp('original_activated_at')->nullable();
+            $t->integer('warranty_months')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('sims', function (Blueprint $t) {
+            $t->id();
+            $t->string('sim_number')->unique();
+            $t->string('sim_type')->nullable();
+            $t->string('imsi')->nullable();
+            $t->string('iccid')->nullable();
+            $t->boolean('activation_required')->default(false);
+            $t->string('sim_status')->nullable();
+            $t->timestamps();
+        });
+    }
+
     public function test_dealer_available_stock_only_lists_devices_the_dealer_can_assign(): void
     {
+        $this->createActivatedDevicesAndSims();
         Schema::create('setup_shalotrack_devices', function (Blueprint $t) {
             $t->id('shdevice_id');
             $t->string('device_category')->nullable();
@@ -261,16 +303,18 @@ class AuditFixesTest extends TestCase
             'imei_number' => $imei, 'status' => $status, 'dealer_id' => $dealer, 'assigned_customer_id' => $cust,
         ]);
 
-        $mk('100000000000001', 'Not Activated');                 // assignable
-        $mk('100000000000002', 'Not Activated', 7, 0);           // assignable (0 == none)
-        $mk('100000000000003', 'Activated');                     // admin already activated it: NOT assignable
+        // Rule: the company activates first, the dealer sells after. Only an
+        // Activated device in this dealer's stock, not yet given to a customer, is sellable.
+        $mk('100000000000001', 'Activated');                     // assignable
+        $mk('100000000000002', 'Activated', 7, 0);               // assignable (0 == none)
+        $mk('100000000000003', 'Not Activated');                 // legacy, admin has not activated it: NOT assignable
         $mk('100000000000004', 'Temporarily Stopped');           // NOT assignable
         $mk('100000000000005', 'Pending Repair');                // own tab
         $mk('100000000000006', 'Broken Device');                 // own tab
         $mk('100000000000007', 'Assigned to Customer', 7, 5);    // already sold
-        $mk('100000000000008', 'Not Activated', 7, 5);           // already bound to a customer
-        $mk('100000000000009', 'Not Activated', 8);              // another dealer's
-        $mk('100000000000010', 'Not Activated', null);           // company stock
+        $mk('100000000000008', 'Activated', 7, 5);               // already bound to a customer
+        $mk('100000000000009', 'Activated', 8);                  // another dealer's
+        $mk('100000000000010', 'Activated', null);               // company stock
 
         $imeis = SetupShalotrackDevice::availableForDealer(7)->orderBy('imei_number')->pluck('imei_number')->all();
 
@@ -288,6 +332,7 @@ class AuditFixesTest extends TestCase
 
     public function test_cancel_device_dealer_control_is_locked_unless_reactivating(): void
     {
+        $this->createActivatedDevicesAndSims();
         Schema::create('setup_shalotrack_devices', function (Blueprint $t) {
             $t->id('shdevice_id');
             $t->string('device_category')->nullable();

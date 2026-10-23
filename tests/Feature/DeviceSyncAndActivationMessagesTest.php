@@ -120,6 +120,11 @@ class DeviceSyncAndActivationMessagesTest extends TestCase
             $t->string('bank_invoice')->nullable();
             $t->string('bank_slip')->nullable();
             $t->string('status')->nullable();
+            $t->date('installed_on')->nullable();
+            $t->string('installed_by')->nullable();
+            $t->text('install_notes')->nullable();
+            $t->timestamp('original_activated_at')->nullable();
+            $t->integer('warranty_months')->nullable();
             $t->timestamps();
         });
 
@@ -213,7 +218,7 @@ class DeviceSyncAndActivationMessagesTest extends TestCase
     public function test_activating_a_device_that_is_no_longer_available_explains_why(): void
     {
         Http::fake();
-        $this->device('Assigned to Customer');   // e.g. a dealer already assigned it
+        $this->device('Not Activated');   // the company has not activated it yet, so it cannot be bound
         \App\Models\VehicleAd::forceCreate(['vehicle_id' => 'veh-1', 'customer_name' => 'A', 'vehicle_number' => 'WP 1']);
 
         $response = $this->post(route('admin.customer-device-management.activate', 'veh-1'), [
@@ -229,13 +234,13 @@ class DeviceSyncAndActivationMessagesTest extends TestCase
             session('errors')->first('imei_number')
         );
         $this->assertSame(0, \App\Models\ActivatedDevice::count());
-        $this->assertSame('Assigned to Customer', SetupShalotrackDevice::first()->status);
+        $this->assertSame('Not Activated', SetupShalotrackDevice::first()->status);
     }
 
     public function test_activating_an_available_device_still_works(): void
     {
         Http::fake();
-        $this->device('Not Activated');
+        $this->device('Activated');   // activated by the company and held in company stock
         \App\Models\VehicleAd::forceCreate(['vehicle_id' => 'veh-1', 'customer_name' => 'A', 'vehicle_number' => 'WP 1']);
 
         $this->post(route('admin.customer-device-management.activate', 'veh-1'), [

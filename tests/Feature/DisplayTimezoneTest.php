@@ -42,7 +42,7 @@ class DisplayTimezoneTest extends TestCase
             $t->id(); $t->string('full_name'); $t->string('status')->default('active'); $t->timestamps();
         });
         Schema::create('dealer_transfer_ledgers', function (Blueprint $t) {
-            $t->id(); $t->unsignedBigInteger('dealer_id'); $t->string('device_category'); $t->integer('quantity'); $t->timestamps();
+            $t->id(); $t->unsignedBigInteger('dealer_id'); $t->string('device_category'); $t->integer('quantity'); $t->timestamps(); $t->softDeletes();
         });
         Schema::create('setup_shalotrack_devices', function (Blueprint $t) {
             $t->id('shdevice_id'); $t->string('device_category')->nullable(); $t->string('imei_number')->unique();
