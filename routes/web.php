@@ -248,16 +248,16 @@ Route::middleware(['auth'])->group(function () {
 
         // Cancel Device
         Route::get('/cancel-device', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'index'])->name('admin.cancel_device.index');
-        Route::patch('/cancel-device/{device}', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'update'])->name('admin.cancel_device.update');
+        Route::patch('/cancel-device/{device}', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'update'])->name('admin.cancel_device.update')->whereNumber('device');
         Route::get('/cancel-device/not-activated/export', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'exportNotActivated'])->name('admin.cancel_device.export_not_activated');
         Route::get('/cancel-device/activated/export', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'exportActivated'])->name('admin.cancel_device.export_activated');
 
         // Cancel Sim
         Route::get('/cancel-sim', [\App\Http\Controllers\Admin\CancelRequests\CancelSimController::class, 'index'])->name('admin.cancel_sim.index');
-        Route::patch('/cancel-sim/{sim}', [\App\Http\Controllers\Admin\CancelRequests\CancelSimController::class, 'update'])->name('admin.cancel_sim.update');
+        Route::patch('/cancel-sim/{sim}', [\App\Http\Controllers\Admin\CancelRequests\CancelSimController::class, 'update'])->name('admin.cancel_sim.update')->whereNumber('sim');
 
         // Give a spare Activated SIM to a device registered without one
-        Route::patch('/cancel-device/{device}/attach-sim', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'attachSim'])->name('admin.cancel_device.attach_sim');
+        Route::patch('/cancel-device/{device}/attach-sim', [\App\Http\Controllers\Admin\CancelRequests\CancelDeviceController::class, 'attachSim'])->name('admin.cancel_device.attach_sim')->whereNumber('device');
     });
 
 

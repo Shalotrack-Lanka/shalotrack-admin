@@ -56,6 +56,27 @@ class CancelDeviceDealerColumnTest extends TestCase
             $t->timestamps();
         });
 
+        // The Cancel Device page also reads bound customers and the spare SIM pool.
+        Schema::create('activated_devices', function (Blueprint $t) {
+            $t->id('activated_device_id');
+            $t->string('vehicle_id')->unique();
+            $t->string('customer_name')->nullable();
+            $t->string('vehicle_number')->nullable();
+            $t->string('imei_number')->nullable();
+            $t->string('sim_number')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('sims', function (Blueprint $t) {
+            $t->id();
+            $t->string('sim_number')->unique();
+            $t->string('sim_type')->nullable();
+            $t->string('imsi')->nullable();
+            $t->string('iccid')->nullable();
+            $t->boolean('activation_required')->default(false);
+            $t->string('sim_status')->nullable();
+            $t->timestamps();
+        });
+
         $this->actingAs(Admin::forceCreate([
             'admin_id' => 'adm-1', 'username' => 'a', 'role' => 'ADMIN', 'status' => 'ACTIVE',
         ]));
