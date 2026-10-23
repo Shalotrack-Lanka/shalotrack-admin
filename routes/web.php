@@ -13,8 +13,6 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MasterPages\AddDeviceController;
 use App\Http\Controllers\Admin\MasterPages\ScanDeviceController;
 use App\Http\Controllers\Admin\MasterPages\AddSimController;
-use App\Http\Controllers\Admin\MasterPages\CancelDeviceController;
-use App\Http\Controllers\Admin\MasterPages\CancelSimController;
 use App\Http\Controllers\Admin\MasterPages\AddDeviceTypeController;
 use App\Http\Controllers\Admin\MasterPages\StockTransferController;
 
@@ -65,7 +63,6 @@ use App\Http\Controllers\Admin\Reports\StockInReportController;
 use App\Http\Controllers\Admin\Reports\CreditInvoiceReportController;
 
 use App\Http\Controllers\Admin\Stock\ManageStockController;
-use App\Http\Controllers\Admin\Stock\CurrentStockController;
 
 use App\Http\Controllers\Admin\Vehicles\VehicleDetailsController;
 use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
