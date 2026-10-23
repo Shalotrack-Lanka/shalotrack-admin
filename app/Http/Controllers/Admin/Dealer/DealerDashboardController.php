@@ -6,14 +6,13 @@ use App\Services\Audit;
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\DealerCustomerAd;
-use App\Models\DealerTransferLedger;
 use App\Models\SetupShalotrackDevice;
 use App\Http\Requests\DealerStoreCustomerAdRequest;
 use App\Services\CustomerLinkService;
 use App\Services\DealerCommissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class DealerDashboardController extends Controller
@@ -68,7 +67,7 @@ class DealerDashboardController extends Controller
             ->get(['shdevice_id', 'imei_number']);
 
         if ($brokenAssignments->isNotEmpty()) {
-            \Log::warning('Dealer dashboard auto-corrected orphaned "Assigned to Customer" device(s) with no linked customer', [
+            Log::warning('Dealer dashboard auto-corrected orphaned "Assigned to Customer" device(s) with no linked customer', [
                 'dealer_id' => $dealer->id,
                 'devices'   => $brokenAssignments->map(fn($d) => [
                     'shdevice_id' => $d->shdevice_id,
@@ -224,6 +223,19 @@ class DealerDashboardController extends Controller
         return view('dealer.customer_list', compact('customerAds', 'search', 'availableDevices'));
     }
 
+    /**
+     * The signed-in dealer's id. A DEALER login that points at no dealer record is refused (403).
+     * Without this, "dealer_id = null" becomes "dealer_id IS NULL", which is the COMPANY's own stock.
+     */
+    private function dealerIdOrFail(): int
+    {
+        $id = auth()->user()->dealer->id ?? null;
+
+        abort_if($id === null, 403, 'Your login is not linked to a dealer account. Please contact the company.');
+
+        return (int) $id;
+    }
+
     /** True when the device is bound to a customer's vehicle + subscription (an activated_devices row exists). */
     private function isBound(SetupShalotrackDevice $device): bool
     {
@@ -233,12 +245,12 @@ class DealerDashboardController extends Controller
     public function assignNewDeviceFromList(Request $request)
     {
         $request->validate([
-            'shdevice_id' => 'required|exists:setup_shalotrack_devices,shdevice_id',
-            'customer_id' => 'required|exists:dealer_customer_ads,id',
+            'shdevice_id' => 'bail|required|integer|min:1|exists:setup_shalotrack_devices,shdevice_id',
+            'customer_id' => 'bail|required|integer|min:1|exists:dealer_customer_ads,id',
         ]);
 
         $dealer   = auth()->user()->dealer;
-        $dealerId = $dealer->id ?? null;
+        $dealerId = $this->dealerIdOrFail();
 
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $request->shdevice_id)
@@ -296,12 +308,12 @@ class DealerDashboardController extends Controller
     public function assignDeviceToCustomer(Request $request)
     {
         $request->validate([
-            'shdevice_id' => 'required|exists:setup_shalotrack_devices,shdevice_id',
-            'customer_id' => 'required|exists:dealer_customer_ads,id',
+            'shdevice_id' => 'bail|required|integer|min:1|exists:setup_shalotrack_devices,shdevice_id',
+            'customer_id' => 'bail|required|integer|min:1|exists:dealer_customer_ads,id',
         ]);
 
         $dealer   = auth()->user()->dealer;
-        $dealerId = $dealer->id ?? null;
+        $dealerId = $this->dealerIdOrFail();
 
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $request->shdevice_id)
@@ -356,7 +368,7 @@ class DealerDashboardController extends Controller
     // 💡 1. UNASSIGN: Status -> Pending. (Habai Customer wa mathaka thiya gannawa)
     public function unassignDevice($shdevice_id)
     {
-        $dealerId = auth()->user()->dealer->id ?? null;
+        $dealerId = $this->dealerIdOrFail();
 
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $shdevice_id)
@@ -400,7 +412,7 @@ class DealerDashboardController extends Controller
     public function reassignDevice($shdevice_id)
     {
         $dealer   = auth()->user()->dealer;
-        $dealerId = $dealer->id ?? null;
+        $dealerId = $this->dealerIdOrFail();
 
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $shdevice_id)
@@ -459,7 +471,7 @@ class DealerDashboardController extends Controller
     // 💡 3. BROKEN: Status -> Broken. (Meka hadanna ba, Customer ain karanne na history ekata ona nisa)
     public function markDeviceBroken($shdevice_id)
     {
-        $dealerId = auth()->user()->dealer->id ?? null;
+        $dealerId = $this->dealerIdOrFail();
 
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $shdevice_id)
@@ -485,7 +497,7 @@ class DealerDashboardController extends Controller
     // 💡 4. TESTING: Broken idan apahu Pending walata
     public function moveToPending($shdevice_id)
     {
-        $dealerId = auth()->user()->dealer->id ?? null;
+        $dealerId = $this->dealerIdOrFail();
 
         $device = SetupShalotrackDevice::where('dealer_id', $dealerId)
             ->where('shdevice_id', $shdevice_id)
@@ -511,7 +523,7 @@ class DealerDashboardController extends Controller
     // dealer can never read another dealer's lead by guessing an id.
     public function editCustomerAd($id)
     {
-        $dealerId = auth()->user()->dealer->id ?? null;
+        $dealerId = $this->dealerIdOrFail();
 
         $customerAd = DealerCustomerAd::where('dealer_id', $dealerId)
             ->where('id', $id)
@@ -531,7 +543,7 @@ class DealerDashboardController extends Controller
 
     public function destroyCustomerAd($id)
     {
-        $dealerId  = auth()->user()->dealer->id ?? null;
+        $dealerId = $this->dealerIdOrFail();
         $customerAd = DealerCustomerAd::where('dealer_id', $dealerId)
             ->where('id', $id)
             ->firstOrFail();
@@ -583,7 +595,7 @@ class DealerDashboardController extends Controller
     {
         $jsonPath = storage_path('app/firebase-service-account.json');
         if (!file_exists($jsonPath)) {
-            \Log::error('Firebase Service Account JSON File Not Found!');
+            Log::error('Firebase Service Account JSON File Not Found!');
             return;
         }
         try {
@@ -607,7 +619,7 @@ class DealerDashboardController extends Controller
             ]);
             $accessToken = $tokenResponse->json()['access_token'] ?? null;
             if (!$accessToken) {
-                \Log::error('Firebase OAuth Token Generation Failed');
+                Log::error('Firebase OAuth Token Generation Failed');
                 return;
             }
             $projectId = $serviceAccount['project_id'] ?? 'shalotracklanka';
@@ -625,7 +637,7 @@ class DealerDashboardController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Firebase Push Notification Error: ' . $e->getMessage());
+            Log::error('Firebase Push Notification Error: ' . $e->getMessage());
         }
     }
 }
