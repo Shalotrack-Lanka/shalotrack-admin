@@ -51,6 +51,7 @@ class DashboardController extends Controller
 
         try {
             $gwResponse = Http::timeout(2)
+                ->withHeaders(['X-Command-Api-Key' => config('services.gateway.command_api_key')])
                 ->get(config('services.gateway.command_url', 'http://gateway.shalotrack.internal:8001') . '/devices');
 
             if ($gwResponse->successful()) {
