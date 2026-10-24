@@ -50,6 +50,11 @@ return [
 
     'gateway' => [
     'command_url' => env('GATEWAY_COMMAND_URL', 'http://gateway.shalotrack.internal:8001'),
+    // SECURITY (2026-10-24): the gateway's Command API now requires this shared
+    // secret on every request (same pattern as the C# API's Gateway:CommandApiKey
+    // and SHALOTRACK_SYNC_KEY above). Every Http:: call to $this->gatewayUrl /
+    // services.gateway.command_url in this app must send it as X-Command-Api-Key.
+    'command_api_key' => env('GATEWAY_COMMAND_API_KEY', ''),
 ],
 
 ];

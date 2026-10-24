@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 class DeviceCommandController extends Controller
 {
     private string $gatewayUrl;
+    private string $gatewayCommandApiKey;
     private string $apiBaseUrl;
     private string $apiSyncKey;
 
@@ -25,6 +26,10 @@ class DeviceCommandController extends Controller
         // exists but its env var is unset, and assigning null to these typed
         // properties would 500 every request to this controller.
         $this->gatewayUrl = (string) config('services.gateway.command_url', 'http://gateway.shalotrack.internal:8001');
+        // SECURITY (2026-10-24): the gateway's Command API now requires this
+        // shared secret on every request -- sent as X-Command-Api-Key below on
+        // every Http:: call to $this->gatewayUrl in this controller.
+        $this->gatewayCommandApiKey = (string) config('services.gateway.command_api_key', '');
         $this->apiBaseUrl = (string) config('services.shalotrack_api.base_url', 'https://api.shalotrack.com');
         $this->apiSyncKey = (string) config('services.shalotrack_api.sync_key', '');
     }
@@ -35,7 +40,9 @@ class DeviceCommandController extends Controller
         $gatewayOnline    = false;
 
         try {
-            $response = Http::timeout(3)->get("{$this->gatewayUrl}/devices");
+            $response = Http::timeout(3)
+                ->withHeaders(['X-Command-Api-Key' => $this->gatewayCommandApiKey])
+                ->get("{$this->gatewayUrl}/devices");
             if ($response->successful()) {
                 $connectedDevices = collect($response->json('connected_devices') ?? []);
                 $gatewayOnline    = true;
@@ -81,7 +88,9 @@ class DeviceCommandController extends Controller
         $gatewayOnline    = false;
 
         try {
-            $response = Http::timeout(3)->get("{$this->gatewayUrl}/devices");
+            $response = Http::timeout(3)
+                ->withHeaders(['X-Command-Api-Key' => $this->gatewayCommandApiKey])
+                ->get("{$this->gatewayUrl}/devices");
             if ($response->successful()) {
                 $connectedDevices = collect($response->json('connected_devices') ?? []);
                 $gatewayOnline    = true;
@@ -122,7 +131,9 @@ class DeviceCommandController extends Controller
         $gatewayOnline    = false;
 
         try {
-            $response = Http::timeout(3)->get("{$this->gatewayUrl}/devices");
+            $response = Http::timeout(3)
+                ->withHeaders(['X-Command-Api-Key' => $this->gatewayCommandApiKey])
+                ->get("{$this->gatewayUrl}/devices");
             if ($response->successful()) {
                 $connectedDevices = collect($response->json('connected_devices') ?? []);
                 $gatewayOnline    = true;
@@ -186,7 +197,9 @@ class DeviceCommandController extends Controller
         ];
 
         try {
-            $response = Http::timeout(10)->post("{$this->gatewayUrl}/command", $payload);
+            $response = Http::timeout(10)
+                ->withHeaders(['X-Command-Api-Key' => $this->gatewayCommandApiKey])
+                ->post("{$this->gatewayUrl}/command", $payload);
 
             if ($response->successful()) {
                 $this->auditCommand($validated, 'delivered');
@@ -247,7 +260,9 @@ class DeviceCommandController extends Controller
         }
 
         try {
-            $response = Http::timeout(3)->get("{$this->gatewayUrl}/devices");
+            $response = Http::timeout(3)
+                ->withHeaders(['X-Command-Api-Key' => $this->gatewayCommandApiKey])
+                ->get("{$this->gatewayUrl}/devices");
             if ($response->successful()) {
                 $devices = collect($response->json('connected_devices') ?? []);
                 $device  = $devices->firstWhere('imei', $imei);
