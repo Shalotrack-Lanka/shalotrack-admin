@@ -65,7 +65,9 @@ class TechnicianJobController extends Controller
     {
         $data = $request->validate([
             'job_type'      => ['required', Rule::in(TechnicianJobType::values())],
-            'vehicle_id'    => ['required', 'string', Rule::exists('vehicle_ad', 'vehicle_id')],
+            // vehicle_ad.vehicle_id is a uuid column: text that is not a uuid must stop here, because PostgreSQL would
+            // raise a database error (500) when asked to compare it. bail keeps it away from the exists check.
+            'vehicle_id'    => ['bail', 'required', 'uuid', Rule::exists('vehicle_ad', 'vehicle_id')],
             'technician_id' => ['required', 'integer', Rule::exists('technicians', 'id')->where('is_active', true)],
             'scheduled_for' => ['required', 'date', 'after_or_equal:' . $this->today()],
             'time_slot'     => ['nullable', Rule::in(array_keys(TechnicianJob::TIME_SLOTS))],

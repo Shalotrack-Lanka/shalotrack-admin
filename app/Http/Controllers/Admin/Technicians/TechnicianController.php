@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Technician;
 use App\Services\Audit;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * The list of field technicians. They are names the admin schedules jobs for, not login accounts.
@@ -55,7 +54,17 @@ class TechnicianController extends Controller
     private function rules(?Technician $technician = null): array
     {
         return [
-            'name'  => ['required', 'string', 'max:100', Rule::unique('technicians', 'name')->ignore($technician?->id)],
+            'name'  => ['bail', 'required', 'string', 'max:100', function ($attribute, $value, $fail) use ($technician) {
+                // Case-insensitive: "Kamal" and "kamal" are the same person on the job sheet. (A plain unique rule is
+                // case-sensitive on PostgreSQL and would accept both.)
+                $taken = Technician::whereRaw('LOWER(name) = ?', [mb_strtolower(trim((string) $value))])
+                    ->when($technician, fn ($q) => $q->where('id', '!=', $technician->id))
+                    ->exists();
+
+                if ($taken) {
+                    $fail('A technician with this name already exists.');
+                }
+            }],
             'phone' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]{7,20}$/'],
         ];
     }
