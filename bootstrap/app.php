@@ -121,16 +121,28 @@ return Application::configure(basePath: dirname(__DIR__))
 
             $referenceId = app('error.reference_id');
             $view = view()->exists("errors.$status") ? "errors.$status" : 'errors.generic';
-            $classification = ErrorClassifier::classify($e);
 
-            return response()->view($view, [
-                'referenceId'       => $referenceId,
-                'statusCode'        => $status,
-                'technicalCategory' => $classification['category'],
-                'technicalSummary'  => $classification['summary'],
-                'technicalMessage'  => $e->getMessage(),
-                'technicalFile'     => $e->getFile() . ':' . $e->getLine(),
-            ], $status);
+            // SECURITY: what the browser receives is only the reference ID and the status code, so
+            // the page shows the view's own plain message. The exception message (SQL, table names,
+            // bound values), the server file path and the error category go to the browser ONLY when
+            // ERROR_PAGE_DETAILS=true (developer machines). The full detail is always in the
+            // app_errors log under the same reference ID (see the reportable() callback above).
+            $data = [
+                'referenceId' => $referenceId,
+                'statusCode'  => $status,
+            ];
+
+            if (config('app.error_details')) {
+                $classification = ErrorClassifier::classify($e);
+                $data += [
+                    'technicalCategory' => $classification['category'],
+                    'technicalSummary'  => $classification['summary'],
+                    'technicalMessage'  => $e->getMessage(),
+                    'technicalFile'     => $e->getFile() . ':' . $e->getLine(),
+                ];
+            }
+
+            return response()->view($view, $data, $status);
         });
 
     })->create();

@@ -52,7 +52,10 @@ class CustomerDeviceManagementController extends Controller
         $activatedVehicleIds = ActivatedDevice::pluck('vehicle_id');
         $expiredVehicleIds   = ExpiredDevice::pluck('vehicle_id');
 
-        $inactiveDevices = VehicleAd::whereNotIn('vehicle_id', $activatedVehicleIds->merge($expiredVehicleIds))
+        // Inactive = a vehicle with no live activated_devices row. expired_devices is an append-only log of
+        // old snapshots, so it must NOT hide a vehicle here: a vehicle that once lapsed (or was renamed or
+        // given a new IMEI afterwards) would otherwise vanish from every list and could never be bound.
+        $inactiveDevices = VehicleAd::whereNotIn('vehicle_id', $activatedVehicleIds)
             ->orderBy('customer_name')
             ->get();
 
@@ -580,7 +583,8 @@ class CustomerDeviceManagementController extends Controller
 
     $activeDevices = ActivatedDevice::orderByDesc('activated_device_id')->get();
     $expiredDevices = ExpiredDevice::orderByDesc('expired_device_id')->get();
-    $inactiveDevices = VehicleAd::whereNotIn('vehicle_id', $activatedVehicleIds->merge($expiredVehicleIds))
+    // Same rule as index(): the expired log never hides a vehicle that has no live activated row.
+    $inactiveDevices = VehicleAd::whereNotIn('vehicle_id', $activatedVehicleIds)
         ->orderBy('customer_name')
         ->get();
 
