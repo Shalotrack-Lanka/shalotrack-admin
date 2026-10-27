@@ -43,6 +43,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Technical Detail On Error Pages
+    |--------------------------------------------------------------------------
+    |
+    | When false (the default, and what production must use) the error page shows only a plain message and
+    | the reference ID. The exception message (which can contain SQL, table names and bound values), the
+    | server file path and the error category are NEVER sent to the browser. Support finds the full detail
+    | in the app_errors log by reference ID. Set ERROR_PAGE_DETAILS=true only on a developer machine.
+    |
+    */
+
+    'error_details' => (bool) env('ERROR_PAGE_DETAILS', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |
