@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Technicians;
 
+use App\Support\Input;
 use App\Enums\TechnicianJobStatus;
 use App\Enums\TechnicianJobType;
 use App\Http\Controllers\Controller;
@@ -39,10 +40,8 @@ class TechnicianJobController extends Controller
 
     public function index(Request $request)
     {
-        $tab = (string) $request->query('tab', 'open');
-        $tab = array_key_exists($tab, self::TABS) ? $tab : 'open';
-        $technicianId = $request->query('technician_id');
-        $technicianId = is_numeric($technicianId) ? (int) $technicianId : null;
+        $tab = Input::choice($request->query('tab'), array_keys(self::TABS), 'open');
+        $technicianId = Input::id($request->query('technician_id'));
 
         $counts = [];
         foreach (array_keys(self::TABS) as $key) {
@@ -248,7 +247,7 @@ class TechnicianJobController extends Controller
     /** Vehicle picker for the New job form: a few matches by vehicle number or customer name. */
     public function vehicles(Request $request)
     {
-        $q = trim((string) $request->query('q', ''));
+        $q = Input::text($request->query('q'), 60);
         if (mb_strlen($q) < 2) {
             return response()->json([]);
         }

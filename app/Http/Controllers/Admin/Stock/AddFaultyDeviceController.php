@@ -25,9 +25,9 @@ class AddFaultyDeviceController extends Controller
             'imei_number'   => 'required|string|unique:devices,imei_number|max:255',
             'sim_number'    => 'nullable|string|max:255',
             'device_model'  => 'required|string|max:255',
-            'branch_name'   => 'required|string',
-            'status'        => 'required|string',
-            'description'   => 'nullable|string',
+            'branch_name'   => 'required|string|max:100',
+            'status'        => 'required|string|max:50',
+            'description'   => 'nullable|string|max:1000',
         ]);
 
         // 2. තෝරාගත් Device Model එකට අදාළ Master Stock Record එක database එකෙන් සොයා ගැනීම

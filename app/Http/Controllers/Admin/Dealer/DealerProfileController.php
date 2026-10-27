@@ -85,7 +85,7 @@ class DealerProfileController extends Controller
             'login_id'         => 'nullable|string|max:100',
             
             // Password fields
-            'password'         => 'nullable|string|min:8|confirmed',
+            'password'         => ['nullable', 'string', 'max:' . \App\Support\PasswordPolicy::MAX_LENGTH, 'confirmed', \App\Support\PasswordPolicy::rule()],
         ], [
             'dealer_status.in'             => 'Please select a valid dealer type.',
             'distributor_id.exists'        => 'Choose a dealer whose type is Distributor.',

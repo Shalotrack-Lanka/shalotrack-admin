@@ -120,8 +120,8 @@ class SupplierProfileController extends Controller
 
         if ($request->filled('new_password')) {
             $request->validate([
-                'current_password' => 'required|string',
-                'new_password'     => 'required|string|min:8|confirmed',
+                'current_password' => 'required|string|max:255',
+                'new_password'     => ['required', 'string', 'max:' . \App\Support\PasswordPolicy::MAX_LENGTH, 'confirmed', \App\Support\PasswordPolicy::rule()],
             ], [
                 'new_password.min' => 'New password must be at least 8 characters.',
             ]);

@@ -56,7 +56,7 @@ class DealerAccountController extends Controller
 
             // Password change is optional. If submitted it must be at least
             // 8 characters and confirmed via the confirmation field.
-            'new_password'  => 'nullable|string|min:8|confirmed',
+            'new_password'  => ['nullable', 'string', 'max:' . \App\Support\PasswordPolicy::MAX_LENGTH, 'confirmed', \App\Support\PasswordPolicy::rule()],
         ], [
             'phone_number.regex' => 'Phone number must contain only digits, spaces, hyphens, parentheses, or a leading +.',
             'new_password.min'   => 'New password must be at least 8 characters.',

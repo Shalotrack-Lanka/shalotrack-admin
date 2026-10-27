@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Customer;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Services\RenewalsReport;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class RenewalsController extends Controller
         $scope = $request->query('scope') === RenewalsReport::SCOPE_OVERDUE
             ? RenewalsReport::SCOPE_OVERDUE
             : RenewalsReport::SCOPE_DUE;
-        $days = (int) $request->query('days', 30);
+        $days = Input::int($request->query('days'), 0, 3650, 30);
         $days = in_array($days, RenewalsReport::WINDOWS, true) ? $days : 30;
 
         $query = $this->report->query($scope, $days, $dealerId, $failClosed);

@@ -70,8 +70,8 @@ class DeveloperAccountController extends Controller
     public function reset(Request $request, string $adminId): RedirectResponse
     {
         $request->validateWithBag('resetAccount', [
-            'current_password'   => ['required', 'string'],
-            'temporary_password' => ['nullable', 'string', PasswordPolicy::rule()],
+            'current_password'   => ['required', 'string', 'max:255'],
+            'temporary_password' => ['nullable', 'string', 'max:' . PasswordPolicy::MAX_LENGTH, PasswordPolicy::rule()],
         ]);
 
         ReauthGuard::confirm($request, 'resetAccount', 'set temporary password (account directory)');

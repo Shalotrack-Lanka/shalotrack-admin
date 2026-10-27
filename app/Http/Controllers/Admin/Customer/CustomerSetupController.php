@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Customer;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerAd;
 use App\Services\CustomerLinkService;
@@ -57,7 +58,7 @@ class CustomerSetupController extends Controller
 
     public function generateReport(Request $request)
     {
-        $type = $request->query('type', 'active');
+        $type = Input::choice($request->query('type'), ['active', 'inactive'], 'active');
 
         if ($type === 'active') {
             $customers = CustomerAd::where('cus_status', 'verified')->orderBy('full_name')->get();

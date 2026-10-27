@@ -26,6 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // This closes the window where a deactivated dealer/supplier could
         // remain browsing because the login check only fires at login time.
         // Signs a browser out when the password was changed or reset somewhere else.
+        // Removes control characters from every text input and refuses absurdly deep arrays, before any
+        // controller reads a value. See the class for what it deliberately does not do.
+        $middleware->prependToGroup('web', \App\Http\Middleware\SanitizeRequestInput::class);
+
         $middleware->appendToGroup('web', \Illuminate\Session\Middleware\AuthenticateSession::class);
 
         $middleware->appendToGroup('web', \App\Http\Middleware\EnforceAdminStatus::class);

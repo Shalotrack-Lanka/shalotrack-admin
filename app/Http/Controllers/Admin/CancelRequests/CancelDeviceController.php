@@ -115,7 +115,7 @@ class CancelDeviceController extends Controller
     public function attachSim(Request $request, SetupShalotrackDevice $device)
     {
         $validated = $request->validate([
-            'sim_number' => ['required', 'string'],
+            'sim_number' => ['required', 'string', 'max:32'],
         ]);
 
         try {

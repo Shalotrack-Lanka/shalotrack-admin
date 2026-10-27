@@ -98,7 +98,7 @@ class AuditFixesTest extends TestCase
         $dealer = Dealer::create(['full_name' => 'Kasun']);
         DealerCustomerAd::create(['dealer_id' => $dealer->id, 'name' => 'Lead', 'email' => $email, 'contact' => null]);
         CustomerAd::forceCreate(['customer_id' => 'c-own', 'email' => $email, 'phone_number' => null]);
-        VehicleAd::forceCreate(['vehicle_id' => 'v-own', 'customer_id' => 'c-own', 'vehicle_number' => 'CAB-1', 'imei' => $imei]);
+        VehicleAd::forceCreate(['vehicle_id' => '00000000-0000-4000-8000-000000000021', 'customer_id' => 'c-own', 'vehicle_number' => 'CAB-1', 'imei' => $imei]);
 
         return $dealer;
     }
@@ -106,7 +106,7 @@ class AuditFixesTest extends TestCase
     private function someoneElsesVehicle(string $imei): void
     {
         CustomerAd::forceCreate(['customer_id' => 'c-other', 'email' => 'other@example.com', 'phone_number' => '0771234567']);
-        VehicleAd::forceCreate(['vehicle_id' => 'v-other', 'customer_id' => 'c-other', 'vehicle_number' => 'XYZ-9', 'imei' => $imei]);
+        VehicleAd::forceCreate(['vehicle_id' => '00000000-0000-4000-8000-000000000022', 'customer_id' => 'c-other', 'vehicle_number' => 'XYZ-9', 'imei' => $imei]);
     }
 
     private function gatewayCommandsSent(): int
@@ -234,10 +234,10 @@ class AuditFixesTest extends TestCase
         $this->someoneElsesVehicle('864876170981409');
         $this->login('DEALER', $dealer->id);
 
-        $this->getJson(route('dealer.device-commands.history', 'v-other'))->assertForbidden();
+        $this->getJson(route('dealer.device-commands.history', '00000000-0000-4000-8000-000000000022'))->assertForbidden();
         $this->getJson(route('dealer.device-commands.status', '864876170981409'))->assertForbidden();
 
-        $this->getJson(route('dealer.device-commands.history', 'v-own'))->assertOk();
+        $this->getJson(route('dealer.device-commands.history', '00000000-0000-4000-8000-000000000021'))->assertOk();
         $this->getJson(route('dealer.device-commands.status', '868159941856606'))->assertOk();
     }
 

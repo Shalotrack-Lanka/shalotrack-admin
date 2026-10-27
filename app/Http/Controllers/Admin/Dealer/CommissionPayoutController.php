@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Support\Input;
 use App\Services\Audit;
 use App\Exceptions\CommissionPayoutException;
 use App\Http\Controllers\Controller;
@@ -124,7 +125,7 @@ class CommissionPayoutController extends Controller
     public function dealerEarnings(Request $request)
     {
         $dealer = auth()->user()->dealer;
-        $range = (int) $request->query('range', 1);
+        $range = Input::int($request->query('range'), 0, 120, 1);
         $range = in_array($range, [1, 3, 6, 12], true) ? $range : 1;
 
         $months = [];

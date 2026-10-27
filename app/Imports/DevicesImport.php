@@ -102,8 +102,8 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
                 // SIM එක අනිවාර්යයෙන්ම පද්ධතියේ තිබිය යුතු අතර එය Activated එකක් විය යුතුය
                 Rule::exists('sims', 'sim_number')->where('sim_status', 'Activated')
             ],
-            'device_category' => ['required', 'string'],
-            'model'           => ['required', 'string'], // Model එකත් අනිවාර්ය කර ඇත
+            'device_category' => ['required', 'string', 'max:100'],
+            'model'           => ['required', 'string', 'max:100'], // Model එකත් අනිවාර්ය කර ඇත
         ];
     }
 

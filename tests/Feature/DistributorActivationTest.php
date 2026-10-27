@@ -258,8 +258,8 @@ class DistributorActivationTest extends TestCase
 
         $this->vehicle('veh-da', 'cust-da', 'WP-1111');
         $this->vehicle('veh-a1', 'cust-a1', 'WP-2222');
-        $this->vehicle('veh-b1', 'cust-b1', 'WP-3333');
-        $this->vehicle('veh-stranger', 'cust-stranger', 'WP-9999');
+        $this->vehicle('00000000-0000-4000-8000-000000000011', 'cust-b1', 'WP-3333');
+        $this->vehicle('00000000-0000-4000-8000-000000000012', 'cust-stranger', 'WP-9999');
     }
 
     protected function tearDown(): void
@@ -420,7 +420,7 @@ class DistributorActivationTest extends TestCase
         $this->asDistA();
 
         // another network's vehicle, a stranger's vehicle, the distributor's customer for a dealer-sold device
-        foreach (['veh-b1', 'veh-stranger', 'veh-da'] as $v) {
+        foreach (['00000000-0000-4000-8000-000000000011', '00000000-0000-4000-8000-000000000012', 'veh-da'] as $v) {
             $this->activatePost($sold, ['vehicle_id' => $v, 'bank_invoice' => 'X-' . $v])->assertNotFound();
         }
         // own stock may only go to the distributor's own customers, not to a dealer's customer
@@ -632,7 +632,7 @@ class DistributorActivationTest extends TestCase
 
     private function giveImeis(): void
     {
-        foreach (['veh-da' => '111111111111111', 'veh-a1' => '222222222222222', 'veh-b1' => '333333333333333', 'veh-stranger' => '999999999999999'] as $v => $imei) {
+        foreach (['veh-da' => '111111111111111', 'veh-a1' => '222222222222222', '00000000-0000-4000-8000-000000000011' => '333333333333333', '00000000-0000-4000-8000-000000000012' => '999999999999999'] as $v => $imei) {
             DB::table('vehicle_ad')->where('vehicle_id', $v)->update(['imei' => $imei]);
         }
     }
@@ -696,9 +696,11 @@ class DistributorActivationTest extends TestCase
             $this->postJson(route('distributor.device-commands.send'), ['imei' => $imei, 'command' => 'relay_on'])->assertForbidden();
             $this->getJson(route('distributor.device-commands.status', $imei))->assertForbidden();
         }
-        foreach (['veh-b1', 'veh-stranger', 'nope'] as $v) {
+        foreach (['00000000-0000-4000-8000-000000000011', '00000000-0000-4000-8000-000000000012'] as $v) {
             $this->getJson(route('distributor.device-commands.history', $v))->assertForbidden();
         }
+        // A value that is not even shaped like a vehicle id never reaches the controller.
+        $this->getJson(route('distributor.device-commands.history', 'nope'))->assertNotFound();
 
         $this->assertSame([], $this->sentCommands());
         $this->assertSame(0, AuditLog::where('action', 'device.command_sent')->count());

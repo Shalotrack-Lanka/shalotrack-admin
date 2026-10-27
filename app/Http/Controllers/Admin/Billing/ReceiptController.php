@@ -75,7 +75,7 @@ class ReceiptController extends Controller
             'method'     => ['required', 'in:' . implode(',', array_keys(PaymentReceipt::METHODS))],
             'reference'  => ['nullable', 'string', 'max:120'],
             'received_date' => ['required', 'date'],
-            'invoice_id' => ['nullable', 'integer'],
+            'invoice_id' => ['nullable', 'integer', 'min:1'],
             'notes'      => ['nullable', 'string', 'max:500'],
             'token'      => ['required', 'uuid'],
         ]);

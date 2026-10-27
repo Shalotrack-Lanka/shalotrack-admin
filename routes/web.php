@@ -266,7 +266,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
     Route::get('/admin/renewal-packages', [RenewalPackageController::class, 'index'])->middleware('role:ADMIN')->name('admin.renewal-packages');
-    Route::patch('/admin/renewal-packages/{package}', [RenewalPackageController::class, 'update'])->middleware('role:ADMIN')->name('admin.renewal-packages.update')->where('package', '[0-9]{1,18}');
+    Route::patch('/admin/renewal-packages/{package}', [RenewalPackageController::class, 'update'])->middleware('role:ADMIN')->name('admin.renewal-packages.update');
     Route::get('/admin/installs-warranty', [InstallsWarrantyController::class, 'index'])->middleware('role:ADMIN')->name('admin.installs-warranty');
     // Technicians and their jobs (ADMIN only; technicians are a list, not login accounts).
     Route::get('/admin/technicians', [TechnicianController::class, 'index'])->middleware('role:ADMIN')->name('admin.technicians');
@@ -319,8 +319,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/audit-log', [AuditLogController::class, 'index'])->middleware('role:ADMIN')->name('admin.audit-log');
 
     Route::get('/admin/renewal-requests', [RenewalRequestController::class, 'index'])->middleware('role:ADMIN')->name('admin.renewal-requests');
-    Route::get('/admin/renewal-requests/{id}/slip', [RenewalRequestController::class, 'slip'])->middleware(['role:ADMIN', 'throttle:60,1'])->name('admin.renewal-requests.slip');
-    Route::post('/admin/renewal-requests/{id}/decide', [RenewalRequestController::class, 'decide'])->middleware('role:ADMIN')->name('admin.renewal-requests.decide');
+    Route::get('/admin/renewal-requests/{id}/slip', [RenewalRequestController::class, 'slip'])->where('id', '[A-Za-z0-9\-]{1,64}')->middleware(['role:ADMIN', 'throttle:60,1'])->name('admin.renewal-requests.slip');
+    Route::post('/admin/renewal-requests/{id}/decide', [RenewalRequestController::class, 'decide'])->where('id', '[A-Za-z0-9\-]{1,64}')->middleware('role:ADMIN')->name('admin.renewal-requests.decide');
 
     // Commission payout statements (ADMIN only; dealers read their own paid ones under dealer.*).
     Route::middleware('role:ADMIN')->prefix('admin/commission-payouts')->name('admin.commission-payouts')->group(function () {
@@ -387,7 +387,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-    Route::prefix('admin/dealer')->group(function () {
+    Route::prefix('admin/dealer')->where(['id' => '[0-9]{1,18}'])->group(function () {
 
         // Dealer portal (DEALER role only; every action is also scoped to the dealer's own rows
         // inside DealerDashboardController).
@@ -462,7 +462,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-    Route::prefix('admin/supplier')->group(function () {
+    Route::prefix('admin/supplier')->where(['id' => '[0-9]{1,18}'])->group(function () {
 
         // Supplier portal (SUPPLIER role only). These MUST be declared before the
         // '/{id}' routes below: Laravel matches in registration order, and

@@ -65,12 +65,12 @@ class DealerManagementController extends Controller
             'dealer_status'    => ['required', 'string', Rule::in($allowedStatuses)],
             // The distributor this dealer reports to: a real, active distributor, or nobody (direct).
             'distributor_id'   => ['nullable', 'integer', Rule::exists('dealers', 'id')->where('dealer_status', 'distributor')->where('status', 'active')],
-            'region'           => ['required', 'string'],
+            'region'           => ['required', 'string', 'max:100'],
             'country'          => 'nullable|string|max:100',
             'pin_code'         => 'nullable|string|max:50',
             'contact_email'    => 'required|email|max:255|unique:dealers,contact_email',
             'network'          => 'nullable|string|max:100',
-            'password'         => 'nullable|string|min:8|max:72',
+            'password'         => ['nullable', 'string', 'max:' . \App\Support\PasswordPolicy::MAX_LENGTH, \App\Support\PasswordPolicy::rule()],
         ]);
 
         $dealerFormPassword = $validated['password'] ?? null;

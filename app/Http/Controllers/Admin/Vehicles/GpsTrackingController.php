@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Vehicles;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Services\AddressResolver;
 use App\Models\VehicleAd;
@@ -27,9 +28,9 @@ class GpsTrackingController extends Controller
     {
         set_time_limit(180);
 
-        $search    = trim((string) $request->input('search'));
-        $fromDate  = $request->input('from_date');
-        $toDate    = $request->input('to_date');
+        $search    = Input::text($request->input('search'), 40);
+        $fromDate  = Input::date($request->input('from_date'));
+        $toDate    = Input::date($request->input('to_date'));
 
         $vehicle = null;
         $currentLocation = null;
@@ -102,7 +103,7 @@ class GpsTrackingController extends Controller
         // when the dealer has no identifiable customers).
         $vehicles = app(\App\Services\DealerCustomerScope::class)->gpsVehicles($dealer);
 
-        $selectedVehicleId = $request->input('vehicle_id');
+        $selectedVehicleId = Input::text($request->input('vehicle_id'), 64);
         $selectedVehicle   = null;
 
         if ($selectedVehicleId) {
@@ -336,9 +337,9 @@ class GpsTrackingController extends Controller
         ini_set('memory_limit', '512M');
         set_time_limit(300);
 
-        $search    = trim((string) $request->input('search'));
-        $fromDate  = $request->input('from_date');
-        $toDate    = $request->input('to_date');
+        $search    = Input::text($request->input('search'), 40);
+        $fromDate  = Input::date($request->input('from_date'));
+        $toDate    = Input::date($request->input('to_date'));
 
         $vehicle = null;
         $historyData = collect();

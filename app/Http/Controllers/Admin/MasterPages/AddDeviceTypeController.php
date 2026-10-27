@@ -40,9 +40,9 @@ class AddDeviceTypeController extends Controller
 
         'protocol' => 'required|string|max:255',
 
-        'features' => 'nullable|array',
+        'features' => 'nullable|array|max:100',
 
-        'features.*' => 'exists:features,id',
+        'features.*' => 'integer|exists:features,id',
 
     ], [
 

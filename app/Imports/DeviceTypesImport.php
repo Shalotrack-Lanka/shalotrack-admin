@@ -63,7 +63,7 @@ class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, Skip
             'device_category' => ['required', 'string', 'max:255'],
             'model'           => ['required', 'string', 'in:Basic,Plus,Customize'],
             'protocol'        => ['required', 'string', 'max:255'],
-            'features'        => ['nullable', 'string'],
+            'features'        => ['nullable', 'string', 'max:500'],
         ];
     }
 
