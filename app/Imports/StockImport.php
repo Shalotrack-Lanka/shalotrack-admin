@@ -83,38 +83,42 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
             'model'            => ['required', 'string', 'max:100'],
             'supplier_name'    => ['required', 'string', 'max:255'],
             'stock_in'         => ['required', 'integer', 'min:1', 'max:1000000'],
-            'stocked_in_date'  => ['nullable'],
+            'stocked_in_date'  => ['nullable', 'date'],
         ];
     }
 
     public function withValidator(Validator $validator)
     {
         $validator->after(function ($validator) {
-            $data = $validator->getData();
+            // Laravel hands us {excelRowNumber: rowValues}; errors must be added under "<row>.<field>".
+            // (The old code looked for the fields at the top level, never found them, and so an unknown device
+            // type or supplier was skipped silently while the screen still said "imported successfully".)
+            foreach ($validator->getData() as $rowNumber => $data) {
+                if (is_string($data['device_category'] ?? null) && is_string($data['model'] ?? null)
+                    && trim($data['device_category']) !== '' && trim($data['model']) !== '') {
+                    $exists = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($data['device_category']))])
+                        ->whereRaw('LOWER(model) = ?', [strtolower(trim($data['model']))])
+                        ->exists();
 
-            if (! empty($data['device_category']) && ! empty($data['model'])) {
-                $exists = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($data['device_category']))])
-                    ->whereRaw('LOWER(model) = ?', [strtolower(trim($data['model']))])
-                    ->exists();
-
-                if (! $exists) {
-                    $validator->errors()->add(
-                        'device_category',
-                        "මෙම '{$data['device_category']} / {$data['model']}' නමින් Device Type එකක් පද්ධතියේ නොමැත."
-                    );
+                    if (! $exists) {
+                        $validator->errors()->add(
+                            "{$rowNumber}.device_category",
+                            "Device Type '{$data['device_category']} / {$data['model']}' does not exist in the system."
+                        );
+                    }
                 }
-            }
 
-            if (! empty($data['supplier_name'])) {
-                $exists = Supplier::whereRaw('LOWER(name) = ?', [strtolower(trim($data['supplier_name']))])
-                    ->where('status', 'Active')
-                    ->exists();
+                if (is_string($data['supplier_name'] ?? null) && trim($data['supplier_name']) !== '') {
+                    $exists = Supplier::whereRaw('LOWER(name) = ?', [strtolower(trim($data['supplier_name']))])
+                        ->where('status', 'Active')
+                        ->exists();
 
-                if (! $exists) {
-                    $validator->errors()->add(
-                        'supplier_name',
-                        "'{$data['supplier_name']}' නමින් ක්‍රියාකාරී සැපයුම්කරුවෙක් පද්ධතියේ නොමැත."
-                    );
+                    if (! $exists) {
+                        $validator->errors()->add(
+                            "{$rowNumber}.supplier_name",
+                            "There is no Active supplier named '{$data['supplier_name']}'."
+                        );
+                    }
                 }
             }
         });

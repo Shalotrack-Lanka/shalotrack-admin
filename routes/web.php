@@ -267,7 +267,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/admin/renewals', [RenewalsController::class, 'admin'])->middleware('role:ADMIN')->name('admin.renewals');
     Route::get('/admin/renewal-packages', [RenewalPackageController::class, 'index'])->middleware('role:ADMIN')->name('admin.renewal-packages');
-    Route::patch('/admin/renewal-packages/{package}', [RenewalPackageController::class, 'update'])->middleware('role:ADMIN')->name('admin.renewal-packages.update');
+    Route::patch('/admin/renewal-packages/{package}', [RenewalPackageController::class, 'update'])->middleware('role:ADMIN')->name('admin.renewal-packages.update')->where('package', '[0-9]{1,18}');
     Route::get('/admin/installs-warranty', [InstallsWarrantyController::class, 'index'])->middleware('role:ADMIN')->name('admin.installs-warranty');
     // Technicians and their jobs (ADMIN only; technicians are a list, not login accounts).
     Route::get('/admin/technicians', [TechnicianController::class, 'index'])->middleware('role:ADMIN')->name('admin.technicians');
@@ -513,7 +513,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/report', [ManageStockController::class, 'generateReport'])->name('admin.stock.report');
 
         //add stock automation
-        Route::get('/get-supplier-products/{supplier_id}', [ManageStockController::class, 'getSupplierProducts'])->name('admin.get-supplier-products');
+        Route::get('/get-supplier-products/{supplier_id}', [ManageStockController::class, 'getSupplierProducts'])->where('supplier_id', '[0-9]{1,18}')->name('admin.get-supplier-products');
 
         // Stock
         Route::get('/stock/import-template', [ManageStockController::class, 'downloadImportTemplate'])->name('admin.stock.import-template');
