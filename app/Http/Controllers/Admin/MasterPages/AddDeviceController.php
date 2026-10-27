@@ -50,8 +50,12 @@ class AddDeviceController extends Controller
     {
         // Validate submitted data
         $validated = $request->validate([
+            // bail + integer + min: stops text / huge numbers reaching the database (a 500 on PostgreSQL).
             'device_type_id' => [
+                'bail',
                 'required',
+                'integer',
+                'min:1',
                 'exists:device_types,id',
             ],
 
@@ -206,7 +210,8 @@ class AddDeviceController extends Controller
     public function importDevices(Request $request)
     {
         $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,csv|max:10240',
+            // 'txt' is needed because the server reports every real .csv file as text/plain; 'extensions' then makes sure the file NAME is still .xlsx or .csv.
+            'excel_file' => 'required|file|mimes:xlsx,csv,txt|extensions:xlsx,csv|max:10240',
         ]);
 
         $import = new DevicesImport();

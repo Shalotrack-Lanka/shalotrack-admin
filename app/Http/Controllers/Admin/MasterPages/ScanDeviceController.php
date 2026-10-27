@@ -76,7 +76,7 @@ class ScanDeviceController extends Controller
     public function commit(Request $request, DeviceRegistrationService $service): JsonResponse
     {
         $data = $request->validate([
-            'device_type_id'  => ['required', 'integer', 'exists:device_types,id'],
+            'device_type_id'  => ['bail', 'required', 'integer', 'min:1', 'exists:device_types,id'],
             'rows'            => ['required', 'array', 'min:1', 'max:' . self::MAX_ROWS_PER_COMMIT],
             'rows.*.imei'     => ['required', 'string', 'digits:15'],
             'rows.*.iccid'    => ['nullable', 'string', 'digits_between:19,20'],

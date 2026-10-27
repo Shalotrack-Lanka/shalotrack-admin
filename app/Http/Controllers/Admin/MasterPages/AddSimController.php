@@ -103,7 +103,8 @@ class AddSimController extends Controller
     public function importSims(Request $request)
     {
         $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,csv|max:10240',
+            // 'txt' is needed because the server reports every real .csv file as text/plain; 'extensions' then makes sure the file NAME is still .xlsx or .csv.
+            'excel_file' => 'required|file|mimes:xlsx,csv,txt|extensions:xlsx,csv|max:10240',
         ]);
 
         $import = new SimsImport();
