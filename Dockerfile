@@ -78,12 +78,22 @@ COPY --from=assets /app/public/build ./public/build
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Nginx config
+#  - client_max_body_size 1m is the deliberate request-size limit (same as nginx's built-in default, now
+#    explicit so it is visible). Any request body over 1 MB is refused by nginx with HTTP 413 before PHP
+#    runs, so the PHP limits above (12M/10M) and the app's 2 MB / 10 MB rules can never be reached.
+#  - Only /index.php may execute PHP. Any other .php path (for example a file that ever lands under
+#    public/) returns 404 instead of being run: the standard defence against web-shell uploads.
+#  - server_tokens off hides the nginx version; dotfiles (.env, .git, ...) are never served.
 RUN echo 'server { \
     listen 80; \
+    server_tokens off; \
+    client_max_body_size 1m; \
     root /var/www/html/public; \
     index index.php; \
     location / { try_files $uri $uri/ /index.php?$query_string; } \
-    location ~ \.php$ { fastcgi_pass 127.0.0.1:9000; fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name; include fastcgi_params; } \
+    location = /index.php { fastcgi_pass 127.0.0.1:9000; fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name; include fastcgi_params; } \
+    location ~ \.php$ { return 404; } \
+    location ~ /\.(?!well-known) { deny all; } \
 }' > /etc/nginx/http.d/default.conf
 
 # Startup script
