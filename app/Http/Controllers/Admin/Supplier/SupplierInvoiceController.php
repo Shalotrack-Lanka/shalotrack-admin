@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Supplier;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use App\Models\Product;
@@ -21,14 +22,15 @@ class SupplierInvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $supplierId = $request->query('supplier_id', '');
+        // A supplier id from the Supplier Management link; anything that is not a plain id means "all".
+        $supplierId = Input::id($request->query('supplier_id'));
 
         $suppliers = Supplier::where('status', 'Active')
             ->orderBy('name')
             ->get();
 
         $invoices = SupplierInvoice::with('supplier')
-            ->when($supplierId !== '', function ($query) use ($supplierId) {
+            ->when($supplierId !== null, function ($query) use ($supplierId) {
                 $query->where('supplier_id', $supplierId);
             })
             ->latest('invoice_date')
@@ -97,9 +99,9 @@ class SupplierInvoiceController extends Controller
     {
         $validated = $request->validate([
         'supplier_id' => 'required|exists:suppliers,id',
-        'items' => 'required|array|min:1',
+        'items' => 'required|array|min:1|max:200',
         'items.*.product_id' => 'required|exists:products,id',
-        'items.*.type' => 'required|string',
+        'items.*.type' => 'required|string|max:50',
         'items.*.order_qty' => 'required|numeric|min:1',
         'items.*.unit_price' => 'required|numeric|min:0',
         'items.*.discount' => 'nullable|numeric|min:0',

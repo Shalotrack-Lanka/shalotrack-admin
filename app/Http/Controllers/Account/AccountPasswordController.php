@@ -34,8 +34,8 @@ class AccountPasswordController extends Controller
         $bag = $wasForced ? 'default' : 'changePassword';
 
         $request->validateWithBag($bag, [
-            'current_password' => ['required', 'string'],
-            'password'         => ['required', 'string', 'confirmed', PasswordPolicy::rule(), 'different:current_password'],
+            'current_password' => ['required', 'string', 'max:255'],
+            'password'         => ['required', 'string', 'max:' . PasswordPolicy::MAX_LENGTH, 'confirmed', PasswordPolicy::rule(), 'different:current_password'],
         ], [
             'password.different' => 'Choose a password that is different from the current one.',
         ]);

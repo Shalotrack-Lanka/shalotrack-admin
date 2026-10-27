@@ -47,7 +47,7 @@ class SimsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFail
             'imsi'                => ['required', 'numeric', 'digits:15', 'unique:sims,imsi'],
             'iccid'               => ['required', 'numeric', 'digits_between:19,20', 'unique:sims,iccid'],
             'sim_status'          => ['required', 'string', 'in:Activated,Not Activated'],
-            'activation_required' => ['nullable', 'string'],
+            'activation_required' => ['nullable', 'string', 'max:10'],
         ];
     }
     

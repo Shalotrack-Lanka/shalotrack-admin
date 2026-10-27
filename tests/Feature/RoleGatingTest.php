@@ -96,7 +96,13 @@ class RoleGatingTest extends TestCase
     {
         $shadowed = [];
         foreach ($this->routes() as [$method, $uri, $route]) {
-            $concrete = '/' . ltrim(preg_replace('/\{[^}]+\}/', '1', $uri), '/');
+            // A value of the right shape for each parameter (ids in URLs are pattern-constrained).
+            $concrete = '/' . ltrim(preg_replace_callback('/\{([^}]+)\}/', fn ($m) => match ($m[1]) {
+                'vehicleId', 'customerId' => '123e4567-e89b-12d3-a456-426614174000',
+                'imei' => '356307042441013',
+                'month' => '2026-01',
+                default => '1',
+            }, $uri), '/');
             $hit = Route::getRoutes()->match(\Illuminate\Http\Request::create($concrete, $method));
             if ($hit->getAction('uses') !== $route->getAction('uses')) {
                 $shadowed[] = "$method /$uri is shadowed by /{$hit->uri()}";

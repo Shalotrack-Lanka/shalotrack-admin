@@ -79,10 +79,10 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
     public function rules(): array
     {
         return [
-            'device_category'  => ['required', 'string'],
-            'model'            => ['required', 'string'],
-            'supplier_name'    => ['required', 'string'],
-            'stock_in'         => ['required', 'integer', 'min:1'],
+            'device_category'  => ['required', 'string', 'max:100'],
+            'model'            => ['required', 'string', 'max:100'],
+            'supplier_name'    => ['required', 'string', 'max:255'],
+            'stock_in'         => ['required', 'integer', 'min:1', 'max:1000000'],
             'stocked_in_date'  => ['nullable'],
         ];
     }

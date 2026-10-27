@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Services\DealerScorecard;
 use App\Services\RenewalsReport;
@@ -22,7 +23,7 @@ class DealerScorecardController extends Controller
     {
         $days = $this->days($request);
         $rows = $this->scorecard->build($days);
-        $sort = (string) $request->query('sort', 'sold_window');
+        $sort = Input::text($request->query('sort'), 30) ?: 'sold_window';
         $dir = $request->query('dir') === 'asc' ? 'asc' : 'desc';
         $rows = DealerScorecard::sort($rows, $sort, $dir);
 
@@ -64,7 +65,7 @@ class DealerScorecardController extends Controller
 
     private function days(Request $request): int
     {
-        $days = (int) $request->query('days', DealerScorecard::DEFAULT_WINDOW);
+        $days = Input::int($request->query('days'), 0, 3650, DealerScorecard::DEFAULT_WINDOW);
 
         return in_array($days, DealerScorecard::WINDOWS, true) ? $days : DealerScorecard::DEFAULT_WINDOW;
     }

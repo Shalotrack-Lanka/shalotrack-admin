@@ -7,7 +7,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use App\Models\Dealer;
 use Illuminate\Support\Carbon;
 
@@ -25,6 +24,23 @@ class AppServiceProvider extends ServiceProvider
 
    public function boot(): void
     {
+        // Shape of every id that appears in a URL, decided once for all routes. A value that does not match is
+        // a plain 404 before any controller or database call. Without this, /invoices/abc reaches Postgres as
+        // a bigint comparison, the database raises "invalid input syntax", and a 500 page prints that SQL error.
+        // (Parameters called {id} are constrained on their route groups, because the name is shared.)
+        foreach (['ledger', 'invoice', 'creditNote', 'receipt', 'dealer', 'package', 'technician', 'job',
+                  'activatedDevice', 'expiredDevice', 'productId', 'requestId'] as $name) {
+            \Illuminate\Support\Facades\Route::pattern($name, '[0-9]{1,18}');
+        }
+        foreach (['vehicleId', 'customerId'] as $name) {
+            \Illuminate\Support\Facades\Route::pattern($name, '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}');
+        }
+        // Ids owned by the mobile API: letters, digits and dashes only, so they cannot carry ? / .. or spaces
+        // into the internal API URL they are placed in.
+        \Illuminate\Support\Facades\Route::pattern('complaintId', '[A-Za-z0-9\-]{1,64}');
+        \Illuminate\Support\Facades\Route::pattern('imei', '[0-9]{15}');
+        \Illuminate\Support\Facades\Route::pattern('month', '[0-9]{4}-[0-9]{2}');
+
         // Sign-in trail for the audit log: signed in, signed out, locked out (failed attempts are
         // recorded by LoginRequest). Registered here, not in app/Listeners, so it cannot register twice.
         \Illuminate\Support\Facades\Event::subscribe(\App\Services\AuthAudit::class);
@@ -74,16 +90,9 @@ class AppServiceProvider extends ServiceProvider
                 
                 // තත්පර 1ක Cache එකක් දැමීම (මෙහි 1 යනු තත්පර 1යි)
                 $adminCount = Cache::remember('admin_complaints_count', 1, function () {
-                    // The sidebar is on every page: when the mobile API is down it must show 0, never crash the page.
-                    try {
-                        $response = Http::timeout(5)
-                            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
-                    } catch (\Throwable $e) {
-                        Log::warning('Admin sidebar: complaint count unavailable: ' . $e->getMessage());
-
-                        return 0;
-                    }
+                    $response = Http::timeout(5)
+                        ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+                        ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
 
                     if ($response->successful()) {
                         $complaints = $response->json('data') ?? [];
@@ -114,16 +123,9 @@ class AppServiceProvider extends ServiceProvider
                     
                     // තත්පර 1ක Cache එකක් දැමීම
                     $dealerCount = Cache::remember($dealerCacheKey, 1, function () use ($dealer) {
-                        // Same rule as the admin sidebar: an unreachable API shows 0, it never crashes the page.
-                        try {
-                            $response = Http::timeout(5)
-                                ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                                ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
-                        } catch (\Throwable $e) {
-                            Log::warning('Dealer sidebar: complaint count unavailable: ' . $e->getMessage());
-
-                            return 0;
-                        }
+                        $response = Http::timeout(5)
+                            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+                            ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
 
                         if ($response->successful()) {
                             $complaints = $response->json('data') ?? [];

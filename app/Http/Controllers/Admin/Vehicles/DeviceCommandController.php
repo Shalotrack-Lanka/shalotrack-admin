@@ -166,7 +166,7 @@ class DeviceCommandController extends Controller
         $validated = $request->validate([
             'imei'    => ['required', 'string', 'regex:/^\d{15}$/'],
             'command' => ['required', 'string', 'in:' . implode(',', $this->allowedCommands($role))],
-            'params'  => ['sometimes', 'array'],
+            'params'  => ['sometimes', 'array', 'max:20'],
         ]);
 
         // Only the company may attach its own parameters (server address, APN, numbers...). Dealers and
@@ -290,7 +290,7 @@ class DeviceCommandController extends Controller
                 ->withHeaders(['X-Admin-Sync-Key' => $this->apiSyncKey])
                 ->get("{$this->apiBaseUrl}/api/internal/command-history", [
                     'vehicleId' => $vehicleId,
-                    'limit'     => $request->input('limit', 20),
+                    'limit'     => \App\Support\Input::int($request->input('limit'), 1, 100, 20),
                 ]);
 
             if ($response->successful()) {

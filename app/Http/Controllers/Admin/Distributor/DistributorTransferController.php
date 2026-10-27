@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Distributor;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Models\DealerTransferItem;
 use App\Models\DealerTransferLedger;
@@ -48,8 +49,8 @@ class DistributorTransferController extends Controller
             ->selectRaw('dealer_id, count(*) as c')->groupBy('dealer_id')->pluck('c', 'dealer_id');
 
         // ?dealer=ID (from the My Dealers page) preselects a dealer; an id outside the network is ignored.
-        $preselected = (int) $request->query('dealer');
-        $preselected = $dealers->contains('id', $preselected) ? $preselected : null;
+        $preselected = Input::id($request->query('dealer'));
+        $preselected = $preselected !== null && $dealers->contains('id', $preselected) ? $preselected : null;
 
         return view('distributor.transfer', [
             'distributor'  => $network->distributor(),

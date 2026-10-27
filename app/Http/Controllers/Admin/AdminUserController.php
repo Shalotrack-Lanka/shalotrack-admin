@@ -32,8 +32,8 @@ class AdminUserController extends Controller
             'username'         => ['required', 'string', 'regex:/^[A-Za-z0-9._-]{4,40}$/', $this->notTaken('username', 'That username is already taken.')],
             'email'            => ['required', 'email:rfc', 'max:190', $this->notTaken('email', 'Another account already uses this email.')],
             'phone_number'     => ['nullable', 'string', 'max:20', 'regex:/^[0-9+()\s-]{7,20}$/'],
-            'password'         => ['required', 'string', 'confirmed', PasswordPolicy::rule()],
-            'current_password' => ['required', 'string'],
+            'password'         => ['required', 'string', 'max:' . PasswordPolicy::MAX_LENGTH, 'confirmed', PasswordPolicy::rule()],
+            'current_password' => ['required', 'string', 'max:255'],
         ], [
             'username.regex'     => 'Use 4 to 40 letters, numbers, dots, dashes or underscores (no spaces).',
             'phone_number.regex' => 'Enter a phone number using digits, spaces, + ( ) and - only.',
@@ -70,8 +70,8 @@ class AdminUserController extends Controller
     public function resolveReset(Request $request, int $requestId): RedirectResponse
     {
         $request->validateWithBag('resetRequest', [
-            'current_password'   => ['required', 'string'],
-            'temporary_password' => ['nullable', 'string', PasswordPolicy::rule()],
+            'current_password'   => ['required', 'string', 'max:255'],
+            'temporary_password' => ['nullable', 'string', 'max:' . PasswordPolicy::MAX_LENGTH, PasswordPolicy::rule()],
         ]);
 
         ReauthGuard::confirm($request, 'resetRequest', 'set temporary password');

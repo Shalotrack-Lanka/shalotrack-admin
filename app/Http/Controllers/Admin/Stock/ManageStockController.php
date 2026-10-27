@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Stock;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Models\DeviceType;
 use App\Models\Stock;
@@ -35,9 +36,9 @@ class ManageStockController extends Controller
     {
 
         $request->validate([
-            'device_type_id' => 'required',
-            'supplier_id'    => 'required|exists:suppliers,id',
-            'stock_in'       => 'required|integer|min:1',
+            'device_type_id' => 'required|integer|exists:device_types,id',
+            'supplier_id'    => 'required|integer|exists:suppliers,id',
+            'stock_in'       => 'required|integer|min:1|max:1000000',
         ]);
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
@@ -165,7 +166,7 @@ class ManageStockController extends Controller
 
     public function generateReport(Request $request)
     {
-        $type = $request->query('type', 'stock');
+        $type = Input::choice($request->query('type'), ['stock', 'ledger'], 'stock');
 
         if ($type === 'stock') {
             $data = Stock::with('deviceType')->orderBy('device_type_id')->get();

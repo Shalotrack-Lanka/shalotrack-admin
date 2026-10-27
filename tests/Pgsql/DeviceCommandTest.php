@@ -432,7 +432,7 @@ class DeviceCommandTest extends PgsqlTestCase
 
         $this->getJson(route('dealer.device-commands.status', self::IMEI_B))->assertForbidden();
         $this->getJson(route('dealer.device-commands.history', $other))->assertForbidden();
-        $this->getJson(route('dealer.device-commands.history', 'not-a-uuid'))->assertForbidden();   // a bad id is a refusal, not a crash
+        $this->getJson(route('dealer.device-commands.history', 'not-a-uuid'))->assertNotFound();   // a malformed id never reaches the controller or the database
 
         $this->getJson(route('dealer.device-commands.status', self::IMEI_A))
             ->assertOk()->assertJson(['online' => true, 'ip' => '10.0.0.5']);

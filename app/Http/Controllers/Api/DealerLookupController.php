@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerAd;
 use App\Services\CustomerLinkService;
@@ -17,8 +18,8 @@ class DealerLookupController extends Controller
 {
     public function lookup(Request $request)
     {
-        $email = (string) $request->query('email', '');
-        $phone = (string) $request->query('phone', '');
+        $email = Input::text($request->query('email'), 254);
+        $phone = Input::text($request->query('phone'), 32);
 
         // Unsaved, in-memory instance -- never persisted. Reuses
         // CustomerLinkService's existing phone/email matching logic

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Support\Input;
 use App\Services\Audit;
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
@@ -198,17 +199,18 @@ class DealerDashboardController extends Controller
             return back()->withErrors(['dealer' => 'Dealer account not found!']);
         }
 
-        $search = trim((string) $request->input('search', ''));
+        $search = Input::text($request->input('search'), 100);
 
         $customerAds = DealerCustomerAd::where('dealer_id', $dealerId)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('name', 'ilike', "%{$search}%")
-                      ->orWhere('contact', 'ilike', "%{$search}%")
-                      ->orWhere('email', 'ilike', "%{$search}%")
-                      ->orWhere('nic_or_id', 'ilike', "%{$search}%")
-                      ->orWhere('address', 'ilike', "%{$search}%")
-                      ->orWhereRaw('imei_numbers::text ILIKE ?', ["%{$search}%"]);
+                    $like = Input::contains($search);
+                    $q->where('name', 'ilike', $like)
+                      ->orWhere('contact', 'ilike', $like)
+                      ->orWhere('email', 'ilike', $like)
+                      ->orWhere('nic_or_id', 'ilike', $like)
+                      ->orWhere('address', 'ilike', $like)
+                      ->orWhereRaw('imei_numbers::text ILIKE ?', [$like]);
                 });
             })
             ->latest()

@@ -68,11 +68,11 @@ class StockTransferController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'device_category' => 'required|string',
+            'device_category' => 'required|string|max:100',
             // Only an active distributor or dealer can receive stock.
             'dealer_id'       => ['required', Rule::exists('dealers', 'id')->where('status', 'active')],
-            'sim_numbers'     => 'required|array|min:1',
-            'sim_numbers.*'   => 'required|string',
+            'sim_numbers'     => 'required|array|min:1|max:1000',
+            'sim_numbers.*'   => 'required|string|max:32',
         ]);
 
         $ledger = null;
@@ -156,8 +156,8 @@ class StockTransferController extends Controller
 
         $validated = $request->validate([
             'dealer_id'     => ['required', Rule::exists('dealers', 'id')->where('status', 'active')],
-            'sim_numbers'   => 'required|array|min:1',
-            'sim_numbers.*' => 'required|string',
+            'sim_numbers'   => 'required|array|min:1|max:1000',
+            'sim_numbers.*' => 'required|string|max:32',
         ]);
 
         try {

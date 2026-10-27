@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Customer;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Services\InstallsWarrantyReport;
 use App\Services\RenewalsReport;
@@ -20,9 +21,8 @@ class InstallsWarrantyController extends Controller
 
     public function index(Request $request)
     {
-        $filter = (string) $request->query('filter', InstallsWarrantyReport::FILTER_ALL);
-        $filter = array_key_exists($filter, InstallsWarrantyReport::FILTERS) ? $filter : InstallsWarrantyReport::FILTER_ALL;
-        $days = (int) $request->query('days', 30);
+        $filter = Input::choice($request->query('filter'), array_keys(InstallsWarrantyReport::FILTERS), InstallsWarrantyReport::FILTER_ALL);
+        $days = Input::int($request->query('days'), 0, 3650, 30);
         $days = in_array($days, InstallsWarrantyReport::WINDOWS, true) ? $days : 30;
 
         $query = $this->report->query($filter, $days);

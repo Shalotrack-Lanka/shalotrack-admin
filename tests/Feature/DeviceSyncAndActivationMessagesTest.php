@@ -219,9 +219,9 @@ class DeviceSyncAndActivationMessagesTest extends TestCase
     {
         Http::fake();
         $this->device('Not Activated');   // the company has not activated it yet, so it cannot be bound
-        \App\Models\VehicleAd::forceCreate(['vehicle_id' => 'veh-1', 'customer_name' => 'A', 'vehicle_number' => 'WP 1']);
+        \App\Models\VehicleAd::forceCreate(['vehicle_id' => '00000000-0000-4000-8000-000000000031', 'customer_name' => 'A', 'vehicle_number' => 'WP 1']);
 
-        $response = $this->post(route('admin.customer-device-management.activate', 'veh-1'), [
+        $response = $this->post(route('admin.customer-device-management.activate', '00000000-0000-4000-8000-000000000031'), [
             'payment_status' => 'not-Paid',
             'imei_number'    => self::IMEI,
             'sim_number'     => '0700000101',
@@ -241,9 +241,9 @@ class DeviceSyncAndActivationMessagesTest extends TestCase
     {
         Http::fake();
         $this->device('Activated');   // activated by the company and held in company stock
-        \App\Models\VehicleAd::forceCreate(['vehicle_id' => 'veh-1', 'customer_name' => 'A', 'vehicle_number' => 'WP 1']);
+        \App\Models\VehicleAd::forceCreate(['vehicle_id' => '00000000-0000-4000-8000-000000000031', 'customer_name' => 'A', 'vehicle_number' => 'WP 1']);
 
-        $this->post(route('admin.customer-device-management.activate', 'veh-1'), [
+        $this->post(route('admin.customer-device-management.activate', '00000000-0000-4000-8000-000000000031'), [
             'payment_status' => 'not-Paid',
             'imei_number'    => self::IMEI,
             'sim_number'     => '0700000101',

@@ -96,10 +96,10 @@ class InvoiceController extends Controller
     {
         $data = $request->validate([
             'dealer_id'    => ['required', 'integer', 'exists:dealers,id'],
-            'prices'       => ['required', 'array', 'min:1'],
+            'prices'       => ['required', 'array', 'min:1', 'max:200'],
             'prices.*'     => ['nullable', 'string', 'max:20'],
-            'include'      => ['required', 'array', 'min:1'],
-            'include.*'    => ['integer'],
+            'include'      => ['required', 'array', 'min:1', 'max:200'],
+            'include.*'    => ['integer', 'min:1'],
             'notes'        => ['nullable', 'string', 'max:500'],
             'zero_reason'  => ['nullable', 'string', 'max:255'],
         ], ['include.required' => 'Tick at least one transfer to invoice.']);
@@ -132,7 +132,7 @@ class InvoiceController extends Controller
     {
         $data = $request->validate([
             'dealer_id'   => ['required', 'integer', 'exists:dealers,id'],
-            'prices'      => ['required', 'array', 'min:1'],
+            'prices'      => ['required', 'array', 'min:1', 'max:200'],
             'prices.*'    => ['required', 'string', 'max:20'],
             'notes'       => ['nullable', 'string', 'max:500'],
             'zero_reason' => ['nullable', 'string', 'max:255'],
@@ -178,7 +178,7 @@ class InvoiceController extends Controller
     public function creditStore(Request $request, Invoice $invoice)
     {
         $data = $request->validate([
-            'qty'    => ['required', 'array'],
+            'qty'    => ['required', 'array', 'max:500'],
             'qty.*'  => ['nullable', 'integer', 'min:0', 'max:100000'],
             'reason' => ['required', 'string', 'max:255'],
             'token'  => ['required', 'uuid'],

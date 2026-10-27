@@ -13,6 +13,9 @@ final class PasswordPolicy
 {
     public const MIN_LENGTH = 10;
 
+    /** bcrypt only reads the first 72 bytes; longer input is silently cut, so refuse it instead. */
+    public const MAX_LENGTH = 72;
+
     public static function rule(): Password
     {
         return Password::min(self::MIN_LENGTH)->mixedCase()->numbers();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Supplier;
 
+use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Supplier;
@@ -14,8 +15,8 @@ class SupplierManagementController extends Controller
 {
     public function index(Request $request)
     {
-        $search = trim((string) $request->query('search', ''));
-        $status = $request->query('status', '');
+        $search = Input::text($request->query('search'), 100);
+        $status = Input::choice($request->query('status'), ['Active', 'Inactive'], '');
 
         // 1. DeviceTypes සියල්ල ලබා ගැනීම (Dropdown එකේ V5 Basic, V10 Plus ලෙස පෙන්වීමට)
         $deviceTypes = DeviceType::orderBy('device_category')->orderBy('model')->get();
@@ -37,10 +38,11 @@ class SupplierManagementController extends Controller
                 ->withCount('products')
                 ->when($search !== '', function ($query) use ($search) {
                     $query->where(function ($q) use ($search) {
-                        $q->where('name', 'ilike', "%{$search}%")
-                            ->orWhere('email', 'ilike', "%{$search}%")
-                            ->orWhere('phone_number', 'ilike', "%{$search}%")
-                            ->orWhere('country', 'ilike', "%{$search}%");
+                        $like = Input::contains($search);
+                        $q->where('name', 'ilike', $like)
+                            ->orWhere('email', 'ilike', $like)
+                            ->orWhere('phone_number', 'ilike', $like)
+                            ->orWhere('country', 'ilike', $like);
                     });
                 })
                 ->when(
@@ -225,7 +227,7 @@ class SupplierManagementController extends Controller
             'email_id'      => ['nullable', 'email', 'max:255', Rule::unique('suppliers', 'email')->ignore($ignoreId)],
             'website'       => 'nullable|string|max:255',
             'gstin'         => 'nullable|string|max:50',
-            'products'      => 'nullable|array',
+            'products'      => 'nullable|array|max:500',
         ], [
             'phone_number.regex' => 'Phone number must contain only digits, spaces, hyphens, parentheses, or a leading +.',
             'email_id.unique'    => 'This email address is already registered to another supplier.',
