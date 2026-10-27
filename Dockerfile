@@ -27,7 +27,19 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 # Stage 3: runtime
 # ---------------------------------------------------------------------------
-FROM php:8.2-fpm-alpine
+FROM php:8.4-fpm-alpine
+
+# PHP2Shell (CVE-2026-109618 / CVE-2026-109619, unauthenticated RCE): fail the BUILD, not a production
+# request, if the base image is older than the fixed release of its branch. Bump the table when PHP ships
+# a newer security release. Rebuild with `docker build --pull` so the base layer is refreshed.
+RUN php -r '$m=[]; preg_match("/^(\d+\.\d+)/",PHP_VERSION,$m); \
+    $min=["8.2"=>"8.2.35","8.3"=>"8.3.36","8.4"=>"8.4.27","8.5"=>"8.5.12"]; \
+    if(!isset($min[$m[1]])||version_compare(PHP_VERSION,$min[$m[1]],"<")){fwrite(STDERR,"PHP ".PHP_VERSION." is below the PHP2Shell fix\n");exit(1);}'
+
+# Hardening: no upload-progress session hook (PHP2Shell path), no version banner, and request limits that
+# match the 10 MB Excel / 2 MB image rules in the application.
+RUN printf 'session.upload_progress.enabled=0\nexpose_php=0\npost_max_size=12M\nupload_max_filesize=10M\n' \
+    > /usr/local/etc/php/conf.d/zz-hardening.ini
 
 RUN apk add --no-cache \
     nginx \
