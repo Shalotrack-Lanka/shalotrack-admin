@@ -102,9 +102,43 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
                 // SIM එක අනිවාර්යයෙන්ම පද්ධතියේ තිබිය යුතු අතර එය Activated එකක් විය යුතුය
                 Rule::exists('sims', 'sim_number')->where('sim_status', 'Activated')
             ],
-            'device_category' => ['required', 'string', 'max:100'],
-            'model'           => ['required', 'string', 'max:100'], // Model එකත් අනිවාර්ය කර ඇත
+            'device_category' => ['required', 'string'],
+            'model'           => ['required', 'string'], // Model එකත් අනිවාර්ය කර ඇත
         ];
+    }
+
+    /**
+     * A row whose device type does not exist, or whose type has no company stock left, used to be skipped
+     * silently (the admin saw "0 imported" with no reason). Now the row is reported as a failure with the reason.
+     * Rows are checked one at a time and saved before the next is checked, so stock used by earlier rows counts.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // Laravel hands us {excelRowNumber: rowValues}; errors must be added under "<row>.<field>".
+            foreach ($validator->getData() as $rowNumber => $data) {
+                if (! is_string($data['device_category'] ?? null) || ! is_string($data['model'] ?? null)
+                    || trim($data['device_category']) === '' || trim($data['model']) === '') {
+                    continue;
+                }
+
+                $type = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($data['device_category']))])
+                    ->whereRaw('LOWER(model) = ?', [strtolower(trim($data['model']))])
+                    ->first();
+
+                if (! $type) {
+                    $validator->errors()->add("{$rowNumber}.device_category", "Device type '{$data['device_category']} / {$data['model']}' does not exist.");
+
+                    continue;
+                }
+
+                $stock = Stock::where('device_type_id', $type->id)->first();
+
+                if (! $stock || $stock->company_available_stock < 1) {
+                    $validator->errors()->add("{$rowNumber}.device_category", "No company stock left for '{$type->device_category} {$type->model}'.");
+                }
+            }
+        });
     }
 
     public function customValidationMessages()

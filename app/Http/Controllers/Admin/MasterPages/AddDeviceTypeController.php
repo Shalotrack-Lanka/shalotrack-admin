@@ -40,9 +40,9 @@ class AddDeviceTypeController extends Controller
 
         'protocol' => 'required|string|max:255',
 
-        'features' => 'nullable|array|max:100',
+        'features' => 'nullable|array',
 
-        'features.*' => 'integer|exists:features,id',
+        'features.*' => ['bail', 'integer', 'min:1', 'exists:features,id'],
 
     ], [
 
@@ -109,7 +109,8 @@ class AddDeviceTypeController extends Controller
     public function importDeviceTypes(Request $request)
     {
         $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,csv|max:10240',
+            // 'txt' is needed because the server reports every real .csv file as text/plain; 'extensions' then makes sure the file NAME is still .xlsx or .csv.
+            'excel_file' => 'required|file|mimes:xlsx,csv,txt|extensions:xlsx,csv|max:10240',
         ]);
 
         $import = new DeviceTypesImport();

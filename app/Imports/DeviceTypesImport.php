@@ -63,7 +63,7 @@ class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, Skip
             'device_category' => ['required', 'string', 'max:255'],
             'model'           => ['required', 'string', 'in:Basic,Plus,Customize'],
             'protocol'        => ['required', 'string', 'max:255'],
-            'features'        => ['nullable', 'string', 'max:500'],
+            'features'        => ['nullable', 'string'],
         ];
     }
 
@@ -71,17 +71,23 @@ class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, Skip
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            $data = $validator->getData();
-            
-            if (!empty($data['device_category']) && !empty($data['model'])) {
+            // Laravel hands us {excelRowNumber: rowValues}; errors must be added under "<row>.<field>".
+            // (Before this fix the code looked for 'device_category' at the top level, never found it,
+            // and so the duplicate check never ran.)
+            foreach ($validator->getData() as $rowNumber => $data) {
+                if (! is_string($data['device_category'] ?? null) || ! is_string($data['model'] ?? null)
+                    || trim($data['device_category']) === '' || trim($data['model']) === '') {
+                    continue;
+                }
+
                 $exists = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($data['device_category']))])
                     ->whereRaw('LOWER(model) = ?', [strtolower(trim($data['model']))])
                     ->exists();
 
                 if ($exists) {
                     $validator->errors()->add(
-                        'device_category',
-                        "මෙම '{$data['device_category']} / {$data['model']}' නමින් Device Type එකක් දැනටමත් පද්ධතියේ පවතී."
+                        "{$rowNumber}.device_category",
+                        "A Device Type '{$data['device_category']} / {$data['model']}' already exists in the system."
                     );
                 }
             }
