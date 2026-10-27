@@ -36,8 +36,9 @@ class ManageStockController extends Controller
     {
 
         $request->validate([
-            'device_type_id' => 'required|integer|exists:device_types,id',
-            'supplier_id'    => 'required|integer|exists:suppliers,id',
+            'device_type_id' => 'bail|required|integer|min:1|exists:device_types,id',
+            // Only an Active supplier (the screen lists only those); bail keeps text / huge ids away from the database.
+            'supplier_id'    => ['bail', 'required', 'integer', 'min:1', \Illuminate\Validation\Rule::exists('suppliers', 'id')->where('status', 'Active')],
             'stock_in'       => 'required|integer|min:1|max:1000000',
         ]);
 
@@ -99,15 +100,22 @@ class ManageStockController extends Controller
     public function importStock(Request $request)
     {
         $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,csv,xls|max:10240',
+            // 'txt' because the server reports every real .csv as text/plain; 'extensions' keeps the file NAME honest.
+            'excel_file' => 'required|file|mimes:xlsx,csv,xls,txt|extensions:xlsx,csv,xls|max:10240',
         ]);
+
+        DB::beginTransaction();
 
         try {
             $import = new \App\Imports\StockImport();
             \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('excel_file'));
 
             if (method_exists($import, 'failures') && count($import->failures()) > 0) {
-                $errorMessages = [];
+                // All or nothing: rows that were fine are rolled back too, so fixing the file and uploading it
+                // again can never add the same stock twice.
+                DB::rollBack();
+
+                $errorMessages = ['Nothing was imported. Fix the rows below and upload the whole file again.'];
                 foreach ($import->failures() as $failure) {
                     foreach ($failure->errors() as $error) {
                         $errorMessages[] = "Row {$failure->row()}: {$error}";
@@ -116,21 +124,26 @@ class ManageStockController extends Controller
                 return redirect()->back()->withErrors($errorMessages);
             }
 
+            DB::commit();
+
             return redirect()->back()->with([
                 'import_success_count' => count($import->created ?? []),
                 'import_total_stock_in' => $import->totalStockIn ?? 0,
                 'success'              => 'Excel දත්ත සාර්ථකව පද්ධතියට එකතු කරන ලදී!'
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
             // FIX: replaced a live dd() -- any exception during import
             // (a malformed file, a row that fails a DB constraint, etc.)
             // used to hard-crash the whole page with a raw dump instead
             // of giving the user something they can act on.
             \Log::error('Stock import failed', ['message' => $e->getMessage()]);
 
+            // The exception text is for the log only (it can hold SQL and file paths).
             return redirect()->back()->withErrors([
-                'excel_file' => 'Import failed: ' . $e->getMessage(),
+                'excel_file' => 'Import failed and nothing was imported. Check the file against the template and try again.',
             ]);
         }
     }

@@ -155,10 +155,10 @@ class SupplierManagementController extends Controller
         $supplier = Supplier::findOrFail($id);
 
         $validated = $request->validate([
-            'device_type_id' => 'nullable|integer|exists:device_types,id',
+            'device_type_id' => 'bail|nullable|integer|min:1|exists:device_types,id',
             'product_name'   => 'required_without:device_type_id|nullable|string|max:255',
-            'price'          => 'required|numeric|min:0',
-            'qty'            => 'required|integer|min:0',
+            'price'          => 'required|numeric|min:0|max:99999999',
+            'qty'            => 'required|integer|min:0|max:1000000',
         ]);
 
         if (!empty($validated['device_type_id'])) {
@@ -228,6 +228,13 @@ class SupplierManagementController extends Controller
             'website'       => 'nullable|string|max:255',
             'gstin'         => 'nullable|string|max:50',
             'products'      => 'nullable|array|max:500',
+            // Each line is checked before syncProducts() runs: a text value in device_type_id used to be looked up
+            // as a number (a database error on PostgreSQL) and a text price broke the save.
+            'products.*'                => 'array',
+            'products.*.device_type_id' => 'bail|nullable|integer|min:1|exists:device_types,id',
+            'products.*.product_name'   => 'nullable|string|max:255',
+            'products.*.price'          => 'nullable|numeric|min:0|max:99999999',
+            'products.*.qty'            => 'nullable|integer|min:0|max:1000000',
         ], [
             'phone_number.regex' => 'Phone number must contain only digits, spaces, hyphens, parentheses, or a leading +.',
             'email_id.unique'    => 'This email address is already registered to another supplier.',
@@ -246,7 +253,9 @@ class SupplierManagementController extends Controller
                 if (!empty($deviceTypeId)) {
 
                     // 1. ඉදිරියෙන් ආවේ DeviceType ID එකක්දැයි බලයි
-                    $deviceType = DeviceType::find($deviceTypeId);
+                    // (only a whole number is ever looked up by id: a free-text name used to be sent to the
+                    // database as an id and failed there)
+                    $deviceType = ctype_digit((string) $deviceTypeId) ? DeviceType::find($deviceTypeId) : null;
 
                     if ($deviceType) {
                         $productName = trim("{$deviceType->device_category} {$deviceType->model}");

@@ -4,28 +4,30 @@ namespace App\Http\Controllers\Admin\Complaints;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use App\Traits\CallsComplaintsApi;
 use Illuminate\Support\Facades\Log;
 
 class AdminComplaintController extends Controller
 {
+    use CallsComplaintsApi;
+
     public function __construct()
     {
         abort_unless(auth()->user()?->role === 'ADMIN', 403, 'You are not authorized to access this area.');
     }
 
-   public function index()
+    private const UNAVAILABLE = 'Complaints are unavailable right now (the app server could not be reached). Please try again in a minute.';
+
+    public function index()
     {
-        $response = \Illuminate\Support\Facades\Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+        $response = $this->complaintsApi('get', '/api/internal/complaints/for-admin');
 
-        // අර අපි දාපු dd() කේතය දැන් ඉවත් කර ඇත. 
-        // API එකෙන් එන 'data' ඇතුළේ තියෙන පැමිණිලි 6ම (සියල්ලම) කෙලින්ම View එකට යවයි.
-        $complaints = $response->successful() ? ($response->json('data') ?? []) : [];
+        $complaints = $response?->successful() ? ($response->json('data') ?? []) : [];
 
-        if (!$response->successful()) {
-            Log::warning('Admin complaints fetch failed', ['status' => $response->status()]);
+        if (! $response?->successful()) {
+            Log::warning('Admin complaints fetch failed', ['status' => $response?->status()]);
+
+            return view('admin.complaints.index', compact('complaints'))->withErrors(['api' => self::UNAVAILABLE]);
         }
 
         return view('admin.complaints.index', compact('complaints'));
@@ -35,15 +37,13 @@ class AdminComplaintController extends Controller
     {
         $request->validate(['message' => 'required|string|max:2000']);
 
-        $response = Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/reply", [
-                'message' => $request->input('message'),
-                'authorType' => 2, // Admin
-                'authorName' => auth()->user()->name ?? 'ShaloTrack Support',
-            ]);
+        $response = $this->complaintsApi('post', "/api/internal/complaints/{$complaintId}/reply", [
+            'message' => $request->input('message'),
+            'authorType' => 2, // Admin
+            'authorName' => auth()->user()->name ?? 'ShaloTrack Support',
+        ]);
 
-        if (!$response->successful()) {
+        if (! $response?->successful()) {
             return back()->withErrors(['reply' => 'Could not send reply. Please try again.']);
         }
 
@@ -52,16 +52,11 @@ class AdminComplaintController extends Controller
 
     public function resolve(string $complaintId)
     {
-        $response = Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/resolve");
+        $response = $this->complaintsApi('post', "/api/internal/complaints/{$complaintId}/resolve");
 
-        // FIX: replaced a live dd() with the same graceful failure pattern
-        // used by reply()/close() below -- a transient API hiccup should
-        // redirect back with an error, not hard-crash the whole request
-        // with a raw debug dump.
-        if (!$response->successful()) {
-            Log::warning('Admin complaint resolve failed', ['complaint_id' => $complaintId, 'status' => $response->status()]);
+        if (! $response?->successful()) {
+            Log::warning('Admin complaint resolve failed', ['complaint_id' => $complaintId, 'status' => $response?->status()]);
+
             return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
         }
 
@@ -72,40 +67,25 @@ class AdminComplaintController extends Controller
 
     public function resolved()
     {
-        // FIX (round 2): the previous fix pointed this at
-        // /api/internal/complaints/for-admin and filtered client-side for
-        // status === 2. That corrected the 401 but not the actual bug --
-        // GetForAdminAsync on the C# side is hard-filtered server-side to
-        // WithAdmin-status complaints only (see ComplaintRepository), so a
-        // complaint disappears from that endpoint's response the instant
-        // it's resolved. The status===2 filter here could never have found
-        // anything; this page was structurally guaranteed to always be
-        // empty no matter how many complaints were actually resolved.
-        //
-        // The C# API now exposes a dedicated endpoint for this
-        // (for-admin/resolved -- see InternalComplaintsController /
-        // ComplaintRepository.GetResolvedForAdminAsync), which does the
-        // filtering server-side. This method just calls it directly.
-        $response = \Illuminate\Support\Facades\Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin/resolved');
+        // The API filters server-side (for-admin/resolved): a resolved complaint disappears from for-admin.
+        $response = $this->complaintsApi('get', '/api/internal/complaints/for-admin/resolved');
 
-        if (!$response->successful()) {
-            Log::warning('Admin resolved-complaints fetch failed', ['status' => $response->status()]);
-            return view('admin.complaints.resolved', ['complaints' => []]);
+        if (! $response?->successful()) {
+            Log::warning('Admin resolved-complaints fetch failed', ['status' => $response?->status()]);
+
+            return view('admin.complaints.resolved', ['complaints' => []])->withErrors(['api' => self::UNAVAILABLE]);
         }
 
         $complaints = $response->json('data') ?? [];
 
         return view('admin.complaints.resolved', compact('complaints'));
     }
+
     public function close(string $complaintId)
     {
-        $response = Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/close");
+        $response = $this->complaintsApi('post', "/api/internal/complaints/{$complaintId}/close");
 
-        if (!$response->successful()) {
+        if (! $response?->successful()) {
             return back()->withErrors(['close' => 'Could not close this complaint. Please try again.']);
         }
 
@@ -116,11 +96,9 @@ class AdminComplaintController extends Controller
 
     public function checkNew()
     {
-        $response = \Illuminate\Support\Facades\Http::timeout(5)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+        $response = $this->complaintsApi('get', '/api/internal/complaints/for-admin', [], 5);
 
-        if (!$response->successful()) {
+        if (! $response?->successful()) {
             return response()->json(['has_new' => false]);
         }
 
@@ -145,11 +123,9 @@ class AdminComplaintController extends Controller
 
     public function checkNewReplies()
     {
-        $response = \Illuminate\Support\Facades\Http::timeout(5)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+        $response = $this->complaintsApi('get', '/api/internal/complaints/for-admin', [], 5);
 
-        if (!$response->successful()) {
+        if (! $response?->successful()) {
             return response()->json(['has_new_reply' => false, 'author_name' => null]);
         }
 

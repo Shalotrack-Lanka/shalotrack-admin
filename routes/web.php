@@ -320,8 +320,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/audit-log', [AuditLogController::class, 'index'])->middleware('role:ADMIN')->name('admin.audit-log');
 
     Route::get('/admin/renewal-requests', [RenewalRequestController::class, 'index'])->middleware('role:ADMIN')->name('admin.renewal-requests');
-    Route::get('/admin/renewal-requests/{id}/slip', [RenewalRequestController::class, 'slip'])->middleware(['role:ADMIN', 'throttle:60,1'])->name('admin.renewal-requests.slip');
-    Route::post('/admin/renewal-requests/{id}/decide', [RenewalRequestController::class, 'decide'])->middleware('role:ADMIN')->name('admin.renewal-requests.decide');
+    Route::get('/admin/renewal-requests/{id}/slip', [RenewalRequestController::class, 'slip'])->where('id', '[A-Za-z0-9\-]{1,64}')->middleware(['role:ADMIN', 'throttle:60,1'])->name('admin.renewal-requests.slip');
+    Route::post('/admin/renewal-requests/{id}/decide', [RenewalRequestController::class, 'decide'])->where('id', '[A-Za-z0-9\-]{1,64}')->middleware('role:ADMIN')->name('admin.renewal-requests.decide');
 
     // Commission payout statements (ADMIN only; dealers read their own paid ones under dealer.*).
     Route::middleware('role:ADMIN')->prefix('admin/commission-payouts')->name('admin.commission-payouts')->group(function () {
@@ -388,7 +388,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-    Route::prefix('admin/dealer')->group(function () {
+    Route::prefix('admin/dealer')->where(['id' => '[0-9]{1,18}'])->group(function () {
 
         // Dealer portal (DEALER role only; every action is also scoped to the dealer's own rows
         // inside DealerDashboardController).
@@ -463,7 +463,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-    Route::prefix('admin/supplier')->group(function () {
+    Route::prefix('admin/supplier')->where(['id' => '[0-9]{1,18}'])->group(function () {
 
         // Supplier portal (SUPPLIER role only). These MUST be declared before the
         // '/{id}' routes below: Laravel matches in registration order, and
@@ -513,7 +513,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/report', [ManageStockController::class, 'generateReport'])->name('admin.stock.report');
 
         //add stock automation
-        Route::get('/get-supplier-products/{supplier_id}', [ManageStockController::class, 'getSupplierProducts'])->name('admin.get-supplier-products');
+        Route::get('/get-supplier-products/{supplier_id}', [ManageStockController::class, 'getSupplierProducts'])->where('supplier_id', '[0-9]{1,18}')->name('admin.get-supplier-products');
 
         // Stock
         Route::get('/stock/import-template', [ManageStockController::class, 'downloadImportTemplate'])->name('admin.stock.import-template');

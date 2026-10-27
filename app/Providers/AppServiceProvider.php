@@ -7,6 +7,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use App\Models\Dealer;
 use Illuminate\Support\Carbon;
 
@@ -90,9 +91,16 @@ class AppServiceProvider extends ServiceProvider
                 
                 // තත්පර 1ක Cache එකක් දැමීම (මෙහි 1 යනු තත්පර 1යි)
                 $adminCount = Cache::remember('admin_complaints_count', 1, function () {
-                    $response = Http::timeout(5)
-                        ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                        ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+                    // The sidebar is on every page: when the mobile API is down it must show 0, never crash the page.
+                    try {
+                        $response = Http::timeout(5)
+                            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+                            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+                    } catch (\Throwable $e) {
+                        Log::warning('Admin sidebar: complaint count unavailable: ' . $e->getMessage());
+
+                        return 0;
+                    }
 
                     if ($response->successful()) {
                         $complaints = $response->json('data') ?? [];
@@ -123,9 +131,16 @@ class AppServiceProvider extends ServiceProvider
                     
                     // තත්පර 1ක Cache එකක් දැමීම
                     $dealerCount = Cache::remember($dealerCacheKey, 1, function () use ($dealer) {
-                        $response = Http::timeout(5)
-                            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                            ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
+                        // Same rule as the admin sidebar: an unreachable API shows 0, it never crashes the page.
+                        try {
+                            $response = Http::timeout(5)
+                                ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
+                                ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
+                        } catch (\Throwable $e) {
+                            Log::warning('Dealer sidebar: complaint count unavailable: ' . $e->getMessage());
+
+                            return 0;
+                        }
 
                         if ($response->successful()) {
                             $complaints = $response->json('data') ?? [];

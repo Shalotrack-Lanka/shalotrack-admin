@@ -98,17 +98,40 @@ class SupplierInvoiceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-        'supplier_id' => 'required|exists:suppliers,id',
+        // bail + integer: a text or oversized id must stop here, before it reaches PostgreSQL (a 500 otherwise).
+        // The maximums keep every number inside its database column (qty int4, money decimal(12,2), discount %).
+        'supplier_id' => ['bail', 'required', 'integer', 'min:1', \Illuminate\Validation\Rule::exists('suppliers', 'id')->where('status', 'Active')],
         'items' => 'required|array|min:1|max:200',
-        'items.*.product_id' => 'required|exists:products,id',
+        'items.*.product_id' => 'bail|required|integer|min:1|exists:products,id',
         'items.*.type' => 'required|string|max:50',
-        'items.*.order_qty' => 'required|numeric|min:1',
-        'items.*.unit_price' => 'required|numeric|min:0',
-        'items.*.discount' => 'nullable|numeric|min:0',
-        'items.*.face_value' => 'nullable|numeric|min:0',
+        'items.*.order_qty' => 'required|integer|min:1|max:1000000',
+        'items.*.unit_price' => 'required|numeric|min:0|max:9999999',
+        'items.*.discount' => 'nullable|numeric|min:0|max:100',
+        'items.*.face_value' => 'nullable|numeric|min:0|max:9999999',
     ]);
 
-    return DB::transaction(function () use ($validated) {
+    // Money columns are decimal(12,2). Each field has its own limit, but quantity x price can still be bigger
+    // than the column, which used to end in a database error. Work the totals out first and refuse politely.
+    $limit = 9999999999.99;
+    $runningTotal = 0;
+    foreach ($validated['items'] as $index => $item) {
+        $line = ((int) $item['order_qty'] * (float) $item['unit_price']);
+        $line = $line - ($line * ((float) ($item['discount'] ?? 0) / 100)) + (float) ($item['face_value'] ?? 0);
+        $runningTotal += $line;
+
+        if ($line > $limit) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                "items.{$index}.unit_price" => 'This line is too large. Reduce the quantity or the price.',
+            ]);
+        }
+    }
+    if ($runningTotal > $limit) {
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'items' => 'The order total is too large. Split it into smaller orders.',
+        ]);
+    }
+
+    $invoice = DB::transaction(function () use ($validated) {
 
         $year = now()->year;
 
@@ -169,10 +192,11 @@ class SupplierInvoiceController extends Controller
                     $stock = Stock::lockForUpdate()
                         ->firstOrNew(['device_type_id' => $product->device_type_id]);
 
-                    $stock->supplier_id              = $validated['supplier_id'];
-                    $stock->stock_in                 = ($stock->stock_in ?? 0) + $qty;
-                    $stock->company_available_stock  = ($stock->company_available_stock ?? 0) + $qty;
-                    $stock->total_available           = ($stock->total_available ?? 0) + $qty;
+                    // The stocks table keeps one row per device type with only these columns. This code used to
+                    // also write supplier_id, stock_in and total_available, which a later migration removed, so
+                    // every purchase order containing a device failed with a database error.
+                    $stock->company_available_stock = ($stock->company_available_stock ?? 0) + $qty;
+                    $stock->device_category_type  ??= $product->product_name;
                     $stock->save();
                 }
             }

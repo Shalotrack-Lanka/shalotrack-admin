@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Admin\Dealer;
 use App\Http\Controllers\Controller;
 use App\Models\Dealer;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use App\Traits\CallsComplaintsApi;
 use Illuminate\Support\Facades\Log;
 
 class DealerComplaintController extends Controller
 {
+    use CallsComplaintsApi;
+
+    private const UNAVAILABLE = 'Complaints are unavailable right now (the app server could not be reached). Please try again in a minute.';
+
     public function index()
     {
         $user   = auth()->user();
@@ -19,14 +23,14 @@ class DealerComplaintController extends Controller
             return redirect()->back()->with('error', 'Dealer profile not found.');
         }
 
-        $response = Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
+        $response = $this->complaintsApi('get', "/api/internal/complaints/by-dealer/{$dealer->id}");
 
-        $complaints = $response->successful() ? ($response->json('data') ?? []) : [];
+        $complaints = $response?->successful() ? ($response->json('data') ?? []) : [];
 
-        if (!$response->successful()) {
-            \Log::warning('Dealer complaints fetch failed', ['status' => $response->status(), 'dealer_id' => $dealer->id]);
+        if (! $response?->successful()) {
+            Log::warning('Dealer complaints fetch failed', ['status' => $response?->status(), 'dealer_id' => $dealer->id]);
+
+            return view('dealer.complaints', compact('complaints', 'dealer'))->withErrors(['api' => self::UNAVAILABLE]);
         }
 
         return view('dealer.complaints', compact('complaints', 'dealer'));
@@ -43,9 +47,7 @@ class DealerComplaintController extends Controller
             return back()->withErrors(['dealer' => 'Dealer profile not found.']);
         }
 
-        $response = Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/reply", [
+        $response = $this->complaintsApi('post', "/api/internal/complaints/{$complaintId}/reply", [
                 'message'    => $request->input('message'),
                 'authorType' => 1, // Dealer -- must match ComplaintReplyAuthorType.Dealer on the API side
                 'authorName' => $dealer->full_name,
@@ -56,7 +58,7 @@ class DealerComplaintController extends Controller
                 'dealerId'   => $dealer->id,
             ]);
 
-        if (!$response->successful()) {
+        if (! $response?->successful()) {
             return back()->withErrors(['reply' => 'Could not send reply. Please try again.']);
         }
 
@@ -70,15 +72,15 @@ class DealerComplaintController extends Controller
             return back()->withErrors(['dealer' => 'Dealer profile not found.']);
         }
 
-        $response = \Illuminate\Support\Facades\Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/escalate?dealerId={$dealer->id}");
+        $response = $this->complaintsApi('post', "/api/internal/complaints/{$complaintId}/escalate?dealerId={$dealer->id}");
 
         \Illuminate\Support\Facades\Cache::forget('dealer_complaints_count_' . $dealer->id);
 
-        if (!$response->successful()) {
-            // සැබෑ C# API Error එක ස්ක්‍රීන් එකේ පෙන්වන්න
-            return back()->withErrors(['escalate' => 'API Error (' . $response->status() . '): ' . $response->body()]);
+        if (! $response?->successful()) {
+            // The raw API answer is for the log only: showing it to a dealer leaks internal details.
+            Log::warning('Dealer complaint escalate failed', ['complaint_id' => $complaintId, 'dealer_id' => $dealer->id, 'status' => $response?->status(), 'body' => $response?->body()]);
+
+            return back()->withErrors(['escalate' => 'Could not transfer this complaint to ShaloTrack support. Please try again.']);
         }
 
         return back()->with('success', 'Complaint transferred to ShaloTrack support.');
@@ -94,11 +96,9 @@ class DealerComplaintController extends Controller
             return back()->withErrors(['dealer' => 'Dealer profile not found.']);
         }
 
-        $response = Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/resolve?dealerId={$dealer->id}");
+        $response = $this->complaintsApi('post', "/api/internal/complaints/{$complaintId}/resolve?dealerId={$dealer->id}");
 
-        if (!$response->successful()) {
+        if (! $response?->successful()) {
             return back()->withErrors(['resolve' => 'Could not resolve this complaint. Please try again.']);
         }
 
@@ -114,11 +114,9 @@ class DealerComplaintController extends Controller
             return back()->withErrors(['dealer' => 'Dealer profile not found.']);
         }
 
-        $response = Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->post(config('services.shalotrack_api.base_url') . "/api/internal/complaints/{$complaintId}/close?dealerId={$dealer->id}");
+        $response = $this->complaintsApi('post', "/api/internal/complaints/{$complaintId}/close?dealerId={$dealer->id}");
 
-        if (!$response->successful()) {
+        if (! $response?->successful()) {
             return back()->withErrors(['close' => 'Could not close this complaint. Please try again.']);
         }
 
@@ -158,11 +156,9 @@ class DealerComplaintController extends Controller
             return response()->json(['has_new' => false]);
         }
 
-        $response = Http::timeout(5)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
+        $response = $this->complaintsApi('get', "/api/internal/complaints/by-dealer/{$dealer->id}", [], 5);
 
-        if (!$response->successful()) {
+        if (! $response?->successful()) {
             return response()->json(['has_new' => false]);
         }
 
@@ -216,11 +212,9 @@ class DealerComplaintController extends Controller
             return response()->json(['has_new_reply' => false, 'author_name' => null]);
         }
 
-        $response = Http::timeout(5)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
+        $response = $this->complaintsApi('get', "/api/internal/complaints/by-dealer/{$dealer->id}", [], 5);
 
-        if (!$response->successful()) {
+        if (! $response?->successful()) {
             return response()->json(['has_new_reply' => false, 'author_name' => null]);
         }
 
@@ -289,14 +283,12 @@ class DealerComplaintController extends Controller
             return redirect()->back()->with('error', 'Dealer profile not found.');
         }
 
-        $response = Http::timeout(10)
-            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-            ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
+        $response = $this->complaintsApi('get', "/api/internal/complaints/by-dealer/{$dealer->id}");
 
-        $allComplaints = $response->successful() ? ($response->json('data') ?? []) : [];
+        $allComplaints = $response?->successful() ? ($response->json('data') ?? []) : [];
 
-        if (!$response->successful()) {
-            Log::warning('Dealer resolved complaints fetch failed', ['status' => $response->status(), 'dealer_id' => $dealer->id]);
+        if (! $response?->successful()) {
+            Log::warning('Dealer resolved complaints fetch failed', ['status' => $response?->status(), 'dealer_id' => $dealer->id]);
         }
 
         // ComplaintStatus: WithDealer=0, WithAdmin=1, Resolved=2, Closed=3.
@@ -314,6 +306,8 @@ class DealerComplaintController extends Controller
             return strcmp($bDate, $aDate);
         });
 
-        return view('dealer.complaints_resolved', compact('complaints'));
+        $page = view('dealer.complaints_resolved', compact('complaints'));
+
+        return $response?->successful() ? $page : $page->withErrors(['api' => self::UNAVAILABLE]);
     }
 }
