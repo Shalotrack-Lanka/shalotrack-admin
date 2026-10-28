@@ -22,3 +22,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth.adminsync'])->group(function () {
     Route::get('/internal/dealer-lookup', [\App\Http\Controllers\Api\DealerLookupController::class, 'lookup']);
 });
+
+// Browsers POST Content-Security-Policy violation reports here (the report-uri in config/security.php).
+// Public by necessity (no cookies are sent with reports), so: 60 per minute per IP here, plus global caps,
+// de-duplication and field sanitising inside the controller. Always answers 204.
+Route::post('/csp-report', \App\Http\Controllers\Api\CspReportController::class)
+    ->middleware('throttle:60,1')
+    ->name('csp.report');

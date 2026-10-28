@@ -1,0 +1,991 @@
+diff --git a/.env.example b/.env.example
+index 3ad8f10..642061b 100644
+--- a/.env.example
++++ b/.env.example
+@@ -4,6 +4,12 @@ APP_KEY=
+ APP_DEBUG=true
+ # Show exception message + file path on error pages. Developer machines only; production must be false.
+ ERROR_PAGE_DETAILS=false
++
++# Browser security headers (config/security.php). The defaults are right for production.
++# CSP_MODE: report-only (default, nothing is blocked) | enforce | off.   HSTS_MAX_AGE: seconds, 0 = off.
++SECURITY_HEADERS_ENABLED=true
++CSP_MODE=report-only
++HSTS_MAX_AGE=0
+ APP_URL=http://localhost
+ 
+ APP_LOCALE=en
+diff --git a/app/Console/Commands/CspSummary.php b/app/Console/Commands/CspSummary.php
+new file mode 100644
+index 0000000..dbe8268
+--- /dev/null
++++ b/app/Console/Commands/CspSummary.php
+@@ -0,0 +1,85 @@
++<?php
++
++namespace App\Console\Commands;
++
++use Illuminate\Console\Command;
++
++/**
++ * Reads the CSP violation log and prints what the browsers reported, most frequent first.
++ *
++ *   php artisan csp:summary              today and yesterday
++ *   php artisan csp:summary --days=7
++ *
++ * One row per distinct (directive, blocked, source). "Seen" counts logged reports, and identical reports are
++ * logged at most once per hour, so it is "in how many hours" rather than "how many page views".
++ * An empty result after a week of normal use on every role's pages means the policy is ready to enforce.
++ */
++class CspSummary extends Command
++{
++    protected $signature = 'csp:summary {--days=2 : How many days of log files to read} {--limit=60 : Maximum rows to print} {--path= : Log directory (default storage/logs)}';
++
++    protected $description = 'Summarise Content-Security-Policy violation reports from the csp log';
++
++    public function handle(): int
++    {
++        $dir   = rtrim((string) ($this->option('path') ?: storage_path('logs')), '/\\');
++        $days  = max(1, (int) $this->option('days'));
++        $limit = max(1, (int) $this->option('limit'));
++
++        $files = [];
++        for ($i = 0; $i < $days; $i++) {
++            $file = $dir . '/csp-' . now()->subDays($i)->format('Y-m-d') . '.log';
++            if (is_file($file)) {
++                $files[] = $file;
++            }
++        }
++
++        if ($files === []) {
++            $this->info('No CSP log files found for the last ' . $days . ' day(s).');
++
++            return self::SUCCESS;
++        }
++
++        $groups = [];
++
++        foreach ($files as $file) {
++            foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
++                if (! preg_match('/csp-violation (\{.*\})/', $line, $m)) {
++                    continue;
++                }
++                $row = json_decode($m[1], true);
++                if (! is_array($row) || ! isset($row['directive'])) {
++                    continue;
++                }
++
++                $where = ($row['source'] ?? '') !== '' ? ($row['source'] . ':' . ($row['line'] ?? 0)) : ($row['document'] ?? '');
++                $key   = ($row['directive'] ?? '') . '|' . ($row['blocked'] ?? '') . '|' . $where;
++
++                $groups[$key] ??= [
++                    'directive' => (string) $row['directive'],
++                    'blocked'   => (string) ($row['blocked'] ?? ''),
++                    'where'     => (string) $where,
++                    'seen'      => 0,
++                ];
++                $groups[$key]['seen']++;
++            }
++        }
++
++        if ($groups === []) {
++            $this->info('CSP log files exist but contain no violations.');
++
++            return self::SUCCESS;
++        }
++
++        usort($groups, fn (array $a, array $b) => $b['seen'] <=> $a['seen']);
++
++        $this->table(
++            ['Directive', 'Blocked', 'Where', 'Seen'],
++            array_map(fn (array $g) => [$g['directive'], $g['blocked'] ?: '(inline)', $g['where'], $g['seen']], array_slice($groups, 0, $limit))
++        );
++
++        $this->line(count($groups) . ' distinct violation(s) in ' . count($files) . ' file(s).');
++
++        return self::SUCCESS;
++    }
++}
+diff --git a/app/Http/Controllers/Api/CspReportController.php b/app/Http/Controllers/Api/CspReportController.php
+new file mode 100644
+index 0000000..669a03c
+--- /dev/null
++++ b/app/Http/Controllers/Api/CspReportController.php
+@@ -0,0 +1,52 @@
++<?php
++
++namespace App\Http\Controllers\Api;
++
++use App\Http\Controllers\Controller;
++use App\Support\CspReport;
++use Illuminate\Http\Request;
++use Illuminate\Http\Response;
++use Illuminate\Support\Facades\Cache;
++use Illuminate\Support\Facades\Log;
++use Illuminate\Support\Facades\RateLimiter;
++
++/**
++ * Receives Content-Security-Policy violation reports from browsers (POST /api/csp-report).
++ *
++ * Public on purpose: browsers send reports without cookies, so anyone can post here. That makes it a place
++ * an attacker could try to fill the log or the disk, hence the layers below, cheapest check first:
++ *   1. per-IP limit on the route (throttle middleware),
++ *   2. a global per-minute cap and a global per-day cap (the per-IP limit alone is not enough because the
++ *      client IP is taken from X-Forwarded-For and trustProxies('*') lets a client pick it),
++ *   3. identical reports (same directive, blocked URL, page and script) are logged once per hour,
++ *   4. CspReport keeps only a fixed set of short, sanitised fields.
++ * It always answers 204: the browser does not read the answer and a prober learns nothing.
++ */
++class CspReportController extends Controller
++{
++    public function __invoke(Request $request): Response
++    {
++        $noContent = response('', 204);
++
++        if (! RateLimiter::attempt('csp-report:minute', (int) config('security.csp.report_max_per_minute', 120), fn () => true, 60)) {
++            return $noContent;
++        }
++
++        foreach (CspReport::parse($request->getContent()) as $row) {
++            $fingerprint = 'csp-report:seen:' . md5(implode('|', [$row['directive'], $row['blocked'], $row['document'], $row['source'], $row['line']]));
++
++            // add() is false when the same report was already logged in the last hour.
++            if (! Cache::add($fingerprint, 1, 3600)) {
++                continue;
++            }
++
++            if (! RateLimiter::attempt('csp-report:day', (int) config('security.csp.report_max_per_day', 20000), fn () => true, 86400)) {
++                break;
++            }
++
++            Log::channel('csp')->warning('csp-violation', $row);
++        }
++
++        return $noContent;
++    }
++}
+diff --git a/app/Http/Middleware/SecurityHeaders.php b/app/Http/Middleware/SecurityHeaders.php
+new file mode 100644
+index 0000000..73666b6
+--- /dev/null
++++ b/app/Http/Middleware/SecurityHeaders.php
+@@ -0,0 +1,79 @@
++<?php
++
++namespace App\Http\Middleware;
++
++use App\Support\SecurityHeaderPolicy;
++use Closure;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Vite;
++use Symfony\Component\HttpFoundation\Response;
++
++/**
++ * Adds the browser-hardening response headers (config/security.php explains each one).
++ *
++ * Registered as GLOBAL middleware (not in the 'web' group) so that a 404 for an unknown URL, a 500 error page,
++ * the health check and the JSON endpoints are covered as well. Headers a controller already set are left alone.
++ */
++class SecurityHeaders
++{
++    public function handle(Request $request, Closure $next): Response
++    {
++        if (! config('security.headers.enabled')) {
++            return $next($request);
++        }
++
++        // One nonce per request. @vite() puts it on its own tags; a view that needs an inline script writes
++        // <script nonce="{{ Vite::cspNonce() }}"> and it is then allowed by the policy.
++        $nonce = SecurityHeaderPolicy::nonce();
++        Vite::useCspNonce($nonce);
++
++        $response = $next($request);
++
++        $this->apply($response, $nonce);
++
++        return $response;
++    }
++
++    private function apply(Response $response, string $nonce): void
++    {
++        $headers = $response->headers;
++
++        $set = static function (string $name, ?string $value) use ($headers): void {
++            if ($value !== null && $value !== '' && ! $headers->has($name)) {
++                $headers->set($name, $value);
++            }
++        };
++
++        $set('X-Content-Type-Options', 'nosniff');
++        $set('X-Frame-Options', config('security.headers.x_frame_options'));
++        $set('Referrer-Policy', config('security.headers.referrer_policy'));
++        $set('Permissions-Policy', config('security.headers.permissions_policy'));
++        $set('Strict-Transport-Security', SecurityHeaderPolicy::hsts((int) config('security.headers.hsts_max_age')));
++
++        // CSP only means something for pages. A response with no Content-Type yet (error pages are not
++        // prepared at this point) is a page; JSON, PDFs and downloads are not.
++        $type = strtolower((string) $headers->get('Content-Type', ''));
++
++        if ($type !== '' && ! str_starts_with($type, 'text/html')) {
++            return;
++        }
++
++        $mode = SecurityHeaderPolicy::mode(config('security.csp.mode'));
++
++        if ($mode === SecurityHeaderPolicy::MODE_OFF) {
++            return;
++        }
++
++        $policy = SecurityHeaderPolicy::csp(
++            (array) config('security.csp.directives'),
++            $nonce,
++            (bool) config('security.csp.allow_unsafe_eval'),
++            config('security.csp.report_uri'),
++        );
++
++        $set(
++            $mode === SecurityHeaderPolicy::MODE_ENFORCE ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only',
++            $policy,
++        );
++    }
++}
+diff --git a/app/Support/CspReport.php b/app/Support/CspReport.php
+new file mode 100644
+index 0000000..64e7fc8
+--- /dev/null
++++ b/app/Support/CspReport.php
+@@ -0,0 +1,104 @@
++<?php
++
++namespace App\Support;
++
++/**
++ * Turns the body a browser POSTs to /api/csp-report into small, safe rows for the log.
++ *
++ * The body comes from an anonymous request, so it is treated as hostile: only a fixed list of fields is kept,
++ * every value is cut to a short length, control characters are removed (no forged log lines), and the query
++ * string / fragment of every URL is dropped (a URL can carry a token or an id). The page's text is never
++ * kept: the policy does not ask the browser for script samples.
++ *
++ * Two body shapes exist: the classic report-uri one {"csp-report": {...}} (what Chrome, Firefox and Safari
++ * send for the report-uri directive) and the Reporting API one [{"type":"csp-violation","body":{...}}].
++ */
++final class CspReport
++{
++    private const MAX_BODY_BYTES = 16384;
++    private const MAX_ROWS       = 10;
++    private const MAX_FIELD      = 300;
++
++    /**
++     * @return list<array{directive: string, blocked: string, document: string, source: string, line: int, disposition: string}>
++     */
++    public static function parse(string $raw): array
++    {
++        if ($raw === '' || strlen($raw) > self::MAX_BODY_BYTES) {
++            return [];
++        }
++
++        $data = json_decode($raw, true, 8);
++
++        if (! is_array($data)) {
++            return [];
++        }
++
++        $reports = [];
++
++        if (isset($data['csp-report']) && is_array($data['csp-report'])) {
++            $r = $data['csp-report'];
++            $reports[] = [
++                'directive'   => $r['effective-directive'] ?? $r['violated-directive'] ?? null,
++                'blocked'     => $r['blocked-uri'] ?? null,
++                'document'    => $r['document-uri'] ?? null,
++                'source'      => $r['source-file'] ?? null,
++                'line'        => $r['line-number'] ?? 0,
++                'disposition' => $r['disposition'] ?? null,
++            ];
++        } elseif (array_is_list($data)) {
++            foreach (array_slice($data, 0, self::MAX_ROWS) as $entry) {
++                if (! is_array($entry) || ($entry['type'] ?? null) !== 'csp-violation' || ! is_array($entry['body'] ?? null)) {
++                    continue;
++                }
++                $b = $entry['body'];
++                $reports[] = [
++                    'directive'   => $b['effectiveDirective'] ?? $b['violatedDirective'] ?? null,
++                    'blocked'     => $b['blockedURL'] ?? null,
++                    'document'    => $b['documentURL'] ?? null,
++                    'source'      => $b['sourceFile'] ?? null,
++                    'line'        => $b['lineNumber'] ?? 0,
++                    'disposition' => $b['disposition'] ?? null,
++                ];
++            }
++        }
++
++        $rows = [];
++
++        foreach ($reports as $r) {
++            $directive = self::clean($r['directive'], 60);
++
++            if ($directive === '') {
++                continue; // not a usable violation report
++            }
++
++            $rows[] = [
++                'directive'   => $directive,
++                'blocked'     => self::clean($r['blocked'], self::MAX_FIELD, true),
++                'document'    => self::clean($r['document'], self::MAX_FIELD, true),
++                'source'      => self::clean($r['source'], self::MAX_FIELD, true),
++                'line'        => is_numeric($r['line']) ? max(0, min(10000000, (int) $r['line'])) : 0,
++                'disposition' => self::clean($r['disposition'], 12),
++            ];
++        }
++
++        return $rows;
++    }
++
++    private static function clean(mixed $value, int $max, bool $isUrl = false): string
++    {
++        if (! is_scalar($value)) {
++            return '';
++        }
++
++        $s = (string) $value;
++
++        if ($isUrl) {
++            $s = preg_replace('/[?#].*$/s', '', $s) ?? '';
++        }
++
++        $s = preg_replace('/[\x00-\x1F\x7F]/', '', $s) ?? '';
++
++        return mb_substr($s, 0, $max);
++    }
++}
+diff --git a/app/Support/SecurityHeaderPolicy.php b/app/Support/SecurityHeaderPolicy.php
+new file mode 100644
+index 0000000..80be077
+--- /dev/null
++++ b/app/Support/SecurityHeaderPolicy.php
+@@ -0,0 +1,58 @@
++<?php
++
++namespace App\Support;
++
++/**
++ * Builds the security header values. Plain PHP on purpose (no framework calls) so the rules can be unit
++ * tested and reasoned about on their own; App\Http\Middleware\SecurityHeaders only wires them to responses.
++ */
++final class SecurityHeaderPolicy
++{
++    public const MODE_REPORT_ONLY = 'report-only';
++    public const MODE_ENFORCE     = 'enforce';
++    public const MODE_OFF         = 'off';
++
++    /** A fresh random nonce for one response (base64, as the CSP spec expects). */
++    public static function nonce(): string
++    {
++        return base64_encode(random_bytes(16));
++    }
++
++    /** Anything unknown falls back to report-only: never silently enforcing, never silently off. */
++    public static function mode(mixed $value): string
++    {
++        $value = is_string($value) ? strtolower(trim($value)) : '';
++
++        return in_array($value, [self::MODE_ENFORCE, self::MODE_OFF], true) ? $value : self::MODE_REPORT_ONLY;
++    }
++
++    /**
++     * @param  array<string, list<string>>  $directives  e.g. ['script-src' => ["'self'", "'nonce-{nonce}'"]]
++     */
++    public static function csp(array $directives, string $nonce, bool $allowUnsafeEval, ?string $reportUri): string
++    {
++        $parts = [];
++
++        foreach ($directives as $name => $sources) {
++            $sources = array_map(static fn (string $s): string => str_replace('{nonce}', $nonce, $s), array_values($sources));
++
++            if ($name === 'script-src' && $allowUnsafeEval) {
++                $sources[] = "'unsafe-eval'";
++            }
++
++            $parts[] = trim($name . ' ' . implode(' ', $sources));
++        }
++
++        if ($reportUri !== null && $reportUri !== '') {
++            $parts[] = 'report-uri ' . $reportUri;
++        }
++
++        return implode('; ', $parts);
++    }
++
++    /** Strict-Transport-Security value, or null when disabled (max-age 0 or negative). */
++    public static function hsts(int $maxAge): ?string
++    {
++        return $maxAge > 0 ? 'max-age=' . $maxAge : null;
++    }
++}
+diff --git a/bootstrap/app.php b/bootstrap/app.php
+index 0a67608..7978784 100644
+--- a/bootstrap/app.php
++++ b/bootstrap/app.php
+@@ -20,6 +20,11 @@
+         // Dashboard statistics update middleware
+         $middleware->trustProxies(at: '*');
+ 
++        // Browser-hardening response headers (CSP report-only, X-Frame-Options, HSTS, nosniff, ...) on EVERY
++        // response: 404 / 500 pages, maintenance-mode and too-large-upload responses, and JSON. Global and
++        // outermost (prepend) on purpose, not in the 'web' group. See config/security.php.
++        $middleware->prepend(\App\Http\Middleware\SecurityHeaders::class);
++
+         // Runs on every authenticated web request.
+         // Forces logout immediately if the logged-in user's Admin.status
+         // has been set to INACTIVE by an admin since their session started.
+diff --git a/config/logging.php b/config/logging.php
+index f8f453b..642894d 100644
+--- a/config/logging.php
++++ b/config/logging.php
+@@ -140,6 +140,15 @@
+             'days' => 30,
+         ],
+ 
++        // Content-Security-Policy violation reports sent by browsers (read with `php artisan csp:summary`).
++        // 7 days is enough to tune the policy; the controller caps how much can be written per day.
++        'csp' => [
++            'driver' => 'daily',
++            'path' => storage_path('logs/csp.log'),
++            'level' => 'warning',
++            'days' => 7,
++        ],
++
+     ],
+ 
+ ];
+\ No newline at end of file
+diff --git a/config/security.php b/config/security.php
+new file mode 100644
+index 0000000..653d60b
+--- /dev/null
++++ b/config/security.php
+@@ -0,0 +1,97 @@
++<?php
++
++return [
++
++    /*
++    |--------------------------------------------------------------------------
++    | Security response headers
++    |--------------------------------------------------------------------------
++    |
++    | Added to every response by App\Http\Middleware\SecurityHeaders (global middleware, so 404 / 500 pages
++    | and JSON responses get them too). A controller that sets one of these headers itself keeps its value.
++    |
++    | SECURITY_HEADERS_ENABLED=false is the emergency switch for ALL of them (CSP included).
++    |
++    | HSTS (Strict-Transport-Security): once a browser has seen it, it refuses plain http for this host until the
++    | max-age runs out, so ramp it up in steps and never skip ahead:
++    |     86400 (1 day, the production default) -> 604800 (1 week) -> 2592000 (30 days) -> 31536000 (1 year)
++    | Move to the next step only after a week with no sign-in / certificate problems. 0 = header not sent.
++    | includeSubDomains and preload are deliberately NOT sent: other ShaloTrack sites share this domain.
++    | The header is sent regardless of $request->isSecure(): behind Cloudflare + the ALB the app sees http,
++    | and browsers ignore HSTS received over plain http anyway, so local development is unaffected.
++    |
++    */
++    'headers' => [
++        'enabled' => (bool) env('SECURITY_HEADERS_ENABLED', true),
++
++        'hsts_max_age' => (int) env('HSTS_MAX_AGE', env('APP_ENV', 'production') === 'production' ? 86400 : 0),
++
++        // The admin portal is never shown inside another page (no iframes anywhere in resources/views).
++        'x_frame_options' => 'DENY',
++
++        'referrer_policy' => 'strict-origin-when-cross-origin',
++
++        // Features the portal never uses are switched off, so injected script cannot ask for them.
++        'permissions_policy' => 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++    ],
++
++    /*
++    |--------------------------------------------------------------------------
++    | Content-Security-Policy
++    |--------------------------------------------------------------------------
++    |
++    | CSP_MODE:
++    |   report-only (default)  the browser only REPORTS what the policy would have blocked (to /api/csp-report,
++    |                          read with `php artisan csp:summary`); nothing is blocked, nothing can break.
++    |   enforce                the browser BLOCKS violations. Do not use until csp:summary has been clean for a
++    |                          week on every role's pages (see the rollout notes in the project docs).
++    |   off                    no CSP header.
++    | Any other value behaves like report-only.
++    |
++    | The policy below is the TARGET policy, written from what resources/views really load today. It has no
++    | 'unsafe-inline' for scripts on purpose, so the reports list every inline <script> block and every
++    | onclick="..." style handler that has to move to a nonce (<script nonce="{{ Vite::cspNonce() }}">) or an
++    | addEventListener before enforcement is possible. '{nonce}' is replaced with the per-request nonce.
++    | Inline style="" attributes are allowed (style-src-attr), because style injection is low risk next to script.
++    |
++    | KNOWN DEBT: Alpine's standard build compiles x-data / @click expressions with new Function(), which needs
++    | 'unsafe-eval'. CSP_ALLOW_UNSAFE_EVAL=false drops it once Alpine is switched to the CSP build.
++    |
++    */
++    'csp' => [
++        'mode' => env('CSP_MODE', 'report-only'),
++
++        'allow_unsafe_eval' => (bool) env('CSP_ALLOW_UNSAFE_EVAL', true),
++
++        'report_uri' => '/api/csp-report',
++
++        'directives' => [
++            'default-src'     => ["'self'"],
++            'script-src'      => ["'self'", "'nonce-{nonce}'", 'https://cdn.jsdelivr.net', 'https://unpkg.com', 'https://www.gstatic.com'],
++            'style-src'       => ["'self'", "'nonce-{nonce}'", 'https://unpkg.com', 'https://fonts.bunny.net'],
++            'style-src-attr'  => ["'unsafe-inline'"],
++            'img-src'         => ["'self'", 'data:', 'blob:', 'https://unpkg.com', 'https://*.tile.openstreetmap.org', 'https://cdn-icons-png.flaticon.com'],
++            'font-src'        => ["'self'", 'data:', 'https://fonts.bunny.net'],
++            'media-src'       => ["'self'", 'https://assets.mixkit.co'],
++            // Same-origin calls plus the Firebase Cloud Messaging endpoints the dealer dashboard registers with.
++            'connect-src'     => ["'self'", 'https://fcmregistrations.googleapis.com', 'https://firebaseinstallations.googleapis.com', 'https://fcm.googleapis.com'],
++            'worker-src'      => ["'self'"],
++            'manifest-src'    => ["'self'"],
++            'frame-src'       => ["'none'"],
++            'object-src'      => ["'none'"],
++            'base-uri'        => ["'self'"],
++            'form-action'     => ["'self'"],
++            'frame-ancestors' => ["'none'"],
++        ],
++
++        /*
++        | The report collector (POST /api/csp-report) is public by necessity (the browser sends reports without
++        | cookies), so it is capped hard: a flood can fill neither the log nor the disk.
++        |   per IP per minute is set on the route; these are the global caps (they matter because
++        |   trustProxies('*') lets a client choose its own apparent IP).
++        */
++        'report_max_per_minute' => (int) env('CSP_REPORT_MAX_PER_MINUTE', 120),
++        'report_max_per_day'    => (int) env('CSP_REPORT_MAX_PER_DAY', 20000),
++    ],
++
++];
+diff --git a/routes/api.php b/routes/api.php
+index fad9dd7..b701e5e 100644
+--- a/routes/api.php
++++ b/routes/api.php
+@@ -21,4 +21,11 @@
+ // VerifyAdminSyncKey and AdminSyncKeyMiddleware on the API side.
+ Route::middleware(['auth.adminsync'])->group(function () {
+     Route::get('/internal/dealer-lookup', [\App\Http\Controllers\Api\DealerLookupController::class, 'lookup']);
+-});
+\ No newline at end of file
++});
++
++// Browsers POST Content-Security-Policy violation reports here (the report-uri in config/security.php).
++// Public by necessity (no cookies are sent with reports), so: 60 per minute per IP here, plus global caps,
++// de-duplication and field sanitising inside the controller. Always answers 204.
++Route::post('/csp-report', \App\Http\Controllers\Api\CspReportController::class)
++    ->middleware('throttle:60,1')
++    ->name('csp.report');
+diff --git a/tests/Feature/AuditFixesTest.php b/tests/Feature/AuditFixesTest.php
+index 81b7620..fc50e4f 100644
+--- a/tests/Feature/AuditFixesTest.php
++++ b/tests/Feature/AuditFixesTest.php
+@@ -369,7 +369,9 @@ public function test_supplier_product_lists_are_not_publicly_readable(): void
+ 
+     public function test_every_route_requires_login_unless_deliberately_public(): void
+     {
+-        $publicByDesign = ['/', 'up', 'sanctum/csrf-cookie', 'storage/{path}'];
++        // api/csp-report: browsers POST Content-Security-Policy violation reports without cookies, so it cannot
++        // require login. It is rate-limited, de-duplicated and logs only sanitised fields (see CspReportController).
++        $publicByDesign = ['/', 'up', 'sanctum/csrf-cookie', 'storage/{path}', 'api/csp-report'];
+         $router = app('router');
+         $offenders = [];
+ 
+diff --git a/tests/Feature/CspReportTest.php b/tests/Feature/CspReportTest.php
+new file mode 100644
+index 0000000..495a07a
+--- /dev/null
++++ b/tests/Feature/CspReportTest.php
+@@ -0,0 +1,195 @@
++<?php
++
++namespace Tests\Feature;
++
++use Illuminate\Support\Facades\Artisan;
++use Tests\TestCase;
++
++/**
++ * The CSP report collector is public (browsers send reports without cookies), so these tests check that it
++ * logs real reports with only safe fields, ignores rubbish, and cannot be used to flood the log.
++ */
++class CspReportTest extends TestCase
++{
++    private string $logFile;
++
++    /** @var list<string> */
++    private array $tempDirs = [];
++
++    protected function setUp(): void
++    {
++        parent::setUp();
++
++        $this->logFile = sys_get_temp_dir() . '/csp-test-' . bin2hex(random_bytes(6)) . '.log';
++
++        config([
++            'logging.channels.csp'              => ['driver' => 'single', 'path' => $this->logFile, 'level' => 'debug'],
++            'security.csp.report_max_per_minute' => 120,
++            'security.csp.report_max_per_day'    => 20000,
++        ]);
++    }
++
++    protected function tearDown(): void
++    {
++        @unlink($this->logFile);
++        foreach ($this->tempDirs as $dir) {
++            array_map('unlink', glob($dir . '/*') ?: []);
++            @rmdir($dir);
++        }
++
++        parent::tearDown();
++    }
++
++    /** What Chrome / Firefox / Safari send for a report-uri directive. */
++    private function report(array $overrides = []): array
++    {
++        return ['csp-report' => array_merge([
++            'document-uri'        => 'https://erp.shalotrack.com/admin/dashboard?reset=TOKEN123',
++            'effective-directive' => 'script-src-elem',
++            'violated-directive'  => 'script-src-elem',
++            'blocked-uri'         => 'inline',
++            'source-file'         => 'https://erp.shalotrack.com/admin/dashboard',
++            'line-number'         => 12,
++            'disposition'         => 'report',
++        ], $overrides)];
++    }
++
++    private function send(array|string $body, string $type = 'application/csp-report')
++    {
++        return $this->call(
++            'POST',
++            '/api/csp-report',
++            [],
++            [],
++            [],
++            ['CONTENT_TYPE' => $type, 'HTTP_ACCEPT' => '*/*'],
++            is_array($body) ? json_encode($body) : $body
++        );
++    }
++
++    private function logged(): string
++    {
++        return is_file($this->logFile) ? (string) file_get_contents($this->logFile) : '';
++    }
++
++    public function test_a_real_report_is_logged_with_only_safe_fields(): void
++    {
++        $response = $this->send($this->report());
++
++        $response->assertNoContent();
++        $this->assertSame([], $response->headers->getCookies(), 'the collector must not start a session');
++
++        $log = $this->logged();
++        $this->assertStringContainsString('csp-violation', $log);
++        $this->assertStringContainsString('script-src-elem', $log);
++        $this->assertStringContainsString('erp.shalotrack.com', $log);
++        $this->assertStringNotContainsString('TOKEN123', $log, 'query strings can carry tokens and must be dropped');
++        $this->assertStringNotContainsString('reset=', $log);
++    }
++
++    public function test_the_reporting_api_format_is_logged_too(): void
++    {
++        $this->send([
++            ['type' => 'csp-violation', 'body' => [
++                'effectiveDirective' => 'img-src',
++                'blockedURL'         => 'https://evil.example.test/p.png?x=1',
++                'documentURL'        => 'https://erp.shalotrack.com/admin/dashboard',
++                'lineNumber'         => 0,
++                'disposition'        => 'report',
++            ]],
++            ['type' => 'deprecation', 'body' => ['id' => 'ignored']],
++        ], 'application/reports+json')->assertNoContent();
++
++        $log = $this->logged();
++        $this->assertStringContainsString('img-src', $log);
++        $this->assertStringContainsString('evil.example.test', $log);
++        $this->assertStringNotContainsString('x=1', $log);
++        $this->assertSame(1, substr_count($log, 'csp-violation'));
++    }
++
++    public function test_rubbish_is_ignored_and_still_answers_204(): void
++    {
++        foreach (['', 'not json at all', '[]', '"text"', '{"csp-report":{}}', '{"csp-report":{"blocked-uri":"x"}}', str_repeat('x', 20000)] as $body) {
++            $this->send($body)->assertNoContent();
++        }
++
++        $this->assertSame('', $this->logged());
++    }
++
++    public function test_a_forged_report_cannot_inject_extra_log_lines(): void
++    {
++        $this->send($this->report([
++            'effective-directive' => "script-src\n[2026-01-01 00:00:00] production.CRITICAL: forged entry",
++            'blocked-uri'         => "https://a.example.test/x\r\n[2026-01-01 00:00:00] production.CRITICAL: forged",
++        ]))->assertNoContent();
++
++        $lines = array_filter(explode("\n", $this->logged()), fn ($l) => trim($l) !== '');
++
++        $this->assertCount(1, $lines, 'one report must be exactly one log line');
++    }
++
++    public function test_the_same_report_is_logged_only_once(): void
++    {
++        $this->send($this->report())->assertNoContent();
++        $this->send($this->report())->assertNoContent();
++        $this->send($this->report(['line-number' => 99]))->assertNoContent(); // a different script line is a different report
++
++        $this->assertSame(2, substr_count($this->logged(), 'csp-violation'));
++    }
++
++    public function test_the_per_minute_cap_stops_a_flood(): void
++    {
++        config(['security.csp.report_max_per_minute' => 2]);
++
++        foreach ([1, 2, 3, 4, 5] as $line) {
++            $this->send($this->report(['line-number' => $line]))->assertNoContent();
++        }
++
++        $this->assertSame(2, substr_count($this->logged(), 'csp-violation'));
++    }
++
++    public function test_the_per_day_cap_stops_the_log_growing_forever(): void
++    {
++        config(['security.csp.report_max_per_day' => 1]);
++
++        foreach ([1, 2, 3] as $line) {
++            $this->send($this->report(['line-number' => $line]))->assertNoContent();
++        }
++
++        $this->assertSame(1, substr_count($this->logged(), 'csp-violation'));
++    }
++
++    public function test_summary_command_groups_and_ranks_violations(): void
++    {
++        $dir = sys_get_temp_dir() . '/csp-summary-' . bin2hex(random_bytes(4));
++        mkdir($dir);
++        $this->tempDirs[] = $dir;
++
++        $line = fn (array $row) => '[' . now()->format('Y-m-d H:i:s') . '] testing.WARNING: csp-violation ' . json_encode($row, JSON_UNESCAPED_SLASHES) . ' []';
++        $a = ['directive' => 'script-src-elem', 'blocked' => 'inline', 'document' => 'https://erp.shalotrack.com/admin/dashboard', 'source' => 'https://erp.shalotrack.com/admin/dashboard', 'line' => 12, 'disposition' => 'report'];
++        $b = ['directive' => 'img-src', 'blocked' => 'https://evil.example.test/p.png', 'document' => 'https://erp.shalotrack.com/admin/dashboard', 'source' => '', 'line' => 0, 'disposition' => 'report'];
++
++        file_put_contents(
++            $dir . '/csp-' . now()->format('Y-m-d') . '.log',
++            implode("\n", [$line($a), $line($b), $line($a), 'a line that is not a violation', $line($a)]) . "\n"
++        );
++
++        $this->assertSame(0, Artisan::call('csp:summary', ['--path' => $dir]));
++        $out = Artisan::output();
++
++        $this->assertStringContainsString('script-src-elem', $out);
++        $this->assertStringContainsString('evil.example.test', $out);
++        $this->assertStringContainsString('2 distinct violation(s) in 1 file(s).', $out);
++        $this->assertLessThan(strpos($out, 'img-src'), strpos($out, 'script-src-elem'), 'most frequent violation first');
++    }
++
++    public function test_summary_command_handles_a_missing_log(): void
++    {
++        $dir = sys_get_temp_dir() . '/csp-empty-' . bin2hex(random_bytes(4));
++        mkdir($dir);
++        $this->tempDirs[] = $dir;
++
++        $this->assertSame(0, Artisan::call('csp:summary', ['--path' => $dir]));
++        $this->assertStringContainsString('No CSP log files found', Artisan::output());
++    }
++}
+diff --git a/tests/Feature/SecurityHeadersTest.php b/tests/Feature/SecurityHeadersTest.php
+new file mode 100644
+index 0000000..76d8cdf
+--- /dev/null
++++ b/tests/Feature/SecurityHeadersTest.php
+@@ -0,0 +1,186 @@
++<?php
++
++namespace Tests\Feature;
++
++use Illuminate\Support\Facades\Route;
++use Illuminate\Support\Facades\Vite;
++use Tests\TestCase;
++
++/**
++ * Security regression: every response carries the browser-hardening headers, and the Content-Security-Policy
++ * only REPORTS (never blocks) until CSP_MODE=enforce is chosen on purpose. See config/security.php.
++ */
++class SecurityHeadersTest extends TestCase
++{
++    private const CSP_REPORT_ONLY = 'Content-Security-Policy-Report-Only';
++    private const CSP_ENFORCE     = 'Content-Security-Policy';
++
++    protected function setUp(): void
++    {
++        parent::setUp();
++
++        // Pin the settings so a developer's .env cannot change what these tests check.
++        config([
++            'security.headers.enabled'      => true,
++            'security.headers.hsts_max_age' => 0,
++            'security.csp.mode'             => 'report-only',
++            'security.csp.allow_unsafe_eval' => true,
++            'app.error_details'             => false,
++        ]);
++
++        Route::get('/_test/page', fn () => response('<html><body>ok</body></html>'));
++        Route::get('/_test/json', fn () => response()->json(['ok' => true]));
++        Route::get('/_test/nonce', fn () => response('<html><body>' . Vite::cspNonce() . '</body></html>'));
++        Route::get('/_test/own-frame-header', fn () => response('<html></html>')->header('X-Frame-Options', 'SAMEORIGIN'));
++        Route::middleware('web')->get('/_test/boom', function () {
++            throw new \RuntimeException('boom');
++        });
++    }
++
++    private function csp(string $uri = '/_test/page', string $header = self::CSP_REPORT_ONLY): string
++    {
++        return (string) $this->get($uri)->headers->get($header);
++    }
++
++    public function test_hardening_headers_are_sent_on_a_page(): void
++    {
++        $response = $this->get('/_test/page');
++
++        $response->assertOk();
++        $response->assertHeader('X-Content-Type-Options', 'nosniff');
++        $response->assertHeader('X-Frame-Options', 'DENY');
++        $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++        $response->assertHeader('Permissions-Policy', config('security.headers.permissions_policy'));
++    }
++
++    public function test_csp_is_report_only_by_default_and_never_enforcing(): void
++    {
++        $response = $this->get('/_test/page');
++
++        $response->assertHeader(self::CSP_REPORT_ONLY);
++        $response->assertHeaderMissing(self::CSP_ENFORCE);
++    }
++
++    public function test_csp_policy_has_the_important_restrictions(): void
++    {
++        $csp = $this->csp();
++
++        $this->assertStringContainsString("default-src 'self'", $csp);
++        $this->assertStringContainsString("object-src 'none'", $csp);
++        $this->assertStringContainsString("base-uri 'self'", $csp);
++        $this->assertStringContainsString("form-action 'self'", $csp);
++        $this->assertStringContainsString("frame-ancestors 'none'", $csp);
++        $this->assertStringContainsString('report-uri /api/csp-report', $csp);
++
++        $script = collect(explode('; ', $csp))->first(fn ($d) => str_starts_with($d, 'script-src '));
++        $this->assertNotNull($script);
++        $this->assertStringNotContainsString("'unsafe-inline'", $script, 'inline scripts must be reported, not allowed');
++    }
++
++    public function test_unsafe_eval_can_be_switched_off(): void
++    {
++        $this->assertStringContainsString("'unsafe-eval'", $this->csp());
++
++        config(['security.csp.allow_unsafe_eval' => false]);
++
++        $this->assertStringNotContainsString("'unsafe-eval'", $this->csp());
++    }
++
++    public function test_nonce_is_new_for_every_request_and_matches_the_one_views_can_use(): void
++    {
++        preg_match("/'nonce-([^']+)'/", $this->csp(), $first);
++        preg_match("/'nonce-([^']+)'/", $this->csp(), $second);
++
++        $this->assertNotEmpty($first[1] ?? null);
++        $this->assertNotSame($first[1], $second[1] ?? null);
++
++        $response = $this->get('/_test/nonce');
++        preg_match("/'nonce-([^']+)'/", (string) $response->headers->get(self::CSP_REPORT_ONLY), $inHeader);
++
++        $response->assertSee($inHeader[1], false); // Vite::cspNonce() in a view is the nonce in the header
++    }
++
++    public function test_enforce_mode_sends_the_enforcing_header_only(): void
++    {
++        config(['security.csp.mode' => 'enforce']);
++
++        $response = $this->get('/_test/page');
++
++        $response->assertHeader(self::CSP_ENFORCE);
++        $response->assertHeaderMissing(self::CSP_REPORT_ONLY);
++    }
++
++    public function test_csp_can_be_switched_off_without_losing_the_other_headers(): void
++    {
++        config(['security.csp.mode' => 'off']);
++
++        $response = $this->get('/_test/page');
++
++        $response->assertHeaderMissing(self::CSP_REPORT_ONLY);
++        $response->assertHeaderMissing(self::CSP_ENFORCE);
++        $response->assertHeader('X-Frame-Options', 'DENY');
++    }
++
++    public function test_an_unknown_csp_mode_falls_back_to_report_only(): void
++    {
++        config(['security.csp.mode' => 'enforcee']);
++
++        $response = $this->get('/_test/page');
++
++        $response->assertHeader(self::CSP_REPORT_ONLY);
++        $response->assertHeaderMissing(self::CSP_ENFORCE);
++    }
++
++    public function test_hsts_follows_the_configured_max_age_and_is_off_at_zero(): void
++    {
++        $this->get('/_test/page')->assertHeaderMissing('Strict-Transport-Security');
++
++        config(['security.headers.hsts_max_age' => 86400]);
++
++        $response = $this->get('/_test/page');
++        $response->assertHeader('Strict-Transport-Security', 'max-age=86400');
++        $this->assertStringNotContainsString('includeSubDomains', (string) $response->headers->get('Strict-Transport-Security'));
++        $this->assertStringNotContainsString('preload', (string) $response->headers->get('Strict-Transport-Security'));
++    }
++
++    public function test_json_responses_get_the_headers_but_no_csp(): void
++    {
++        $response = $this->getJson('/_test/json');
++
++        $response->assertOk();
++        $response->assertHeader('X-Content-Type-Options', 'nosniff');
++        $response->assertHeader('X-Frame-Options', 'DENY');
++        $response->assertHeaderMissing(self::CSP_REPORT_ONLY);
++        $response->assertHeaderMissing(self::CSP_ENFORCE);
++    }
++
++    public function test_a_header_set_by_the_controller_is_not_overwritten(): void
++    {
++        $this->get('/_test/own-frame-header')->assertHeader('X-Frame-Options', 'SAMEORIGIN');
++    }
++
++    public function test_unknown_urls_and_error_pages_are_covered_too(): void
++    {
++        $notFound = $this->get('/definitely/not/a/real/page');
++        $notFound->assertStatus(404);
++        $notFound->assertHeader('X-Frame-Options', 'DENY');
++        $notFound->assertHeader('X-Content-Type-Options', 'nosniff');
++        $notFound->assertHeader(self::CSP_REPORT_ONLY);
++
++        $error = $this->get('/_test/boom');
++        $error->assertStatus(500);
++        $error->assertHeader('X-Frame-Options', 'DENY');
++        $error->assertHeader(self::CSP_REPORT_ONLY);
++    }
++
++    public function test_the_master_switch_turns_everything_off(): void
++    {
++        config(['security.headers.enabled' => false]);
++
++        $response = $this->get('/_test/page');
++
++        $response->assertHeaderMissing('X-Frame-Options');
++        $response->assertHeaderMissing('X-Content-Type-Options');
++        $response->assertHeaderMissing(self::CSP_REPORT_ONLY);
++    }
++}

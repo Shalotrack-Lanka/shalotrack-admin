@@ -369,7 +369,9 @@ class AuditFixesTest extends TestCase
 
     public function test_every_route_requires_login_unless_deliberately_public(): void
     {
-        $publicByDesign = ['/', 'up', 'sanctum/csrf-cookie', 'storage/{path}'];
+        // api/csp-report: browsers POST Content-Security-Policy violation reports without cookies, so it cannot
+        // require login. It is rate-limited, de-duplicated and logs only sanitised fields (see CspReportController).
+        $publicByDesign = ['/', 'up', 'sanctum/csrf-cookie', 'storage/{path}', 'api/csp-report'];
         $router = app('router');
         $offenders = [];
 
