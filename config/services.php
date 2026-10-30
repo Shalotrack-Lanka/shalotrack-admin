@@ -55,6 +55,22 @@ return [
     // and SHALOTRACK_SYNC_KEY above). Every Http:: call to $this->gatewayUrl /
     // services.gateway.command_url in this app must send it as X-Command-Api-Key.
     'command_api_key' => env('GATEWAY_COMMAND_API_KEY', ''),
+
+    // Gateway status (App\Services\GatewayStatus). Besides the deep /health call
+    // above, the portal makes a plain TCP connect to the PUBLIC device endpoint --
+    // the path GPS devices really use (Cloudflare DNS -> NLB -> security group).
+    // Internal checks cannot see that path break: flip the Cloudflare record to
+    // proxied (orange) and every device silently stops connecting while /health
+    // stays green. The connect sends no data; the gateway treats it as a load-balancer
+    // probe and drops it within a second, so it never occupies a device slot.
+    //
+    // On by default in production only (a laptop or CI run has no business dialling
+    // the real gateway). GATEWAY_PUBLIC_PROBE=false is the kill switch.
+    'public_probe' => filter_var(env('GATEWAY_PUBLIC_PROBE', env('APP_ENV') === 'production'), FILTER_VALIDATE_BOOLEAN),
+    'public_host'  => env('GATEWAY_PUBLIC_HOST', 'gateway.shalotrack.com'),
+    // The NLB listener port devices dial (shalotrack-aws-infrastructure-as-a-code:
+    // prod/nlb-gateway). NOT the Command API port above.
+    'public_port'  => (int) env('GATEWAY_PUBLIC_PORT', 8000),
 ],
 
 ];

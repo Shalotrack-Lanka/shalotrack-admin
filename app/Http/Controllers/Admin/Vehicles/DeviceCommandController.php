@@ -8,6 +8,7 @@ use App\Models\DealerCustomerAd;
 use App\Models\VehicleAd;
 use App\Services\Audit;
 use App\Services\DistributorNetwork;
+use App\Services\GatewayStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -39,17 +40,7 @@ class DeviceCommandController extends Controller
         $connectedDevices = collect();
         $gatewayOnline    = false;
 
-        try {
-            $response = Http::timeout(3)
-                ->withHeaders(['X-Command-Api-Key' => $this->gatewayCommandApiKey])
-                ->get("{$this->gatewayUrl}/devices");
-            if ($response->successful()) {
-                $connectedDevices = collect($response->json('connected_devices') ?? []);
-                $gatewayOnline    = true;
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Gateway /devices unreachable: ' . $e->getMessage());
-        }
+        ['ok' => $gatewayOnline, 'devices' => $connectedDevices] = GatewayStatus::connectedDevices();
 
         $vehicles = VehicleAd::whereNotNull('imei')
             ->where('imei', '!=', '')
@@ -87,17 +78,7 @@ class DeviceCommandController extends Controller
         $connectedDevices = collect();
         $gatewayOnline    = false;
 
-        try {
-            $response = Http::timeout(3)
-                ->withHeaders(['X-Command-Api-Key' => $this->gatewayCommandApiKey])
-                ->get("{$this->gatewayUrl}/devices");
-            if ($response->successful()) {
-                $connectedDevices = collect($response->json('connected_devices') ?? []);
-                $gatewayOnline    = true;
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Gateway /devices unreachable for dealer view: ' . $e->getMessage());
-        }
+        ['ok' => $gatewayOnline, 'devices' => $connectedDevices] = GatewayStatus::connectedDevices();
 
         // Only vehicles of customers this dealer registered (same rule that
         // sendCommand/deviceStatus/commandHistory enforce server-side).
@@ -130,17 +111,7 @@ class DeviceCommandController extends Controller
         $connectedDevices = collect();
         $gatewayOnline    = false;
 
-        try {
-            $response = Http::timeout(3)
-                ->withHeaders(['X-Command-Api-Key' => $this->gatewayCommandApiKey])
-                ->get("{$this->gatewayUrl}/devices");
-            if ($response->successful()) {
-                $connectedDevices = collect($response->json('connected_devices') ?? []);
-                $gatewayOnline    = true;
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Gateway /devices unreachable for distributor view: ' . $e->getMessage());
-        }
+        ['ok' => $gatewayOnline, 'devices' => $connectedDevices] = GatewayStatus::connectedDevices();
 
         $onlineImeis = $connectedDevices->pluck('imei')->toArray();
         $vehicles = $this->networkVehicles($network)->map(function ($vehicle) use ($onlineImeis, $connectedDevices) {
@@ -259,21 +230,15 @@ class DeviceCommandController extends Controller
             return $denied;
         }
 
-        try {
-            $response = Http::timeout(3)
-                ->withHeaders(['X-Command-Api-Key' => $this->gatewayCommandApiKey])
-                ->get("{$this->gatewayUrl}/devices");
-            if ($response->successful()) {
-                $devices = collect($response->json('connected_devices') ?? []);
-                $device  = $devices->firstWhere('imei', $imei);
-                return response()->json([
-                    'online'    => $device !== null,
-                    'last_seen' => $device['last_seen'] ?? null,
-                    'ip'        => $device['ip'] ?? null,
-                ]);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Gateway status check failed: ' . $e->getMessage());
+        $gateway = GatewayStatus::connectedDevices();
+        if ($gateway['ok']) {
+            $device = $gateway['devices']->firstWhere('imei', $imei);
+
+            return response()->json([
+                'online'    => $device !== null,
+                'last_seen' => $device['last_seen'] ?? null,
+                'ip'        => $device['ip'] ?? null,
+            ]);
         }
 
         return response()->json(['online' => false, 'last_seen' => null]);

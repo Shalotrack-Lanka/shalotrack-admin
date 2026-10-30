@@ -35,3 +35,8 @@ Schedule::command('audit:prune')->dailyAt('02:30');
 // anonymised shell, strip their name and plate from the retained business records
 // (see App\Console\Commands\ScrubDeletedCustomers). Hourly is plenty: purges are rare.
 Schedule::command('customers:scrub-deleted')->hourlyAt(17);
+
+// Gateway health probe + history (see App\Services\GatewayStatus). The dashboard shows live
+// gateway status without this, but history/availability are only recorded by this command, so
+// they stay empty (and the dashboard says so) until the scheduler actually runs in production.
+Schedule::command('gateway:check')->everyMinute();
