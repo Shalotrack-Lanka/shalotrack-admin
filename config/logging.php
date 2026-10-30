@@ -140,6 +140,15 @@ return [
             'days' => 30,
         ],
 
+        // Content-Security-Policy violation reports sent by browsers (read with `php artisan csp:summary`).
+        // 7 days is enough to tune the policy; the controller caps how much can be written per day.
+        'csp' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/csp.log'),
+            'level' => 'warning',
+            'days' => 7,
+        ],
+
     ],
 
 ];

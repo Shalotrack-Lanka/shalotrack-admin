@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\DashboardMetricSnapshot;
 use App\Models\Stock;
 use App\Models\VehicleAd;
+use App\Services\GatewayStatus;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -33,19 +34,8 @@ class SnapshotDashboardMetrics extends Command
             Log::warning('dashboard:snapshot - complaints fetch failed: ' . $e->getMessage());
         }
 
-        $devicesOnline = 0;
-
-        try {
-            $gwResponse = Http::timeout(2)
-                ->withHeaders(['X-Command-Api-Key' => config('services.gateway.command_api_key')])
-                ->get(config('services.gateway.command_url', 'http://gateway.shalotrack.internal:8001') . '/devices');
-
-            if ($gwResponse->successful()) {
-                $devicesOnline = count($gwResponse->json('connected_devices') ?? []);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('dashboard:snapshot - gateway /devices unreachable: ' . $e->getMessage());
-        }
+        $gateway       = GatewayStatus::connectedDevices();
+        $devicesOnline = $gateway['devices']->count();
 
         $totalTrackedVehicles = VehicleAd::whereNotNull('imei')->where('imei', '!=', '')->count();
         $devicesOffline = max($totalTrackedVehicles - $devicesOnline, 0);

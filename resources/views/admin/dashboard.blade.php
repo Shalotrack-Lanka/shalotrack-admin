@@ -69,23 +69,7 @@
                     </div>
 
                     <div class="flex items-center gap-2 flex-wrap">
-                        @if($gatewayOnline)
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 rounded-full text-xs font-bold shadow-sm">
-                            <span class="relative flex h-2 w-2">
-                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </span>
-                            Gateway Online
-                        </span>
-                        @else
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 text-red-700 rounded-full text-xs font-bold shadow-sm">
-                            <span class="relative flex h-2 w-2">
-                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                            </span>
-                            Gateway Offline
-                        </span>
-                        @endif
+                        @include('admin.partials.gateway-badge')
                         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-bold shadow-sm">
                             <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
                             {{ $devicesOnlineNow }} / {{ $totalTrackedVehicles }} devices live
@@ -102,8 +86,10 @@
                  there is actually something to act on. --}}
                 @php
                 $alerts = [];
-                if (!$gatewayOnline) {
-                $alerts[] = ['level' => 'critical', 'text' => 'Gateway is unreachable — live device data is stale until it recovers.'];
+                if (($gatewayStatus['state'] ?? 'down') === 'down') {
+                $alerts[] = ['level' => 'critical', 'text' => 'Gateway is down — devices cannot report and live device data is stale until it recovers.', 'href' => '#gateway-health'];
+                } elseif (($gatewayStatus['state'] ?? null) === 'degraded') {
+                $alerts[] = ['level' => 'warning', 'text' => 'Gateway is degraded — see the Gateway health card for details.', 'href' => '#gateway-health'];
                 }
                 if ($complaintsUnavailable) {
                 $alerts[] = ['level' => 'warning', 'text' => "Complaints could not be loaded from the app server, so the complaint numbers on this page are not reliable right now."];
@@ -146,6 +132,10 @@
                     </div>
                     @endforeach
                 </div>
+                @endif
+
+                @if(($gatewayStatus['state'] ?? 'down') !== 'ok' || ($gatewayHistory['available'] ?? false))
+                    @include('admin.partials.gateway-health-card')
                 @endif
 
                 {{-- ================= TREND HELPER =================

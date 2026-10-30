@@ -12,6 +12,7 @@ use App\Models\Stock;
 use App\Models\CustomerAd;
 use App\Models\VehicleAd;
 use App\Models\DashboardMetricSnapshot;
+use App\Services\GatewayStatus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -46,21 +47,16 @@ class DashboardController extends Controller
                                 'cus_status'
                             ]);
 
-        $gatewayOnline    = false;
-        $devicesOnlineNow = 0;
+        $gatewayStatus = GatewayStatus::current();
+        // "Online" = the gateway can serve devices. Degraded still does; only "down" does not.
+        $gatewayOnline = $gatewayStatus['state'] !== GatewayStatus::DOWN;
 
-        try {
-            $gwResponse = Http::timeout(2)
-                ->withHeaders(['X-Command-Api-Key' => config('services.gateway.command_api_key')])
-                ->get(config('services.gateway.command_url', 'http://gateway.shalotrack.internal:8001') . '/devices');
-
-            if ($gwResponse->successful()) {
-                $gatewayOnline    = true;
-                $devicesOnlineNow = count($gwResponse->json('connected_devices') ?? []);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Dashboard: gateway /devices unreachable: ' . $e->getMessage());
+        $devicesOnlineNow = $gatewayStatus['devices_connected'];
+        if ($devicesOnlineNow === null) {
+            // Gateway not yet upgraded to the deep /health: fall back to the device list.
+            $devicesOnlineNow = GatewayStatus::connectedDevices()['devices']->count();
         }
+        $devicesOnlineNow = (int) $devicesOnlineNow;
 
         $totalTrackedVehicles = VehicleAd::whereNotNull('imei')->where('imei', '!=', '')->count();
         $devicesOfflineNow    = max($totalTrackedVehicles - $devicesOnlineNow, 0);
@@ -213,6 +209,9 @@ class DashboardController extends Controller
             'customerGrowthData'    => $customerGrowthData,
 
             'gatewayOnline'         => $gatewayOnline,
+            'gatewayStatus'         => $gatewayStatus,
+            'gatewayHistory'        => GatewayStatus::history(30),
+            'gatewaySchedulerRunning' => GatewayStatus::schedulerRunning(),
             'devicesOnlineNow'      => $devicesOnlineNow,
             'devicesOfflineNow'     => $devicesOfflineNow,
             'totalTrackedVehicles'  => $totalTrackedVehicles,

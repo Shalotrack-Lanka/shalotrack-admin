@@ -20,6 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Dashboard statistics update middleware
         $middleware->trustProxies(at: '*');
 
+        // Browser-hardening response headers (CSP report-only, X-Frame-Options, HSTS, nosniff, ...) on EVERY
+        // response: 404 / 500 pages, maintenance-mode and too-large-upload responses, and JSON. Global and
+        // outermost (prepend) on purpose, not in the 'web' group. See config/security.php.
+        $middleware->prepend(\App\Http\Middleware\SecurityHeaders::class);
+
         // Runs on every authenticated web request.
         // Forces logout immediately if the logged-in user's Admin.status
         // has been set to INACTIVE by an admin since their session started.
