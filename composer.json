@@ -14,7 +14,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0.2",
         "league/flysystem-aws-s3-v3": "^3.0",
-        "maatwebsite/excel": "3.1.70",
+        "maatwebsite/excel": "4.0.6",
         "php-http/guzzle7-adapter": "^1.1",
         "spatie/laravel-permission": "^6.25"
     },
