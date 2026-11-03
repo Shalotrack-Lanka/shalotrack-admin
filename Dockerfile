@@ -96,12 +96,14 @@ RUN echo 'server { \
     location ~ /\.(?!well-known) { deny all; } \
 }' > /etc/nginx/http.d/default.conf
 
-# Startup script
+# Startup script. Migrations do NOT run on boot: the production app connects with a
+# DML-only database role (erp_app) that cannot change the schema. Run them as a
+# deliberate deploy step (RUN_MIGRATIONS=1 or `php artisan migrate --force` from a trusted machine).
 RUN echo '#!/bin/sh' > /start.sh && \
     echo 'php artisan config:cache' >> /start.sh && \
     echo 'php artisan route:cache' >> /start.sh && \
     echo 'php artisan view:cache' >> /start.sh && \
-    echo 'php artisan migrate --force' >> /start.sh && \
+    echo 'if [ "$RUN_MIGRATIONS" = "1" ]; then php artisan migrate --force; fi' >> /start.sh && \
     echo 'php-fpm -D' >> /start.sh && \
     echo 'nginx -g "daemon off;"' >> /start.sh && \
     chmod +x /start.sh
