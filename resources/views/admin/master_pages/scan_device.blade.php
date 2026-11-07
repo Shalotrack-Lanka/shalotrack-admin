@@ -32,6 +32,8 @@
                   commitUrl: @js(route('admin.device.scan.commit')),
                   listUrl:   @js(route('admin.setup-device')),
                   simUrl:    @js(route('admin.device.scan.sim')),
+                  stockMap:  @js($stockMap),
+                  stockUrl:  @js(route('admin.stock.manage')),
               })"
                 x-init="init()">
 
@@ -57,7 +59,7 @@
                                     class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
                                     <option value="">-- Select Device Type --</option>
                                     @foreach($deviceTypes as $type)
-                                    <option value="{{ $type->id }}">{{ $type->device_category }} {{ $type->model }}</option>
+                                    <option value="{{ $type->id }}">{{ $type->device_category }} {{ $type->model }} ({{ (int) ($stockMap[$type->id] ?? 0) }} in stock)</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -71,6 +73,14 @@
                                     placeholder="Waiting for a scan…"
                                     class="w-full rounded-lg border-gray-300 h-10 shadow-sm font-mono disabled:bg-gray-100">
                             </div>
+                        </div>
+
+                        <!-- Stock warning: shown BEFORE a box is scanned, not after the register click fails -->
+                        <div x-show="deviceTypeId && stockShort" x-cloak
+                            class="p-3 border border-yellow-200 bg-yellow-50 text-yellow-800 rounded-lg text-xs font-bold">
+                            <span x-show="stockLeft === 0">There is no Company Available Stock for this device type, so nothing can be registered yet.</span>
+                            <span x-show="stockLeft > 0">Only <span x-text="stockLeft"></span> unit(s) of Company Available Stock are left for this type, but the batch has <span x-text="rows.length"></span> device(s). The extra devices will be rejected.</span>
+                            <a :href="stockUrl" target="_blank" rel="noopener" class="underline ml-1">Add stock first (Manage Stock)</a>, then reload this page. Your scanned list is kept.
                         </div>
 
                         <!-- in-line feedback (no toasts/popups) -->
@@ -222,6 +232,10 @@
                         </table>
                     </div>
 
+                    <p x-show="errorCount > 0" x-cloak class="px-5 pb-3 text-xs text-red-700">
+                        <span x-text="errorCount"></span> row(s) in red were rejected. Fix the cause (for example add stock), then press Register again to retry them, or Remove them.
+                    </p>
+
                     <div class="p-5 flex items-center gap-3 border-t border-gray-100">
                         <button type="button" @click="commit()" :disabled="!canCommit"
                             class="bg-[#17a2b8] hover:bg-[#138496] disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-xs font-bold shadow-sm transition">
@@ -270,6 +284,8 @@
                 commitUrl: cfg.commitUrl,
                 listUrl: cfg.listUrl,
                 simUrl: cfg.simUrl,
+                stockUrl: cfg.stockUrl,
+                stockMap: cfg.stockMap || {},
                 deviceTypeId: '',
                 input: '',
                 rows: [],
@@ -304,6 +320,16 @@
                 get noSimCount() {
                     return this.rows.filter(r => !r.iccid).length;
                 },
+                get errorCount() {
+                    return this.rows.filter(r => r.error).length;
+                },
+                // Advisory only (the server re-checks under a row lock at commit).
+                get stockLeft() {
+                    return Number(this.stockMap[this.deviceTypeId] || 0);
+                },
+                get stockShort() {
+                    return this.stockLeft < Math.max(1, this.rows.length);
+                },
 
                 init() {
                     try {
@@ -320,9 +346,12 @@
 
                 save() {
                     // Never persist half-checked rows, or a restored draft could get stuck "Checking…".
+                    // A rejection reason (r.error) is also never saved: it describes one commit attempt, and a
+                    // restored draft would otherwise show a stale red reason (e.g. "no stock") after stock was added.
                     const settled = this.rows.filter(r => !r.pending).map(r => ({
                         ...r,
-                        checking: false
+                        checking: false,
+                        error: null
                     }));
                     try {
                         localStorage.setItem(DRAFT_KEY, JSON.stringify({

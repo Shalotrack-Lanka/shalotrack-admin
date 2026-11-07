@@ -32,7 +32,11 @@ class ScanDeviceController extends Controller
         $deviceTypes = DeviceType::orderBy('device_category')->orderBy('model')->get();
         $simTypes = Sim::query()->distinct()->orderBy('sim_type')->pluck('sim_type');
 
-        return view('admin.master_pages.scan_device', compact('deviceTypes', 'simTypes'));
+        // Units of Company Available Stock per device type, so the page can warn BEFORE a whole box is scanned
+        // for a type that has too little stock. Advisory only: commit() re-checks under a row lock.
+        $stockMap = \App\Models\Stock::pluck('company_available_stock', 'device_type_id');
+
+        return view('admin.master_pages.scan_device', compact('deviceTypes', 'simTypes', 'stockMap'));
     }
 
     /**
