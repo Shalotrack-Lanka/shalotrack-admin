@@ -68,8 +68,13 @@ class ManageStockController extends Controller
                 ['company_available_stock' => 0]
             );
 
+            // Re-read the row under a lock. Registering a device (DeviceRegistrationService) decrements this same
+            // row under lockForUpdate; without the lock here two writers could read the same count and one
+            // update would silently overwrite the other (lost stock units).
+            $stock = \App\Models\Stock::whereKey($stock->getKey())->lockForUpdate()->firstOrFail();
+
             $stock->device_category_type = $deviceLabel;
-            $stock->company_available_stock = ($stock->company_available_stock ?? 0) + $request->stock_in;
+            $stock->company_available_stock = ($stock->company_available_stock ?? 0) + (int) $request->stock_in;
             $stock->updated_at = now(); 
             $stock->save();
 
@@ -78,10 +83,11 @@ class ManageStockController extends Controller
 
             // මෙයින් අදාළ භාණ්ඩය සැපයුම්කරුගේ ලැයිස්තුවෙන් නිවැරදිව ඉවත් කරයි
             $productToRemove = $supplier->products()->where('device_type_id', $deviceType->id)->first();
+            // Only detach the product that really belongs to this device type. The old fallback
+            // detach($inputId) passed a DEVICE TYPE id where a PRODUCT id is expected, so when the supplier had no
+            // matching product it could remove a different, unrelated product that happened to share that number.
             if ($productToRemove) {
                 $supplier->products()->detach($productToRemove->id);
-            } else {
-                $supplier->products()->detach($inputId);
             }
 
             \App\Models\StockTransferLedger::create([
