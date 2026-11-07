@@ -82,6 +82,9 @@
                                     <option :value="prod.id" x-text="prod.name"></option>
                                 </template>
                             </select>
+                            <p x-show="selectedSupplier && productsList.length === 0" x-cloak class="mt-2 text-xs font-bold text-amber-700">
+                                This supplier has no stock-tracked devices listed. Open Suppliers, edit this supplier and add the device type (with its quantity), then come back. A device type leaves the supplier's list once its stock is added.
+                            </p>
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Stock In (Qty)</label>
@@ -205,9 +208,12 @@ document.addEventListener('alpine:init', () => {
     const allSuppliersData = @json(
         $suppliers->mapWithKeys(function ($sup) {
             return [
-                $sup->id => $sup->products->map(function ($prod) {
+                // Only products linked to a device type are stock-tracked. A product with no device type (a SIM
+                // package, say) used to be listed with its PRODUCT id, which the server then read as a DEVICE TYPE
+                // id, so the stock could land on an unrelated device type that shared that number.
+                $sup->id => $sup->products->filter(fn ($prod) => $prod->device_type_id)->values()->map(function ($prod) {
                     return [
-                        'id' => $prod->device_type_id ? $prod->device_type_id : $prod->id,
+                        'id' => $prod->device_type_id,
                         'name' => $prod->product_name,
                         'qty' => $prod->pivot->qty ?? 1
                     ];

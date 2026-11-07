@@ -231,8 +231,11 @@ class ManageStockController extends Controller
 
             $productsData = [];
             foreach ($supplier->products as $product) {
+                if (! $product->device_type_id) {
+                    continue; // not stock-tracked (e.g. a SIM package); its id is not a device type id
+                }
                 $productsData[] = [
-                    'id'   => $product->device_type_id ? $product->device_type_id : $product->id,
+                    'id'   => $product->device_type_id,
                     'name' => $product->product_name,
                     'qty'  => $product->pivot->qty ?? 1, 
                 ];
