@@ -67,6 +67,10 @@
                     Setup Shalotrack Device
                 </a>
 
+                <a href="{{ route('admin.device-prices') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.device-prices*') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
+                    Device Prices
+                </a>
+
                 <a href="{{ route('admin.stock_transfer') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.stock_transfer') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Stock Transfer
                 </a>

@@ -99,7 +99,10 @@ RUN echo 'server { \
 # Startup script. Migrations do NOT run on boot: the production app connects with a
 # DML-only database role (erp_app) that cannot change the schema. Run them as a
 # deliberate deploy step (RUN_MIGRATIONS=1 or `php artisan migrate --force` from a trusted machine).
+# `set -e`: if config/route/view caching fails the container stops at once (and the restart policy / health
+# check shows it) instead of starting nginx on a half-built app that answers every request with an error.
 RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'set -e' >> /start.sh && \
     echo 'php artisan config:cache' >> /start.sh && \
     echo 'php artisan route:cache' >> /start.sh && \
     echo 'php artisan view:cache' >> /start.sh && \
