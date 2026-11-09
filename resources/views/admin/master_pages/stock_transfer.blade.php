@@ -123,7 +123,7 @@
                             <th class="p-4">To</th>
                             <th class="p-4">Device Category / Type</th>
                             <th class="p-4 text-center">Nu of Devices</th>
-                            <th class="p-4 text-center">Delete & Edit</th>
+                            <th class="p-4 text-center">Undo & Edit</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 bg-white text-sm font-medium text-gray-700">
@@ -147,10 +147,10 @@
                                     </button>
 
                                     <form action="{{ route('admin.stock_transfer.destroy', $transfer) }}" method="POST"
-                                        onsubmit="return confirm('Delete this transfer history record? The devices will remain assigned to the dealer.')" class="inline">
+                                        onsubmit="return confirm('Undo this transfer? Its devices go back to company stock and the record is removed from the history.')" class="inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold">Delete</button>
+                                        <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold">Undo</button>
                                     </form>
                                 </div>
                                 @endif

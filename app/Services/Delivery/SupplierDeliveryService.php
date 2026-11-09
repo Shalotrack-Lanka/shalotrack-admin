@@ -491,12 +491,30 @@ class SupplierDeliveryService
      */
     public function supplierNamesByImei(array $imeis): array
     {
-        if (! $this->enabled() || $imeis === []) {
+        return $this->supplierNames(SupplierDelivery::KIND_DEVICE, $imeis);
+    }
+
+    /**
+     * Supplier name for each SIM ICCID (for the SIM lists). One query for the whole list.
+     *
+     * @param  array<int,string> $iccids
+     * @return array<string,string>
+     */
+    public function supplierNamesByIccid(array $iccids): array
+    {
+        return $this->supplierNames(SupplierDelivery::KIND_SIM, $iccids);
+    }
+
+    /** @return array<string,string> */
+    private function supplierNames(string $kind, array $identifiers): array
+    {
+        $identifiers = array_values(array_filter(array_map('strval', $identifiers), fn ($i) => $i !== ''));
+        if (! $this->enabled() || $identifiers === []) {
             return [];
         }
 
         $out = [];
-        SupplierDeliveryUnit::where('kind', SupplierDelivery::KIND_DEVICE)->whereIn('identifier', $imeis)->with('delivery.supplier')->get()
+        SupplierDeliveryUnit::where('kind', $kind)->whereIn('identifier', $identifiers)->with('delivery.supplier')->get()
             ->each(function ($u) use (&$out) {
                 $out[$u->identifier] = $u->delivery?->supplier?->name ?? '-';
             });
@@ -532,6 +550,16 @@ class SupplierDeliveryService
             DeliveryPolicy::UNVERIFIED => "Not received on any supplier delivery (supplier unknown).",
             default => null,
         };
+
+        // Goods must be booked into stock before they are used: from the enforcement date a device whose delivery
+        // has not been added to stock yet is refused (otherwise its registration would take a unit of OTHER stock
+        // and the count would be wrong until the delivery is stocked in).
+        if ($status === DeliveryPolicy::OK && $kind === SupplierDelivery::KIND_DEVICE && $unit?->delivery
+            && $unit->delivery->stocked_in_at === null
+            && DeliveryPolicy::enforcing(config('supplier_deliveries.enforce_from'), now()->toDateString())) {
+            $status = DeliveryPolicy::BLOCKED;
+            $message = "Delivery #{$unit->supplier_delivery_id} has not been added to stock yet. Add it on Manage Stock first, then register this IMEI.";
+        }
 
         return ['status' => $status, 'unit' => $unit, 'from' => $from, 'message' => $message];
     }

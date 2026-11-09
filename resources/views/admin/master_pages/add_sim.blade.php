@@ -121,7 +121,9 @@
 
                             <div>
                                 <label class="block mb-1">ICCID - Integrated Circuit Card Identifier</label>
-                                <input type="text" name="iccid" maxlength="20" pattern="\d{19,20}" inputmode="numeric" title="ICCID must be 19 or 20 digits" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                                <input type="text" name="iccid" maxlength="20" pattern="\d{19,20}" inputmode="numeric" title="ICCID must be 19 or 20 digits" class="w-full rounded-lg border-gray-300 h-10 shadow-sm"
+                                    data-lookup-url="{{ route('admin.device.scan.check') }}" onchange="lookupReceivedSim(this)">
+                                <p class="text-[11px] text-gray-500 mt-1" id="iccid-lookup-note"></p>
                             </div>
 
                             <div>
@@ -175,6 +177,7 @@
                                         <th class="p-3">SIM Type</th>
                                         <th class="p-3">IMSI</th>
                                         <th class="p-3">ICCID</th>
+                                        @if($showSupplier)<th class="p-3">Supplier</th>@endif
                                         <th class="p-3">SIM Status</th>
                                         <th class="p-3">Activation / Network Testing Required</th>
                                     </tr>
@@ -186,6 +189,7 @@
                                             <td class="p-3">{{ $sim->sim_type }}</td>
                                             <td class="p-3">{{ $sim->imsi }}</td>
                                             <td class="p-3">{{ $sim->iccid }}</td>
+                                            @if($showSupplier)<td class="p-3">{{ $simSuppliers[$sim->iccid] ?? '-' }}</td>@endif
                                             <td class="p-3">
                                                 <form action="{{ route('admin.stock.sim.update-status', $sim->id) }}" method="POST" class="m-0">
                                                     @csrf
@@ -208,7 +212,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="p-6 text-center text-gray-400">No Pending SIMs Found.</td>
+                                            <td colspan="{{ $showSupplier ? 7 : 6 }}" class="p-6 text-center text-gray-400">No Pending SIMs Found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -255,6 +259,7 @@
                                         <th class="p-3">SIM Type</th>
                                         <th class="p-3">IMSI</th>
                                         <th class="p-3">ICCID</th>
+                                        @if($showSupplier)<th class="p-3">Supplier</th>@endif
                                         <th class="p-3">SIM Status</th>
                                         <th class="p-3">Activation / Network Testing Required</th>
                                     </tr>
@@ -266,6 +271,7 @@
                                             <td class="p-3">{{ $sim->sim_type }}</td>
                                             <td class="p-3">{{ $sim->imsi }}</td>
                                             <td class="p-3">{{ $sim->iccid }}</td>
+                                            @if($showSupplier)<td class="p-3">{{ $simSuppliers[$sim->iccid] ?? '-' }}</td>@endif
                                             <td class="p-3">
                                                 <form action="{{ route('admin.stock.sim.update-status', $sim->id) }}" method="POST" class="m-0">
                                                     @csrf
@@ -288,7 +294,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="p-6 text-center text-gray-400">No Activated SIMs Yet.</td>
+                                            <td colspan="{{ $showSupplier ? 7 : 6 }}" class="p-6 text-center text-gray-400">No Activated SIMs Yet.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -302,5 +308,32 @@
 </div>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+<script>
+    // Fills in the SIM number recorded when this SIM was received on a supplier delivery (scanned with its ICCID),
+    // so it is not typed twice. The server checks the number again when the SIM is saved.
+    async function lookupReceivedSim(input) {
+        const note = document.getElementById('iccid-lookup-note');
+        const iccid = (input.value || '').replace(/\s+/g, '');
+        note.textContent = '';
+        if (!/^\d{19,20}$/.test(iccid)) return;
+        try {
+            const res = await fetch(input.dataset.lookupUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': input.form.querySelector('input[name=_token]').value },
+                body: JSON.stringify({ iccid }),
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            const r = data.iccid || {};
+            const number = input.form.querySelector('input[name=sim_number]');
+            if (r.received_sim_number) {
+                if (!number.value) number.value = r.received_sim_number;
+                note.textContent = 'Received on a supplier delivery with SIM number ' + r.received_sim_number + '.';
+            } else if (r.reason && r.reason !== 'not_registered') {
+                note.textContent = r.message || '';
+            }
+        } catch (e) { /* the lookup is only a convenience */ }
+    }
+</script>
 </body>
 </html>

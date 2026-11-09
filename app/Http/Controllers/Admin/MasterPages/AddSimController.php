@@ -20,7 +20,12 @@ class AddSimController extends Controller
 
         $activatedSims = Sim::where('sim_status', 'Activated')->latest()->get();
 
-        return view('admin.master_pages.add_sim', compact('notActivatedSims', 'activatedSims'));
+        // Which supplier delivered each SIM (from the delivery records); empty while delivery scanning is off.
+        $deliveries = app(SupplierDeliveryService::class);
+        $simSuppliers = $deliveries->supplierNamesByIccid($notActivatedSims->pluck('iccid')->merge($activatedSims->pluck('iccid'))->all());
+        $showSupplier = $deliveries->enabled();
+
+        return view('admin.master_pages.add_sim', compact('notActivatedSims', 'activatedSims', 'simSuppliers', 'showSupplier'));
     }
 
     public function store(Request $request)

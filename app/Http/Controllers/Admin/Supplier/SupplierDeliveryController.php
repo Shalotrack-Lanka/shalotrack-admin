@@ -26,6 +26,12 @@ class SupplierDeliveryController extends Controller
 
         $supplier = Supplier::findOrFail($id);
 
+        // Saving refuses an Inactive supplier; say so up front instead of after a whole delivery has been scanned.
+        if ($supplier->status !== 'Active') {
+            return redirect()->route('admin.suppliers')
+                ->withErrors(['status' => "{$supplier->name} is Inactive. Activate the supplier before receiving a delivery from it."]);
+        }
+
         $deliveries = SupplierDelivery::where('supplier_id', $supplier->id)
             ->with(['deviceType', 'purchaseOrder'])
             ->withCount('units')

@@ -74,7 +74,8 @@ class RoleGatingTest extends TestCase
             }
 
             $expected = match (true) {
-                $uri === 'admin/supplier/dashboard', $uri === 'admin/supplier/profile' => ['SUPPLIER'],
+                $uri === 'admin/supplier/dashboard', $uri === 'admin/supplier/profile',
+                $uri === 'admin/supplier/orders/{id}/download' => ['SUPPLIER'],
                 $uri === 'admin/dealer/device-commands', str_starts_with($uri, 'dealer/device-commands') => ['ADMIN', 'DEALER'],
                 in_array($uri, ['admin/dealer/profile', 'admin/dealer/customers'], true),
                 (bool) preg_match('#^admin/dealer/customer-ad(/|$)#', $uri),

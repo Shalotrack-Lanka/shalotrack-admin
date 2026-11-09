@@ -272,7 +272,7 @@
                             <tr>
                                 <th class="p-2">Product</th>
                                 <th class="p-2">Price</th>
-                                <th class="p-2">Qty</th> {{-- Qty instead of Discount --}}
+                                <th class="p-2" title="Fills in the quantity on a new purchase order">Usual order qty</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">

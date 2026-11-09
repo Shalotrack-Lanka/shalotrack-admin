@@ -169,6 +169,14 @@
         <div class="title">PURCHASE ORDER / SUPPLIER INVOICE</div>
     </div>
 
+    {{-- A cancelled order keeps its PDF for the record, clearly marked so it is never paid by mistake. --}}
+    @if($invoice->isCancelled())
+        <div style="border: 2px solid #dc2626; color: #dc2626; padding: 8px 12px; margin-bottom: 18px; font-weight: bold;">
+            CANCELLED{{ $invoice->cancelled_at ? ' on ' . $invoice->cancelled_at->local()->format('d M Y') : '' }}{{ $invoice->cancel_reason ? ': ' . $invoice->cancel_reason : '' }}.
+            This order is not valid and must not be supplied or paid.
+        </div>
+    @endif
+
     {{-- INVOICE + SUPPLIER DETAILS --}}
     <table class="invoice-info">
         <tr>
