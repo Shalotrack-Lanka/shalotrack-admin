@@ -215,7 +215,7 @@ class ScanDeviceController extends Controller
         try {
             $sim = DB::transaction(function () use ($data, $deliveries) {
                 // Supplier delivery check (no-op while the feature is off); a refusal comes back as a 422 on iccid.
-                $provenance = $deliveries->verify('SIM', $data['iccid'], null, 'iccid');
+                $provenance = $deliveries->verify('SIM', $data['iccid'], null, 'iccid', $data['sim_number']);
 
                 $sim = Sim::create([
                     'sim_number'          => $data['sim_number'],
@@ -263,7 +263,9 @@ class ScanDeviceController extends Controller
 
             return $onDevice
                 ? ['ok' => false, 'reason' => 'in_use', 'message' => 'This SIM is already attached to a registered device.']
-                : ['ok' => false, 'reason' => 'not_registered', 'message' => 'This SIM is not registered yet.'];
+                : ['ok' => false, 'reason' => 'not_registered', 'message' => 'This SIM is not registered yet.',
+                    // The SIM number recorded on the supplier delivery (if any), to fill in the quick-add form.
+                    'received_sim_number' => app(SupplierDeliveryService::class)->receivedSimNumber($iccid)];
         }
 
         if ($sim->sim_status !== 'Activated') {

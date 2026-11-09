@@ -26,14 +26,36 @@ class DevicePriceController extends Controller
     public function index()
     {
         $prices = DevicePrice::all()->keyBy('device_type_id');
+
+        // What suppliers charge for each device type (their agreed price, and the last price actually ordered at),
+        // shown next to the landing cost. The landing cost also covers freight, duty and clearing, so it is never
+        // copied from these automatically.
+        $supplierPrices = \Illuminate\Support\Facades\DB::table('supplier_products')
+            ->join('products', 'products.id', '=', 'supplier_products.product_id')
+            ->join('suppliers', 'suppliers.id', '=', 'supplier_products.supplier_id')
+            ->whereNotNull('products.device_type_id')
+            ->orderBy('suppliers.name')
+            ->get(['products.device_type_id', 'suppliers.name', 'supplier_products.price'])
+            ->groupBy('device_type_id');
+
+        $lastOrdered = \Illuminate\Support\Facades\DB::table('supplier_invoice_items')
+            ->join('products', 'products.id', '=', 'supplier_invoice_items.product_id')
+            ->join('supplier_invoices', 'supplier_invoices.id', '=', 'supplier_invoice_items.supplier_invoice_id')
+            ->whereNotNull('products.device_type_id')
+            ->when(\App\Services\Supplier\PurchaseOrders::ready(), fn ($q) => $q->where('supplier_invoices.status', 'ORDERED'))
+            ->orderBy('supplier_invoices.invoice_date')->orderBy('supplier_invoice_items.id')
+            ->get(['products.device_type_id', 'supplier_invoice_items.unit_price', 'supplier_invoices.invoice_number'])
+            ->keyBy('device_type_id');   // the last row per device type wins: the most recent order
         $taxRate = $this->settings->taxEnabled() ? $this->settings->get('tax_rate') : null;
 
-        $rows = DeviceType::orderBy('device_category')->orderBy('model')->get()->map(function (DeviceType $type) use ($prices, $taxRate) {
+        $rows = DeviceType::orderBy('device_category')->orderBy('model')->get()->map(function (DeviceType $type) use ($prices, $taxRate, $supplierPrices, $lastOrdered) {
             $price = $prices->get($type->id);
 
             return [
                 'type'  => $type,
                 'price' => $price,
+                'suppliers'   => $supplierPrices->get($type->id, collect()),
+                'lastOrdered' => $lastOrdered->get($type->id),
                 'chain' => $price
                     ? DevicePriceChain::build($price->landing_cost, $price->company_margin, $price->distributor_margin, $price->retailer_margin, $taxRate)
                     : null,

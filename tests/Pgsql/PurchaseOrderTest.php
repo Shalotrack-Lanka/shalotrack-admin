@@ -20,10 +20,11 @@ use Tests\PgsqlTestCase;
  *   - The admin picks an Active supplier and lists what is being bought: product, quantity, unit price, discount %
  *     and an optional face value. The server works out every total itself; it never trusts totals from the browser.
  *     Line total = quantity x price, minus the discount %, plus the face value. The invoice total is the sum.
- *   - Numbers are PO-<year>-0001, 0002 ... one running count per year.
- *   - A product linked to a device type raises the company stock of that device type when ordered.
- *     A product with no device type (a SIM package, a service) is only recorded on the invoice.
- *   - Everything is all or nothing: if any line is bad, no invoice and no stock change is saved.
+ *   - Only products on that supplier's own product list can be ordered from it.
+ *   - Numbers are PO-<year>-0001, 0002 ... one more than the highest number used that year.
+ *   - A purchase order is an ORDER: it never changes stock. Stock goes up only when the delivery is scanned in
+ *     and added on Manage Stock (purchase order -> delivery -> stock-in).
+ *   - Everything is all or nothing: if any line is bad, no invoice is saved.
  *   - Bad numbers (negative, too big for the database, text) are refused with a message, never a database error.
  *   - Only an ADMIN may do any of this.
  *
@@ -59,8 +60,16 @@ class PurchaseOrderTest extends PgsqlTestCase
         ], $overrides);
     }
 
+    /** The order payload. Puts every product on the supplier's product list first (only those can be ordered). */
     private function order(int $supplierId, array $items): array
     {
+        $supplier = \App\Models\Supplier::find($supplierId);
+        foreach ($items as $item) {
+            if ($supplier && isset($item['product_id']) && is_int($item['product_id'])) {
+                $supplier->products()->syncWithoutDetaching([$item['product_id'] => ['price' => 1, 'qty' => 0]]);
+            }
+        }
+
         return ['supplier_id' => $supplierId, 'items' => $items];
     }
 
@@ -245,7 +254,8 @@ class PurchaseOrderTest extends PgsqlTestCase
         $supplier = $this->makeSupplier();
         $product = $this->makePlainProduct();
         $year = now()->year;
-        $before = SupplierInvoice::whereYear('invoice_date', $year)->count();
+        $before = (int) SupplierInvoice::where('invoice_number', 'like', "PO-{$year}-%")->pluck('invoice_number')
+            ->map(fn ($n) => preg_match('/^PO-\d{4}-(\d{1,9})$/', $n, $m) ? (int) $m[1] : 0)->max();
 
         $this->place($this->order($supplier->id, [$this->line($product->id)]));
         $this->place($this->order($supplier->id, [$this->line($product->id)]));
@@ -271,7 +281,7 @@ class PurchaseOrderTest extends PgsqlTestCase
 
     // ================================================================== placing an order: stock
 
-    public function test_a_device_product_raises_the_company_stock(): void
+    public function test_a_device_product_does_not_change_stock_when_ordered(): void
     {
         $supplier = $this->makeSupplier();
         $type = $this->makeDeviceType();
@@ -281,38 +291,30 @@ class PurchaseOrderTest extends PgsqlTestCase
         $this->place($this->order($supplier->id, [$this->line($product->id, ['order_qty' => 7])]))
             ->assertSessionHasNoErrors();
 
-        $this->assertSame(17, Stock::where('device_type_id', $type->id)->value('company_available_stock'));
+        $this->assertSame(10, Stock::where('device_type_id', $type->id)->value('company_available_stock'));
     }
 
-    public function test_a_device_type_with_no_stock_row_yet_gets_one(): void
+    public function test_ordering_a_device_type_with_no_stock_row_creates_none(): void
     {
         $supplier = $this->makeSupplier();
         $type = $this->makeDeviceType();
         $product = $this->makeDeviceProduct($type);
-        $this->assertNull(Stock::where('device_type_id', $type->id)->first());
 
         $this->place($this->order($supplier->id, [$this->line($product->id, ['order_qty' => 4])]))
             ->assertSessionHasNoErrors();
 
-        $stock = Stock::where('device_type_id', $type->id)->get();
-        $this->assertCount(1, $stock, 'still one row per device type');
-        $this->assertSame(4, $stock->first()->company_available_stock);
-        $this->assertNotEmpty($stock->first()->device_category_type);
+        $this->assertNull(Stock::where('device_type_id', $type->id)->first());
     }
 
-    public function test_two_lines_for_the_same_device_type_add_up(): void
+    public function test_a_product_not_on_the_suppliers_list_cannot_be_ordered(): void
     {
         $supplier = $this->makeSupplier();
-        $type = $this->makeDeviceType();
-        $this->stockFor($type, 0);
-        $product = $this->makeDeviceProduct($type);
+        $product = $this->makePlainProduct();
 
-        $this->place($this->order($supplier->id, [
-            $this->line($product->id, ['order_qty' => 3]),
-            $this->line($product->id, ['order_qty' => 5]),
-        ]))->assertSessionHasNoErrors();
+        $this->actingAs($this->admin())->post(route('admin.supplier-invoice.store'), ['supplier_id' => $supplier->id, 'items' => [$this->line($product->id)]])
+            ->assertSessionHasErrors('items.0.product_id');
 
-        $this->assertSame(8, Stock::where('device_type_id', $type->id)->value('company_available_stock'));
+        $this->assertSame(0, SupplierInvoice::where('supplier_id', $supplier->id)->count());
     }
 
     public function test_a_plain_product_never_touches_stock(): void
@@ -371,6 +373,7 @@ class PurchaseOrderTest extends PgsqlTestCase
     {
         $supplier = $this->makeSupplier();
         $product = $this->makePlainProduct();
+        $this->offer($supplier, $product);
         $invoices = SupplierInvoice::count();
         $items = SupplierInvoiceItem::count();
 

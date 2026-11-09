@@ -116,7 +116,7 @@
 
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">Website</label>
-                    {{-- 💡 UPDATE: type="text" damma url onama widihakata gahanna puluwan wenna --}}
+                    {{-- type="text" (not "url") so a website can be typed in any form, with or without http:// --}}
                     <input type="text" name="website" value="{{ old('website', $supplier->website) }}"
                            placeholder="www.example.com"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none">
@@ -246,9 +246,13 @@
             <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                 <h2 class="font-bold text-gray-800 text-sm mb-3">Quick Links</h2>
                 <a href="{{ route('admin.supplier-invoice', ['supplier_id' => $supplier->id]) }}"
-                   class="block text-xs text-blue-600 hover:underline mb-1.5">→ Create Purchase Invoice</a>
+                   class="block text-xs text-blue-600 hover:underline mb-1.5">→ Create Purchase Order</a>
                 <a href="{{ route('admin.suppliers', ['supplier_id' => $supplier->id]) }}"
                    class="block text-xs text-blue-600 hover:underline mb-1.5">→ Supplier Management Panel</a>
+                @if(\App\Services\Delivery\SupplierDeliveryService::isEnabled())
+                    <a href="{{ route('admin.suppliers.deliveries', $supplier->id) }}"
+                       class="block text-xs text-blue-600 hover:underline mb-1.5">→ Receive delivery (scan IMEIs / SIMs)</a>
+                @endif
                 <a href="{{ route('admin.stock.manage') }}"
                    class="block text-xs text-blue-600 hover:underline">→ Manage Stock</a>
             </div>
@@ -268,7 +272,7 @@
                             <tr>
                                 <th class="p-2">Product</th>
                                 <th class="p-2">Price</th>
-                                <th class="p-2">Qty</th> {{-- 💡 UPDATE: Discount wenuwata Qty --}}
+                                <th class="p-2">Qty</th> {{-- Qty instead of Discount --}}
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -334,28 +338,54 @@
                     <table class="w-full text-left text-xs">
                         <thead class="bg-gray-50 text-gray-500 uppercase">
                             <tr>
-                                <th class="p-2">Invoice #</th>
+                                <th class="p-2">PO #</th>
                                 <th class="p-2">Date</th>
                                 <th class="p-2 text-right">Grand Total</th>
+                                <th class="p-2">Status</th>
                                 <th class="p-2"></th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @forelse($invoices as $invoice)
-                                <tr>
+                                @php $po = $orderSummaries[$invoice->id] ?? null; @endphp
+                                <tr class="{{ $invoice->isCancelled() ? 'opacity-60' : '' }}">
                                     <td class="p-2 font-mono text-gray-700">{{ $invoice->invoice_number }}</td>
                                     <td class="p-2 whitespace-nowrap">{{ optional($invoice->invoice_date)->format('d M Y') }}</td>
-                                    <td class="p-2 text-right font-bold text-gray-700">
+                                    <td class="p-2 text-right font-bold text-gray-700 {{ $invoice->isCancelled() ? 'line-through' : '' }}">
                                         Rs. {{ number_format($invoice->grand_total, 2) }}
                                     </td>
-                                    <td class="p-2">
+                                    <td class="p-2 whitespace-nowrap">
+                                        @if($invoice->isCancelled())
+                                            <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold text-[10px]" title="{{ $invoice->cancel_reason }}">Cancelled</span>
+                                        @elseif($po && $po['editable'])
+                                            <span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px]">Ordered</span>
+                                        @else
+                                            <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">Receiving / received</span>
+                                        @endif
+                                        @if($po)
+                                            @foreach($po['device_types'] as $q)
+                                                <span class="text-[10px] text-gray-500 ml-1">{{ $q['received'] }}/{{ $q['ordered'] }}</span>
+                                            @endforeach
+                                        @endif
+                                    </td>
+                                    <td class="p-2 whitespace-nowrap">
                                         <a href="{{ route('admin.supplier-invoice.download', $invoice->id) }}"
-                                           class="text-blue-600 hover:underline text-xs">Download</a>
+                                           class="text-blue-600 hover:underline text-xs mr-2">Download</a>
+                                        @if($po && $po['editable'])
+                                            <a href="{{ route('admin.supplier-invoice.edit', $invoice->id) }}"
+                                               class="text-gray-700 hover:underline text-xs mr-2">Edit</a>
+                                            <form method="POST" action="{{ route('admin.supplier-invoice.cancel', $invoice->id) }}" class="inline"
+                                                onsubmit="const r = prompt('Why is this purchase order being cancelled?'); if (!r || r.trim().length < 3) { return false; } this.reason.value = r.trim(); return true;">
+                                                @csrf @method('PATCH')
+                                                <input type="hidden" name="reason" value="">
+                                                <button type="submit" class="text-red-600 hover:underline text-xs">Cancel</button>
+                                            </form>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="p-4 text-center text-gray-400">
+                                    <td colspan="5" class="p-4 text-center text-gray-400">
                                         No invoices yet.
                                         <a href="{{ route('admin.supplier-invoice', ['supplier_id' => $supplier->id]) }}"
                                            class="text-blue-600 hover:underline ml-1">Create one</a>

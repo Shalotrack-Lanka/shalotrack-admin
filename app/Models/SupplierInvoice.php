@@ -16,9 +16,12 @@ class SupplierInvoice extends Model
         'grand_total',
     ];
 
+    // status, cancelled_at, cancel_reason and updated_by are set only by App\Services\Supplier\PurchaseOrders.
+
     protected $casts = [
         'invoice_date' => 'date',
         'grand_total'  => 'decimal:2',
+        'cancelled_at' => 'datetime',
     ];
 
     public function supplier()
@@ -29,5 +32,16 @@ class SupplierInvoice extends Model
     public function items()
     {
         return $this->hasMany(SupplierInvoiceItem::class);
+    }
+
+    /** Deliveries received against this purchase order. */
+    public function deliveries()
+    {
+        return $this->hasMany(SupplierDelivery::class, 'supplier_invoice_id');
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'CANCELLED';
     }
 }

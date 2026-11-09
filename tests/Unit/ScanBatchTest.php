@@ -79,4 +79,36 @@ class ScanBatchTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         ScanBatch::classify('PHONE', [self::IMEI_A]);
     }
+    public function test_sim_pairs_need_a_valid_iccid_and_a_ten_digit_number(): void
+    {
+        $r = ScanBatch::classifySims([
+            ['iccid' => ' ' . self::ICCID . ' ', 'sim_number' => '077 123 4567'],   // spaces from the scanner
+            ['iccid' => '123', 'sim_number' => '0771234568'],
+            ['iccid' => '8991101200003204511', 'sim_number' => '07712345'],
+            'not a pair',
+            ['iccid' => '', 'sim_number' => ''],                                    // empty row: ignored
+        ]);
+
+        $this->assertSame([['iccid' => self::ICCID, 'sim_number' => '0771234567']], $r['valid']);
+        $this->assertCount(3, $r['rejected']);
+    }
+
+    public function test_a_sim_or_a_number_twice_in_one_delivery_is_refused(): void
+    {
+        $r = ScanBatch::classifySims([
+            ['iccid' => self::ICCID, 'sim_number' => '0771234567'],
+            ['iccid' => self::ICCID, 'sim_number' => '0771234568'],
+            ['iccid' => '8991101200003204511', 'sim_number' => '0771234567'],
+        ]);
+
+        $this->assertCount(1, $r['valid']);
+        $this->assertSame('Scanned twice in this delivery.', $r['rejected'][0]['reason']);
+        $this->assertStringContainsString('another SIM in this delivery', $r['rejected'][1]['reason']);
+    }
+
+    public function test_sim_batch_size_is_capped(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        ScanBatch::classifySims(array_fill(0, ScanBatch::MAX + 1, ['iccid' => self::ICCID, 'sim_number' => '0771234567']));
+    }
 }

@@ -45,7 +45,7 @@ class AddSimController extends Controller
         $deliveries = app(SupplierDeliveryService::class);
 
         $status = DB::transaction(function () use ($validated, $request, $deliveries) {
-            $provenance = $deliveries->verify('SIM', $validated['iccid'], null, 'iccid');
+            $provenance = $deliveries->verify('SIM', $validated['iccid'], null, 'iccid', $validated['sim_number']);
 
             $sim = Sim::create([
                 'sim_number'           => $validated['sim_number'],

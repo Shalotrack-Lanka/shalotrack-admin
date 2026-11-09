@@ -7,7 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Models\DeviceType;
 use App\Models\Stock;
 use App\Services\Audit;
+use App\Services\Delivery\DeliveryPolicy;
 use App\Services\Delivery\SupplierDeliveryService;
+use App\Services\Supplier\SupplierCatalogue;
 use App\Models\StockTransferLedger;
 use App\Models\Supplier;
 use App\Imports\StockImport;
@@ -28,7 +30,7 @@ class ManageStockController extends Controller
             ->orderByDesc('id')
             ->get();
         $deviceTypes = DeviceType::orderBy('device_category')->orderBy('model')->get();
-        $suppliers = Supplier::where('status', 'Active')->orderBy('name')->get();
+        $suppliers = Supplier::where('status', 'Active')->with('products')->orderBy('name')->get();
 
         // Scanned device deliveries waiting to be added to stock, grouped by supplier (empty while the feature is off).
         $openDeliveries = SupplierDeliveryService::isEnabled()
@@ -40,6 +42,7 @@ class ManageStockController extends Controller
                 'units'          => $d->units_count,
                 'reference'      => $d->reference,
                 'date'           => $d->received_on?->format('Y-m-d'),
+                'order'          => $d->purchaseOrder?->invoice_number,
             ])->groupBy('supplier_id')->map->values()
             : collect();
 
@@ -65,19 +68,14 @@ class ManageStockController extends Controller
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $deliveries, $deliveriesOn, $deliveryId) {
             
-            $inputId = $request->device_type_id;
-            $deviceType = \App\Models\DeviceType::find($inputId);
+            $deviceType = DeviceType::findOrFail((int) $request->device_type_id);
+            $supplier = Supplier::findOrFail((int) $request->supplier_id);
 
-            if (!$deviceType) {
-                $product = \App\Models\Product::find($inputId);
-                if ($product && $product->device_type_id) {
-                    $deviceType = \App\Models\DeviceType::find($product->device_type_id);
-                }
-            }
-
-            if (!$deviceType) {
+            // Stock can only come in from a supplier that supplies this device (its product list), the same rule
+            // as purchase orders and scanned deliveries.
+            if (! app(SupplierCatalogue::class)->supplies($supplier->id, $deviceType->id)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'device_type_id' => 'No device type is linked to this item!'
+                    'device_type_id' => SupplierCatalogue::notSuppliedMessage($supplier->name, trim("{$deviceType->device_category} {$deviceType->model}")),
                 ]);
             }
 
@@ -93,6 +91,12 @@ class ManageStockController extends Controller
                     // Typing a number now would add the same devices again when the scanned delivery is added later.
                     throw \Illuminate\Validation\ValidationException::withMessages([
                         'delivery_id' => 'This supplier has a scanned delivery of this device waiting. Choose it so the stock matches the scanned units.'
+                    ]);
+                } elseif (DeliveryPolicy::enforcing(config('supplier_deliveries.enforce_from'), now()->toDateString())) {
+                    // From the enforcement date every device must arrive on a scanned delivery: a typed number
+                    // would be stock with no IMEIs behind it.
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'stock_in' => 'Stock is now added only from scanned deliveries. Scan this delivery under Supplier Management -> Receive delivery, then choose it here.'
                     ]);
                 }
             }
@@ -113,25 +117,9 @@ class ManageStockController extends Controller
             $stock->updated_at = now(); 
             $stock->save();
 
-            // Put all the other details into the ledger
-            $supplier = \App\Models\Supplier::findOrFail($request->supplier_id);
-
-            // The supplier's line is what is still ON ORDER. Receiving part of it must leave the rest on the line;
-            // only a fully received line leaves the supplier's list. (It used to be removed whole, so stocking in
-            // 10 of 20 made the other 10 impossible to add.)
-            // Only the product that really belongs to this device type is touched. The old fallback
-            // detach($inputId) passed a DEVICE TYPE id where a PRODUCT id is expected, so it could remove an
-            // unrelated product that happened to share that number.
-            $line = $supplier->products()->where('device_type_id', $deviceType->id)->first();
-            if ($line) {
-                $remaining = (int) ($line->pivot->qty ?? 0) - $qty;
-
-                if ($remaining > 0) {
-                    $supplier->products()->updateExistingPivot($line->id, ['qty' => $remaining]);
-                } else {
-                    $supplier->products()->detach($line->id);
-                }
-            }
+            // The supplier keeps the product on its list: the list says what the supplier SUPPLIES, not what is on
+            // order (purchase orders say that). Removing it here made the supplier "stop supplying" the device after
+            // the first stock-in, which then blocked its next purchase order and delivery.
 
             $ledger = \App\Models\StockTransferLedger::create([
                 'stock_id'              => $stock->id,

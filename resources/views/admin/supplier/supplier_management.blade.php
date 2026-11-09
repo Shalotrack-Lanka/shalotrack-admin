@@ -33,12 +33,6 @@
                 </div>
             @endif
 
-            {{-- COMMON DATALIST FOR PRODUCTS --}}
-            <datalist id="existing-products">
-                @foreach($allProducts as $p)
-                    <option value="{{ $p->product_name }}"></option>
-                @endforeach
-            </datalist>
 
             {{-- ===================== SEARCH SUPPLIERS ===================== --}}
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
@@ -147,61 +141,14 @@
                                                             <div class="md:col-span-2"><label class="block mb-1">Tax / VAT Reg. No.</label><input type="text" name="gstin" value="{{ $supplier->gstin_number }}" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
                                                             <div class="md:col-span-2"><label class="block mb-1">Address</label><textarea name="address" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm">{{ $supplier->address }}</textarea></div>
                                                             
-                                                            {{-- DYNAMIC PRODUCTS IN EDIT FORM --}}
-                                                            @php
-                                                                $editProducts = $supplier->products->map(function($p) {
-                                                                    return [
-                                                                        'id' => rand(100000, 999999), 
-                                                                        'product_name' => $p->product_name,
-                                                                        'price' => $p->pivot->price,
-                                                                        'qty' => $p->pivot->qty ?? 0
-                                                                    ];
-                                                                })->values()->toArray();
-                                                            @endphp
-
-                                                            <div class="md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-200 mt-2" 
-                                                                 x-data="{
-                                                                     products: {{ json_encode($editProducts) }},
-                                                                     init() { if (this.products.length === 0) this.addProduct(); },
-                                                                     addProduct() { this.products.push({ id: Date.now(), product_name: '', price: '', qty: '' }); },
-                                                                     removeProduct(index) { this.products.splice(index, 1); }
-                                                                 }">
-                                                                <h4 class="font-bold mb-3 text-gray-700">Assign Products</h4>
-                                                                <template x-for="(item, index) in products" :key="item.id">
-                                                                    <div class="flex flex-wrap md:flex-nowrap gap-2 items-end mb-3">
-                                                                        <div class="flex-1 w-full">
-                                                                            <label class="block mb-1 text-[10px]">Product Name</label>
-                                                                            <select required 
-                                                                                    x-model="item.product_name" 
-                                                                                    :name="`products[${index}][product_name]`" 
-                                                                                    class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs bg-white">
-                                                                                <option value="">Select product...</option>
-                                                                                @foreach($deviceTypes as $type)
-                                                                                    <option value="{{ $type->id }}">
-                                                                                        {{ $type->device_category }} {{$type->model }}
-                                                                                    </option>
-                                                                                @endforeach
-                                                                            </select>
-                                                                        </div>
-                                                                        <div class="w-1/4 md:w-28">
-                                                                            <label class="block mb-1 text-[10px]">Unit Price</label>
-                                                                            <input type="number" step="0.01" min="0" x-model="item.price" :name="`products[${index}][price]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0.00">
-                                                                        </div>
-                                                                        <div class="w-1/4 md:w-24">
-                                                                            <label class="block mb-1 text-[10px]">Qty</label>
-                                                                            <input type="number" step="1" min="0" x-model="item.qty" :name="`products[${index}][qty]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0">
-                                                                        </div>
-                                                                        <div class="w-1/4 md:w-32">
-                                                                            <label class="block mb-1 text-[10px] text-gray-500">Total Price</label>
-                                                                            <div class="h-9 px-3 flex items-center bg-gray-200 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 overflow-hidden">
-                                                                                Rs. <span x-text="( (item.price || 0) * (item.qty || 0) ).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})" class="ml-1"></span>
-                                                                            </div>
-                                                                        </div>
-                                                                        <button type="button" @click="removeProduct(index)" class="bg-red-50 text-red-600 h-9 px-3 rounded-lg border border-red-200 w-auto font-bold hover:bg-red-100">X</button>
-                                                                    </div>
-                                                                </template>
-                                                                <button type="button" @click="addProduct" class="text-xs text-blue-600 font-bold mt-1">+ Add Another Product</button>
-                                                            </div>
+                                                            {{-- PRODUCTS IN EDIT FORM (each line keeps its device link) --}}
+                                                            @include('admin.supplier._product_lines', [
+                                                                'initial' => $supplier->products->map(fn ($p) => [
+                                                                    'choice' => $p->device_type_id ? 'dt:' . $p->device_type_id : 'name:' . $p->product_name,
+                                                                    'price'  => $p->pivot->price,
+                                                                    'qty'    => $p->pivot->qty ?? 0,
+                                                                ])->values()->all(),
+                                                            ])
 
                                                             <div class="md:col-span-2 flex justify-end gap-2 pt-2 border-t border-gray-100">
                                                                 <button type="button" @click="editModalOpen = false" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-bold shadow-sm cursor-pointer">Cancel</button>
@@ -245,39 +192,8 @@
                     <div class="md:col-span-2"><label class="block mb-1">Tax / VAT Reg. No.</label><input type="text" name="gstin" class="w-full rounded-lg border-gray-300 h-9 shadow-sm"></div>
                     <div class="md:col-span-2"><label class="block mb-1">Address</label><textarea name="address" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm"></textarea></div>
 
-                    {{-- DYNAMIC PRODUCTS IN ADD FORM --}}
-                    <div class="md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-200 mt-2" 
-                         x-data="{
-                             products: [{ id: Date.now(), product_name: '', price: '', qty: '' }],
-                             addProduct() { this.products.push({ id: Date.now(), product_name: '', price: '', qty: '' }); },
-                             removeProduct(index) { if(this.products.length > 1) { this.products.splice(index, 1); } }
-                         }">
-                        <h4 class="font-bold mb-3 text-gray-700">Assign Products</h4>
-                        <template x-for="(item, index) in products" :key="item.id">
-                            <div class="flex flex-wrap md:flex-nowrap gap-2 items-end mb-3">
-                                <div class="flex-1 w-full">
-                                    <label class="block mb-1 text-[10px]">Product Name</label>
-                                    <input type="text" list="existing-products" required x-model="item.product_name" :name="`products[${index}][product_name]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="Select or type new product...">
-                                </div>
-                                <div class="w-1/4 md:w-28">
-                                    <label class="block mb-1 text-[10px]">Unit Price</label>
-                                    <input type="number" step="0.01" min="0" x-model="item.price" :name="`products[${index}][price]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0.00">
-                                </div>
-                                <div class="w-1/4 md:w-24">
-                                    <label class="block mb-1 text-[10px]">Qty</label>
-                                    <input type="number" step="1" min="0" x-model="item.qty" :name="`products[${index}][qty]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0">
-                                </div>
-                                <div class="w-1/4 md:w-32">
-                                    <label class="block mb-1 text-[10px] text-gray-500">Total Price</label>
-                                    <div class="h-9 px-3 flex items-center bg-gray-200 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 overflow-hidden">
-                                        Rs. <span x-text="( (item.price || 0) * (item.qty || 0) ).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})" class="ml-1"></span>
-                                    </div>
-                                </div>
-                                <button type="button" @click="removeProduct(index)" class="bg-red-50 text-red-600 h-9 px-3 rounded-lg border border-red-200 w-auto font-bold hover:bg-red-100">X</button>
-                            </div>
-                        </template>
-                        <button type="button" @click="addProduct" class="text-xs text-blue-600 font-bold mt-1">+ Add Another Product</button>
-                    </div>
+                    {{-- PRODUCTS IN ADD FORM --}}
+                    @include('admin.supplier._product_lines', ['initial' => []])
 
                     <div class="md:col-span-2 flex gap-2 pt-2 border-t border-gray-100">
                         <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-bold shadow-sm">Reset</button>

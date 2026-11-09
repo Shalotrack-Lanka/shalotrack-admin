@@ -44,7 +44,13 @@
                             <td class="p-3">{{ $t->senderName() }}</td>
                             <td class="p-3">{{ $t->device_category }}</td>
                             <td class="p-3 text-right">{{ $t->quantity }}</td>
-                            <td class="p-3 text-right"><input type="text" inputmode="decimal" name="prices[{{ $t->id }}]" x-model="price[{{ $t->id }}]" value="{{ old('prices.' . $t->id) }}" placeholder="0.00" class="w-32 text-right text-sm border border-slate-300 rounded-lg px-2 py-1"></td>
+                            <td class="p-3 text-right"><input type="text" inputmode="decimal" name="prices[{{ $t->id }}]" x-model="price[{{ $t->id }}]" placeholder="0.00" class="w-32 text-right text-sm border rounded-lg px-2 py-1" :class="differs({{ $t->id }}) ? 'border-amber-400 bg-amber-50' : 'border-slate-300'">
+                                @if(($approved[$t->id] ?? null) !== null)
+                                    <div class="text-[10px] text-slate-400 mt-0.5">Approved {{ $priceLabel }}: {{ \App\Support\Money::format($approved[$t->id]) }}</div>
+                                @else
+                                    <div class="text-[10px] text-amber-700 mt-0.5">No approved price (Device Prices)</div>
+                                @endif
+                            </td>
                             <td class="p-3 text-right font-bold" x-text="line({{ $t->id }}, {{ $t->quantity }})">0.00</td>
                         </tr>
                     @empty
@@ -73,10 +79,15 @@
     <script>
         function invoiceForm() {
             const qty = @js($transfers->pluck('quantity', 'id'));
+            const approved = @js(collect($approved)->map(fn ($c) => $c === null ? null : \App\Support\Money::fromCents($c)));
+            const previous = @js(old('prices', []));
             const cents = v => { v = String(v || '').replace(/[, ]/g, ''); return /^\d+(\.\d{1,2})?$/.test(v) ? Math.round(parseFloat(v) * 100) : 0; };
             const fmt = c => (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             return {
-                picked: [], price: {},
+                picked: [],
+                // A price typed before a validation error wins; otherwise the approved price from Device Prices.
+                price: Object.fromEntries(Object.keys(qty).map(id => [id, (previous && previous[id] != null && previous[id] !== '') ? previous[id] : (approved[id] || '')])),
+                differs(id) { return approved[id] != null && cents(this.price[id]) !== cents(approved[id]); },
                 line(id, q) { return fmt(cents(this.price[id]) * q); },
                 total() { return fmt(this.picked.reduce((s, id) => s + cents(this.price[id]) * (qty[id] || 0), 0)); },
             };

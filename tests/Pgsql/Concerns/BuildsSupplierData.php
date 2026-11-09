@@ -53,4 +53,14 @@ trait BuildsSupplierData
     {
         $supplier->products()->attach($product->id, ['price' => $price, 'qty' => $qty]);
     }
+
+    /** Put a device type on a supplier's product list (stock can only come in from a supplier that supplies it). */
+    protected function supplies(Supplier $supplier, \App\Models\DeviceType $type): void
+    {
+        $product = Product::firstOrCreate(
+            ['device_type_id' => $type->id],
+            ['product_name' => trim($type->device_category . ' ' . $type->model)]
+        );
+        $supplier->products()->syncWithoutDetaching([$product->id => ['price' => 1, 'qty' => 0]]);
+    }
 }

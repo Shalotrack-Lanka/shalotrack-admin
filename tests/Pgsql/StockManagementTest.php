@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Stock;
 use App\Models\StockTransferLedger;
+use App\Models\Supplier;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -50,8 +51,15 @@ class StockManagementTest extends PgsqlTestCase
         return $this->admin ??= $this->makeAdmin('ADMIN');
     }
 
+    /** A stock-in by hand. The device is put on the supplier's product list first (stock-in requires it). */
     private function stockIn(int $typeId, int $supplierId, $qty)
     {
+        $supplier = Supplier::find($supplierId);
+        $type = \App\Models\DeviceType::find($typeId);
+        if ($supplier && $type) {
+            $this->supplies($supplier, $type);
+        }
+
         return $this->actingAs($this->admin())->post(route('admin.stock.store'), [
             'device_type_id' => $typeId,
             'supplier_id'    => $supplierId,
@@ -169,21 +177,31 @@ class StockManagementTest extends PgsqlTestCase
         $this->assertSame(7, $this->companyStock($type));
     }
 
-    public function test_stock_in_removes_the_product_from_that_suppliers_offer_list_only(): void
+    public function test_stock_in_keeps_the_device_on_the_suppliers_list(): void
     {
         $type = $this->makeDeviceType();
         $supplier = $this->makeSupplier();
-        $other = $this->makeSupplier();
         $received = $this->makeDeviceProduct($type);
         $stays = $this->makePlainProduct();
-        $this->offer($supplier, $received);
+        $this->offer($supplier, $received, 100, 5);
         $this->offer($supplier, $stays);
-        $this->offer($other, $received);
 
-        $this->stockIn($type->id, $supplier->id, 2);
+        $this->stockIn($type->id, $supplier->id, 5)->assertSessionHasNoErrors();
 
-        $this->assertEqualsCanonicalizing([$stays->id], $supplier->products()->pluck('products.id')->all());
-        $this->assertSame([$received->id], $other->products()->pluck('products.id')->all(), 'another supplier keeps its offer');
+        $this->assertEqualsCanonicalizing([$received->id, $stays->id], $supplier->products()->pluck('products.id')->all());
+        $this->assertSame(5, (int) $supplier->products()->where('products.id', $received->id)->first()->pivot->qty, 'the usual order qty is not used up');
+    }
+
+    public function test_stock_in_from_a_supplier_that_does_not_supply_the_device_is_refused(): void
+    {
+        $type = $this->makeDeviceType();
+        $this->stockFor($type, 10);
+        $supplier = $this->makeSupplier();
+
+        $this->actingAs($this->admin())->post(route('admin.stock.store'), ['device_type_id' => $type->id, 'supplier_id' => $supplier->id, 'stock_in' => 5])
+            ->assertSessionHasErrors('device_type_id');
+
+        $this->assertSame(10, $this->companyStock($type));
     }
 
     public function test_the_biggest_allowed_quantity_is_accepted(): void
@@ -371,6 +389,8 @@ class StockManagementTest extends PgsqlTestCase
         $b = $this->makeDeviceType();
         $this->stockFor($a, 10);
         $supplier = $this->makeSupplier();
+        $this->supplies($supplier, $a);
+        $this->supplies($supplier, $b);
 
         $this->runImport($this->importFile([
             [$a->device_category, $a->model, $supplier->name, 5, '2026-03-01'],
@@ -387,6 +407,7 @@ class StockManagementTest extends PgsqlTestCase
     {
         $type = $this->makeDeviceType();
         $supplier = $this->makeSupplier(['name' => 'Autotest Mixed Case']);
+        $this->supplies($supplier, $type);
 
         $this->runImport($this->importFile([
             [strtoupper($type->device_category), '  ' . strtolower($type->model) . '  ', 'autotest MIXED case', 3, null],
@@ -399,6 +420,7 @@ class StockManagementTest extends PgsqlTestCase
     {
         $type = $this->makeDeviceType();
         $supplier = $this->makeSupplier();
+        $this->supplies($supplier, $type);
 
         $this->runImport($this->importFile([[$type->device_category, $type->model, $supplier->name, 2, null]]))->assertSessionHasNoErrors();
 
@@ -409,6 +431,7 @@ class StockManagementTest extends PgsqlTestCase
     {
         $type = $this->makeDeviceType();
         $supplier = $this->makeSupplier();
+        $this->supplies($supplier, $type);
         $serial = Date::PHPToExcel(strtotime('2026-04-15'));
 
         $this->runImport($this->importFile([[$type->device_category, $type->model, $supplier->name, 2, $serial]]))->assertSessionHasNoErrors();
@@ -420,6 +443,7 @@ class StockManagementTest extends PgsqlTestCase
     {
         $type = $this->makeDeviceType();
         $supplier = $this->makeSupplier();
+        $this->supplies($supplier, $type);
         $csv = "device_category,model,supplier_name,stock_in,stocked_in_date\n\"{$type->device_category}\",\"{$type->model}\",\"{$supplier->name}\",4,2026-05-01\n";
         $path = tempnam(sys_get_temp_dir(), 'stk') . '.csv';
         file_put_contents($path, $csv);
@@ -436,6 +460,7 @@ class StockManagementTest extends PgsqlTestCase
         $good = $this->makeDeviceType();
         $this->stockFor($good, 10);
         $supplier = $this->makeSupplier();
+        $this->supplies($supplier, $good);
         $ledger = StockTransferLedger::count();
 
         $response = $this->runImport($this->importFile([
@@ -456,6 +481,7 @@ class StockManagementTest extends PgsqlTestCase
         $type = $this->makeDeviceType();
         $this->stockFor($type, 0);
         $supplier = $this->makeSupplier();
+        $this->supplies($supplier, $type);
 
         $this->runImport($this->importFile([
             [$type->device_category, $type->model, $supplier->name, 5, null],

@@ -6,6 +6,8 @@ use App\Models\DeviceType;
 use App\Models\Stock;
 use App\Models\StockTransferLedger;
 use App\Models\Supplier;
+use App\Services\Delivery\DeliveryPolicy;
+use App\Services\Supplier\SupplierCatalogue;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Validator;
@@ -53,6 +55,8 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
                 ['device_type_id' => $deviceType->id],
                 ['company_available_stock' => 0]
             );
+            // Locked like Manage Stock and device registration, so no stock unit is lost to a concurrent update.
+            $stock = Stock::whereKey($stock->getKey())->lockForUpdate()->firstOrFail();
 
             $stock->device_category_type = $deviceLabel;
             $stock->company_available_stock = ($stock->company_available_stock ?? 0) + $qty;
@@ -123,6 +127,27 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
                             "{$sup->name} has a scanned delivery of {$type->device_category} {$type->model} waiting. Add it from Add Raw Devices (choose the delivery) instead of importing it."
                         );
                     }
+                }
+
+                // Same rules as Add Raw Devices: the supplier must supply this device (its product list), and from the
+                // delivery enforcement date stock comes only from scanned deliveries.
+                if (is_string($data['supplier_name'] ?? null) && is_string($data['device_category'] ?? null) && is_string($data['model'] ?? null)) {
+                    $type = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($data['device_category']))])
+                        ->whereRaw('LOWER(model) = ?', [strtolower(trim($data['model']))])->first();
+                    $sup = Supplier::whereRaw('LOWER(name) = ?', [strtolower(trim($data['supplier_name']))])->where('status', 'Active')->first();
+
+                    if ($type && $sup && ! app(SupplierCatalogue::class)->supplies($sup->id, $type->id)) {
+                        $validator->errors()->add(
+                            "{$rowNumber}.supplier_name",
+                            SupplierCatalogue::notSuppliedMessage($sup->name, trim($type->device_category . ' ' . $type->model))
+                        );
+                    }
+                }
+                if ($deliveries && DeliveryPolicy::enforcing(config('supplier_deliveries.enforce_from'), now()->toDateString())) {
+                    $validator->errors()->add(
+                        "{$rowNumber}.stock_in",
+                        'Stock is now added only from scanned deliveries (Supplier Management -> Receive delivery), not from a file.'
+                    );
                 }
 
                 if (is_string($data['supplier_name'] ?? null) && trim($data['supplier_name']) !== '') {

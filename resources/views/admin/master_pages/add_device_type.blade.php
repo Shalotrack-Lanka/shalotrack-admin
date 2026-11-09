@@ -82,6 +82,9 @@
                                         <th class="p-2.5">Model</th>
                                         <th class="p-2.5">Language (Protocol)</th>
                                         <th class="p-2.5">Features</th>
+                                        <th class="p-2.5" title="Suppliers with this device on their product list">Suppliers</th>
+                                        <th class="p-2.5 text-right">Stock</th>
+                                        <th class="p-2.5">Price</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 bg-white">
@@ -103,10 +106,26 @@
                                                     <span class="text-gray-400">-</span>
                                                 @endif
                                             </td>
+                                            @php $sups = $suppliersByType[$type->id] ?? collect(); @endphp
+                                            <td class="p-2.5">
+                                                @if($sups->isNotEmpty())
+                                                    {{ $sups->join(', ') }}
+                                                @else
+                                                    <a href="{{ route('admin.suppliers') }}" class="text-amber-700 underline" title="Without a supplier it cannot be ordered, received or stocked in">No supplier</a>
+                                                @endif
+                                            </td>
+                                            <td class="p-2.5 text-right font-mono">{{ (int) ($stockByType[$type->id] ?? 0) }}</td>
+                                            <td class="p-2.5">
+                                                @if(isset($pricedTypes[$type->id]))
+                                                    <span class="text-emerald-700">Set</span>
+                                                @else
+                                                    <a href="{{ route('admin.device-prices') }}" class="text-amber-700 underline" title="Without a price, invoices to distributors and dealers cannot be pre-filled">Not set</a>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="p-4 text-center text-gray-400">
+                                            <td colspan="8" class="p-4 text-center text-gray-400">
                                                 No device types added yet.
                                             </td>
                                         </tr>

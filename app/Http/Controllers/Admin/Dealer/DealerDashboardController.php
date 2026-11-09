@@ -53,7 +53,7 @@ class DealerDashboardController extends Controller
             $user->save();
         }
 
-        // AUTO-FIX: Customer nathi ewa stock ekata gannawa
+        // AUTO-FIX: devices with no customer are taken back into stock
         // LOGGED as of 2026-09-29 -- this correction should be impossible given
         // the assign/unassign/reassign code paths in this controller, so if it
         // keeps firing in production logs, something outside this app is writing
@@ -367,7 +367,7 @@ class DealerDashboardController extends Controller
         return back()->with('success', "Device IMEI {$device->imei_number} successfully assigned to {$customer->name}!");
     }
 
-    // 💡 1. UNASSIGN: Status -> Pending. (Habai Customer wa mathaka thiya gannawa)
+    // 1. UNASSIGN: Status -> Pending. (The customer is still remembered on the device.)
     public function unassignDevice($shdevice_id)
     {
         $dealerId = $this->dealerIdOrFail();
@@ -390,7 +390,7 @@ class DealerDashboardController extends Controller
         // actually assigned in the first place).
         $this->commission->recordReversed($device, 'device_unassigned');
 
-        // Customer ge App account eken device eka ain karanawa, eyaata aluth ekak denna puluwan wenna
+        // Remove the device from the customer's app account, so a new one can be given to them
         if ($customerId) {
             $customer = DealerCustomerAd::find($customerId);
             if ($customer) {
@@ -410,7 +410,7 @@ class DealerDashboardController extends Controller
         return back()->with('success', "Device IMEI {$device->imei_number} moved to Pending Repair!");
     }
 
-    // 💡 2. REASSIGN: Status -> Assigned. (Parana customer tama apahu denawa)
+    // 2. REASSIGN: Status -> Assigned. (Given back to the same previous customer.)
     public function reassignDevice($shdevice_id)
     {
         $dealer   = auth()->user()->dealer;
@@ -448,7 +448,7 @@ class DealerDashboardController extends Controller
             $this->commission->recordEarned($device, $dealer, 'device_reassigned');
         }
 
-        // Customer ge App eke list ekata apahu add karanawa
+        // Add the device back to the list in the customer's app
         $customer = DealerCustomerAd::find($customerId);
         if ($customer) {
             $currentImeis = $customer->imei_numbers ?? [];
@@ -470,7 +470,7 @@ class DealerDashboardController extends Controller
         return back()->with('success', "Device IMEI {$device->imei_number} reassigned to the original customer successfully!");
     }
 
-    // 💡 3. BROKEN: Status -> Broken. (Meka hadanna ba, Customer ain karanne na history ekata ona nisa)
+    // 3. BROKEN: Status -> Broken. (Cannot be repaired. The customer is not removed: the history needs it.)
     public function markDeviceBroken($shdevice_id)
     {
         $dealerId = $this->dealerIdOrFail();
@@ -496,7 +496,7 @@ class DealerDashboardController extends Controller
         return back()->with('success', "Device IMEI {$device->imei_number} marked as Broken.");
     }
 
-    // 💡 4. TESTING: Broken idan apahu Pending walata
+    // 4. TESTING: from Broken back to Pending
     public function moveToPending($shdevice_id)
     {
         $dealerId = $this->dealerIdOrFail();
