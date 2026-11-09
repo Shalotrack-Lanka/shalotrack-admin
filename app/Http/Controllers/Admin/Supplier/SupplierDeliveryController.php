@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin\Supplier;
 
 use App\Http\Controllers\Controller;
-use App\Models\DeviceType;
 use App\Models\Supplier;
 use App\Models\SupplierDelivery;
 use App\Services\Delivery\ScanBatch;
@@ -20,7 +19,7 @@ use Illuminate\Validation\Rule;
  */
 class SupplierDeliveryController extends Controller
 {
-    public function create(int $id)
+    public function create(int $id, SupplierDeliveryService $service)
     {
         $this->ensureEnabled();
 
@@ -35,7 +34,8 @@ class SupplierDeliveryController extends Controller
 
         return view('admin.supplier.receive_delivery', [
             'supplier'    => $supplier,
-            'deviceTypes' => DeviceType::orderBy('device_category')->orderBy('model')->get(),
+            // Only what this supplier supplies (its product list), never every device type in the system.
+            'deviceTypes' => $service->deviceTypesFor($supplier->id),
             'deliveries'  => $deliveries,
             'maxScans'    => ScanBatch::MAX,
         ]);

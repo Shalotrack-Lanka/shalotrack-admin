@@ -22,6 +22,24 @@ use Illuminate\Validation\ValidationException;
 class SupplierDeliveryService
 {
     /**
+     * The device types this supplier supplies: the device-linked products on its product list (Supplier
+     * Management -> Edit -> Products). Free-text products (SIM packages and the like) have no device type and
+     * are not included.
+     *
+     * @return \Illuminate\Support\Collection<int, DeviceType>
+     */
+    public function deviceTypesFor(int $supplierId)
+    {
+        return DeviceType::whereIn('id', function ($q) use ($supplierId) {
+            $q->select('products.device_type_id')
+                ->from('products')
+                ->join('supplier_products', 'supplier_products.product_id', '=', 'products.id')
+                ->where('supplier_products.supplier_id', $supplierId)
+                ->whereNotNull('products.device_type_id');
+        })->orderBy('device_category')->orderBy('model')->get();
+    }
+
+    /**
      * @param  array<int,mixed> $scans raw scanned values
      * @return array{delivery: ?SupplierDelivery, accepted: list<string>, rejected: list<array{identifier: string, reason: string}>}
      */
@@ -42,6 +60,14 @@ class SupplierDeliveryService
         if ($kind === SupplierDelivery::KIND_DEVICE) {
             if (! $deviceTypeId || ! DeviceType::whereKey($deviceTypeId)->exists()) {
                 throw ValidationException::withMessages(['device_type_id' => 'Choose the device type being delivered.']);
+            }
+            // Only a device this supplier is set up to supply (its product list). The screen only offers those,
+            // so this catches a stale page or a hand-made request, not normal use.
+            if (! $this->deviceTypesFor($supplier->id)->contains('id', $deviceTypeId)) {
+                throw ValidationException::withMessages(['device_type_id' => sprintf(
+                    '%s does not supply this device type. Add it to the supplier\'s products first.',
+                    $supplier->name
+                )]);
             }
         } else {
             $deviceTypeId = null;

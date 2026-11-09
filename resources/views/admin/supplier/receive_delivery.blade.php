@@ -28,7 +28,7 @@
 
             {{-- All values the script needs are passed as plain data (no comments inside @js). --}}
             <main class="p-4 md:p-6 flex-1 space-y-6"
-                x-data="deliveryScan({ postUrl: @js(route('admin.suppliers.deliveries.store', $supplier->id)), max: @js($maxScans) })"
+                x-data="deliveryScan({ postUrl: @js(route('admin.suppliers.deliveries.store', $supplier->id)), max: @js($maxScans), onlyTypeId: @js($deviceTypes->count() === 1 ? $deviceTypes->first()->id : null) })"
                 x-init="init()">
 
                 <div class="flex items-center justify-between">
@@ -64,13 +64,24 @@
                             <p x-show="rows.length > 0" x-cloak class="text-[11px] text-gray-400 mt-1">Clear the list to change the delivery type.</p>
                         </div>
                         <div x-show="kind === 'DEVICE'" x-cloak>
-                            <label class="block mb-1">Device Category / Type (applies to the whole delivery)</label>
-                            <select x-model="deviceTypeId" :disabled="rows.length > 0" class="w-full rounded-lg border-gray-300 h-10 shadow-sm disabled:bg-gray-100">
-                                <option value="">-- Select Device Type --</option>
-                                @foreach($deviceTypes as $type)
-                                    <option value="{{ $type->id }}">{{ $type->device_category }} {{ $type->model }}</option>
-                                @endforeach
-                            </select>
+                            <label class="block mb-1">Product from {{ $supplier->name }} (applies to the whole delivery)</label>
+                            @if($deviceTypes->isEmpty())
+                                <div class="p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 font-normal">
+                                    {{ $supplier->name }} has no devices on its product list yet. Add the devices it supplies
+                                    (Supplier Management &rarr; Edit &rarr; Products), then come back here.
+                                    <a href="{{ route('admin.suppliers') }}" class="font-bold underline">Go to Supplier Management</a>
+                                </div>
+                            @else
+                                <select x-model="deviceTypeId" :disabled="rows.length > 0" class="w-full rounded-lg border-gray-300 h-10 shadow-sm disabled:bg-gray-100">
+                                    @if($deviceTypes->count() > 1)
+                                        <option value="">-- Select product --</option>
+                                    @endif
+                                    @foreach($deviceTypes as $type)
+                                        <option value="{{ $type->id }}">{{ $type->device_category }} {{ $type->model }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[11px] font-normal text-gray-400 mt-1">Only the devices on this supplier's product list are shown.</p>
+                            @endif
                         </div>
                         <div>
                             <label class="block mb-1">Supplier delivery note / invoice no. (optional)</label>
@@ -233,7 +244,8 @@
                 postUrl: cfg.postUrl,
                 max: cfg.max,
                 kind: 'DEVICE',
-                deviceTypeId: '',
+                // A supplier with exactly one device product has nothing to choose: it is selected already.
+                deviceTypeId: cfg.onlyTypeId ? String(cfg.onlyTypeId) : '',
                 reference: '',
                 note: '',
                 input: '',
