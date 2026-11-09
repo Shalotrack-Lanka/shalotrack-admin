@@ -35,6 +35,41 @@ class SupplierCatalogue
             ->exists();
     }
 
+    /**
+     * Is this a SIM product (not a device)? A product with no device type whose name says SIM / SIMs / SIM card(s).
+     * One rule for the supplier list, purchase orders and the receive screen, so "4 sims of mobitel sims" counts.
+     */
+    public static function isSimProduct(?Product $product): bool
+    {
+        return $product !== null
+            && $product->device_type_id === null
+            && preg_match('/\bsims?\b|\bsim[\s-]?cards?\b/i', (string) $product->product_name) === 1;
+    }
+
+    /** The SIM types Add SIM / Setup Device use (their stored values). */
+    public const SIM_TYPES = ['dialog' => 'Dialog Axiata', 'mobitel' => 'Mobitel Sri Lanka'];
+
+    /** "Mobitel SIM 4G" -> mobitel, "Dialog SIM card" -> dialog, else null (the admin picks it). */
+    public static function simTypeFrom(array $productNames): ?string
+    {
+        foreach ($productNames as $name) {
+            foreach (array_keys(self::SIM_TYPES) as $type) {
+                if (str_contains(mb_strtolower((string) $name), $type)) {
+                    return $type;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** Does this supplier supply SIM cards (a SIM product on its list)? */
+    public function suppliesSims(int $supplierId): bool
+    {
+        return Supplier::find($supplierId)?->products()->whereNull('products.device_type_id')->get()
+            ->contains(fn (Product $p) => self::isSimProduct($p)) ?? false;
+    }
+
     /** The message when it does not (one wording everywhere). */
     public static function notSuppliedMessage(string $supplierName, string $typeName): string
     {

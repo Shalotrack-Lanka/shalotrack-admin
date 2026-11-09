@@ -7,7 +7,6 @@
 
     @vite(['resources/css/app.css','resources/js/app.js'])
 
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 </head>
 <body x-data="{ sidebarOpen: false }"> <!-- Added Alpine state for Mobile Menu Toggle -->
@@ -103,7 +102,6 @@
 
     </div>
 
-<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 
 </body>
 </html>

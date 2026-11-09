@@ -68,9 +68,11 @@ final class ScanBatch
      * A SIM delivery: every ICCID with the 10-digit SIM number printed on its pack (scanned or typed).
      *
      * @param  array<int,mixed> $raw  [{iccid, sim_number}, ...]
-     * @return array{valid: list<array{iccid: string, sim_number: string}>, rejected: list<array{identifier: string, reason: string}>}
+     * With $requireImsi each SIM also needs its 15-digit IMSI (a delivery creates the SIM in the SIM list).
+     *
+     * @return array{valid: list<array{iccid: string, sim_number: string, imsi?: string}>, rejected: list<array{identifier: string, reason: string}>}
      */
-    public static function classifySims(array $raw): array
+    public static function classifySims(array $raw, bool $requireImsi = false): array
     {
         if (count($raw) > self::MAX) {
             throw new \InvalidArgumentException('A delivery can hold at most ' . self::MAX . ' scans at a time.');
@@ -80,6 +82,7 @@ final class ScanBatch
         $rejected = [];
         $seenIccid = [];
         $seenNumber = [];
+        $seenImsi = [];
 
         foreach ($raw as $row) {
             if (! is_array($row)) {
@@ -109,9 +112,23 @@ final class ScanBatch
                 $rejected[] = ['identifier' => $iccid, 'reason' => "SIM number {$number} is on another SIM in this delivery."];
                 continue;
             }
+            $imsi = preg_replace('/\s+/', '', (string) ($row['imsi'] ?? ''));
+            if ($requireImsi && ! preg_match('/^\d{15}$/', $imsi)) {
+                $rejected[] = ['identifier' => $iccid, 'reason' => 'The IMSI must be exactly 15 digits.'];
+                continue;
+            }
+            if ($requireImsi && isset($seenImsi[$imsi])) {
+                $rejected[] = ['identifier' => $iccid, 'reason' => "IMSI {$imsi} is on another SIM in this delivery."];
+                continue;
+            }
             $seenIccid[$iccid] = true;
             $seenNumber[$number] = true;
-            $valid[] = ['iccid' => $iccid, 'sim_number' => $number];
+            if ($requireImsi) {
+                $seenImsi[$imsi] = true;
+            }
+            $valid[] = $requireImsi
+                ? ['iccid' => $iccid, 'sim_number' => $number, 'imsi' => $imsi]
+                : ['iccid' => $iccid, 'sim_number' => $number];
         }
 
         return ['valid' => $valid, 'rejected' => $rejected];

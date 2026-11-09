@@ -161,7 +161,7 @@
     </div>
 
     {{-- ── Stat cards ───────────────────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
             <div class="text-xs text-gray-400 uppercase font-bold mb-1">Products Supplied</div>
             <div class="text-2xl font-bold text-gray-800">{{ $supplier->products->count() }}</div>
@@ -180,6 +180,13 @@
                 {{ $totalInvoiceValue > 0 ? 'Rs. ' . number_format($totalInvoiceValue, 2) : '—' }}
             </div>
         </div>
+        @if($paymentsReady)
+            <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                <div class="text-xs text-gray-400 uppercase font-bold mb-1">Still Owed to Supplier</div>
+                <div class="text-2xl font-bold {{ $owedCents > 0 ? 'text-amber-700' : 'text-emerald-700' }}">Rs. {{ number_format($owedCents / 100, 2) }}</div>
+                <div class="text-[11px] text-gray-400 mt-1">Paid so far: Rs. {{ number_format($paidCents / 100, 2) }}</div>
+            </div>
+        @endif
     </div>
 
     {{-- ── Two-column detail + activity ────────────────────────────────────── --}}
@@ -341,6 +348,10 @@
                                 <th class="p-2">PO #</th>
                                 <th class="p-2">Date</th>
                                 <th class="p-2 text-right">Grand Total</th>
+                                @if($paymentsReady)
+                                    <th class="p-2 text-right">Paid</th>
+                                    <th class="p-2 text-right">Owed</th>
+                                @endif
                                 <th class="p-2">Status</th>
                                 <th class="p-2"></th>
                             </tr>
@@ -354,6 +365,19 @@
                                     <td class="p-2 text-right font-bold text-gray-700 {{ $invoice->isCancelled() ? 'line-through' : '' }}">
                                         Rs. {{ number_format($invoice->grand_total, 2) }}
                                     </td>
+                                    @if($paymentsReady)
+                                        @php $m = $orderMoney[$invoice->id] ?? null; @endphp
+                                        <td class="p-2 text-right text-gray-700">{{ $m ? number_format($m['paid_cents'] / 100, 2) : '-' }}</td>
+                                        <td class="p-2 text-right">
+                                            @if($m && $m['status'] === 'PAID')
+                                                <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">Paid</span>
+                                            @elseif($m && $m['status'] !== 'CANCELLED')
+                                                <span class="font-bold text-amber-700">{{ number_format($m['balance_cents'] / 100, 2) }}</span>
+                                            @else
+                                                <span class="text-gray-400">-</span>
+                                            @endif
+                                        </td>
+                                    @endif
                                     <td class="p-2 whitespace-nowrap">
                                         @if($invoice->isCancelled())
                                             <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold text-[10px]" title="{{ $invoice->cancel_reason }}">Cancelled</span>
@@ -385,7 +409,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="p-4 text-center text-gray-400">
+                                    <td colspan="{{ $paymentsReady ? 7 : 5 }}" class="p-4 text-center text-gray-400">
                                         No invoices yet.
                                         <a href="{{ route('admin.supplier-invoice', ['supplier_id' => $supplier->id]) }}"
                                            class="text-blue-600 hover:underline ml-1">Create one</a>
@@ -396,6 +420,99 @@
                     </table>
                 </div>
             </div>
+
+            {{-- Payments to this supplier --}}
+            @if($paymentsReady)
+                @php $payable = $invoices->filter(fn ($i) => ($orderMoney[$i->id]['balance_cents'] ?? 0) > 0); @endphp
+                <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm" x-data="{ orderId: '', balances: @js($payable->mapWithKeys(fn ($i) => [$i->id => number_format($orderMoney[$i->id]['balance_cents'] / 100, 2, '.', '')])), amount: '' }">
+                    <h2 class="font-bold text-gray-800 text-sm mb-1">Payments to {{ $supplier->name }}</h2>
+                    <p class="text-[11px] text-gray-500 mb-4">Record what has been paid against each purchase order. A payment can never be more than the order still owes, and a wrong one is voided (kept on record), never deleted. An order with live payments cannot be edited or cancelled.</p>
+
+                    @if($payable->isEmpty())
+                        <div class="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold mb-4">Nothing is owed to this supplier right now.</div>
+                    @else
+                        <form method="POST" action="{{ route('admin.suppliers.payments.store', $supplier->id) }}" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-semibold text-gray-700 mb-5">
+                            @csrf
+                            <div class="md:col-span-3">
+                                <label class="block mb-1">Purchase order</label>
+                                <select name="supplier_invoice_id" x-model="orderId" @change="amount = balances[orderId] || ''" required class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                                    <option value="">-- Choose the order being paid --</option>
+                                    @foreach($payable as $i)
+                                        <option value="{{ $i->id }}">{{ $i->invoice_number }}: owed Rs. {{ number_format($orderMoney[$i->id]['balance_cents'] / 100, 2) }} of Rs. {{ number_format($i->grand_total, 2) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block mb-1">Amount (Rs.)</label>
+                                <input type="number" name="amount" x-model="amount" step="0.01" min="0.01" required class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block mb-1">Paid on</label>
+                                <input type="date" name="paid_on" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" required class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block mb-1">Method</label>
+                                <select name="method" required class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                                    @foreach(\App\Services\Supplier\SupplierPayments::METHODS as $code => $label)
+                                        <option value="{{ $code }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block mb-1">Reference (cheque no. / transfer ref., optional)</label>
+                                <input type="text" name="reference" maxlength="100" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block mb-1">Note (optional)</label>
+                                <input type="text" name="note" maxlength="500" class="w-full rounded-lg border-gray-300 h-9 shadow-sm">
+                            </div>
+                            <div class="md:col-span-3">
+                                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-bold shadow-sm text-xs">Record payment</button>
+                            </div>
+                        </form>
+                    @endif
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-50 text-gray-500 uppercase">
+                                <tr>
+                                    <th class="p-2">Date</th>
+                                    <th class="p-2">PO #</th>
+                                    <th class="p-2 text-right">Amount</th>
+                                    <th class="p-2">Method</th>
+                                    <th class="p-2">Reference</th>
+                                    <th class="p-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @forelse($paymentList as $pay)
+                                    <tr class="{{ $pay->isVoided() ? 'opacity-60' : '' }}">
+                                        <td class="p-2 whitespace-nowrap">{{ $pay->paid_on?->format('d M Y') }}</td>
+                                        <td class="p-2 font-mono">{{ $pay->purchaseOrder->invoice_number ?? '-' }}</td>
+                                        <td class="p-2 text-right font-bold {{ $pay->isVoided() ? 'line-through' : '' }}">Rs. {{ number_format((float) $pay->amount, 2) }}</td>
+                                        <td class="p-2">{{ \App\Services\Supplier\SupplierPayments::METHODS[$pay->method] ?? $pay->method }}</td>
+                                        <td class="p-2">{{ $pay->reference ?: '-' }}</td>
+                                        <td class="p-2 whitespace-nowrap text-right">
+                                            @if($pay->isVoided())
+                                                <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold text-[10px]" title="{{ $pay->void_reason }}">Voided</span>
+                                            @else
+                                                <form method="POST" action="{{ route('admin.suppliers.payments.void', [$supplier->id, $pay->id]) }}" class="inline"
+                                                    onsubmit="const r = prompt('Why is this payment being voided?'); if (!r || r.trim().length < 3) { return false; } this.reason.value = r.trim(); return true;">
+                                                    @csrf @method('DELETE')
+                                                    <input type="hidden" name="reason" value="">
+                                                    <button type="submit" class="text-red-600 hover:underline text-xs">Void</button>
+                                                </form>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="6" class="p-4 text-center text-gray-400">No payments recorded yet.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
 
         </div>
     </div>

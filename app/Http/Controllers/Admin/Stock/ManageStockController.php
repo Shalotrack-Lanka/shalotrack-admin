@@ -45,30 +45,35 @@ class ManageStockController extends Controller
             ])->groupBy('supplier_id')->map->values()
             : collect();
 
-        return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers', 'openDeliveries') + ['deliveriesOn' => SupplierDeliveryService::isEnabled()]);
+        // True = stock can only be added from a received delivery (no typed quantity, no import file).
+        $deliveryOnly = SupplierDeliveryService::isEnabled() && ! config('supplier_deliveries.allow_typed_stock');
+
+        return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers', 'openDeliveries', 'deliveryOnly'));
     }
 
     public function store(Request $request, SupplierDeliveryService $deliveries)
     {
         $deliveriesOn = SupplierDeliveryService::isEnabled();
+        // Stock comes only from a received delivery (its scanned units ARE the quantity), so it can never be more
+        // than the supplier delivered. config supplier_deliveries.allow_typed_stock re-opens typing (emergency only).
+        $deliveryOnly = $deliveriesOn && ! config('supplier_deliveries.allow_typed_stock');
 
         $request->validate([
             'device_type_id' => 'bail|required|integer|min:1|exists:device_types,id',
             // Only an Active supplier (the screen lists only those); bail keeps text / huge ids away from the database.
             'supplier_id'    => ['bail', 'required', 'integer', 'min:1', \Illuminate\Validation\Rule::exists('suppliers', 'id')->where('status', 'Active')],
-            // With delivery scanning on, stock comes ONLY from a scanned delivery: its quantity is the number of units
-            // actually received (never a typed number), so no more can be added than the supplier really delivered.
-            'delivery_id'    => $deliveriesOn ? ['required', 'integer', 'min:1'] : ['nullable', 'integer', 'min:1'],
-            'stock_in'       => $deliveriesOn
+            // A scanned delivery is chosen instead of typing a quantity: its quantity IS the number of scanned units.
+            'delivery_id'    => ['nullable', 'integer', 'min:1'],
+            'stock_in'       => $deliveryOnly
                 ? ['nullable', 'integer', 'min:1', 'max:1000000']
-                : ['required', 'integer', 'min:1', 'max:1000000'],
-        ], [
-            'delivery_id.required' => 'Choose the scanned delivery to add. Stock is added from what was received (Supplier Management -> Receive delivery), so it always matches what the supplier actually delivered.',
+                : ($deliveriesOn
+                ? ['required_without:delivery_id', 'nullable', 'integer', 'min:1', 'max:1000000']
+                : ['required', 'integer', 'min:1', 'max:1000000']),
         ]);
 
         $deliveryId = $deliveriesOn ? (int) $request->input('delivery_id') : null;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $deliveries, $deliveriesOn, $deliveryId) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $deliveries, $deliveriesOn, $deliveryId, $deliveryOnly) {
             
             $deviceType = DeviceType::findOrFail((int) $request->device_type_id);
             $supplier = Supplier::findOrFail((int) $request->supplier_id);
@@ -86,6 +91,11 @@ class ManageStockController extends Controller
             // Quantity: typed by hand, or (when a scanned delivery is chosen) the number of units scanned.
             $qty = (int) $request->stock_in;
             $delivery = null;
+            if ($deliveryOnly && ! $deliveryId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'delivery_id' => 'Stock is added only from a received delivery, never typed in. Receive it first (Supplier Management -> Receive delivery, against a purchase order), then choose that delivery here.'
+                ]);
+            }
             if ($deliveriesOn) {
                 // The quantity is the delivery's scanned units; whatever was typed is ignored.
                 ['delivery' => $delivery, 'qty' => $qty] = $deliveries->claimForStockIn((int) $request->supplier_id, $deviceType->id, $deliveryId);
@@ -132,6 +142,14 @@ class ManageStockController extends Controller
 
     public function importStock(Request $request)
     {
+        // The import file is typed quantities with no scanned units behind them: closed while stock must come
+        // from received deliveries.
+        if (SupplierDeliveryService::isEnabled() && ! config('supplier_deliveries.allow_typed_stock')) {
+            return redirect()->back()->withErrors([
+                'excel_file' => 'Stock can only be added from received deliveries now, so the stock import is closed. Receive the delivery (against a purchase order) and add it to stock here.',
+            ]);
+        }
+
         $request->validate([
             // 'txt' because the server reports every real .csv as text/plain; 'extensions' keeps the file NAME honest.
             'excel_file' => 'required|file|mimes:xlsx,csv,xls,txt|extensions:xlsx,csv,xls|max:10240',

@@ -6,7 +6,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'ShaloTrack Distributor')</title>
     @vite(['resources/css/app.css','resources/js/app.js'])
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>[x-cloak]{display:none !important}</style>
 </head>
 {{-- Same shell as the admin portal (sidebar + shared header), so every portal looks and behaves alike. --}}

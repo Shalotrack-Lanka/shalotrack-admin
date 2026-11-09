@@ -203,6 +203,9 @@ class PurchaseOrders
         if ($invoice->status === self::CANCELLED) {
             return 'This purchase order is cancelled.';
         }
+        if (app(SupplierPayments::class)->hasLivePayments($invoice->id)) {
+            return 'Payments have been recorded against this purchase order, so it can no longer be changed. Void the payments first.';
+        }
         if ($this->hasDeliveries($invoice->id)) {
             return 'Goods have been received against this purchase order, so it can no longer be changed.';
         }
@@ -275,29 +278,22 @@ class PurchaseOrders
             }
         }
 
-        // One line per thing on the order (each device type, and SIMs), with what is still to come. This is what
-        // the Receive delivery screen offers, and receiving more than "remaining" is refused.
+        // One line per thing on the order (each device type, and SIMs) with what is still to come: this is what the
+        // Receive delivery screen offers, and receiving more than "remaining" is refused.
         $lines = [];
         foreach ($types as $typeId => $q) {
             $lines[] = [
-                'key'            => 'dt:' . $typeId,
-                'kind'           => SupplierDelivery::KIND_DEVICE,
-                'device_type_id' => $typeId,
-                'name'           => $names[$typeId] ?? 'Device type #' . $typeId,
-                'ordered'        => $q['ordered'],
-                'received'       => $q['received'],
-                'remaining'      => max(0, $q['ordered'] - $q['received']),
+                'key' => 'dt:' . $typeId, 'kind' => SupplierDelivery::KIND_DEVICE, 'device_type_id' => $typeId,
+                'name' => $names[$typeId] ?? 'Device type #' . $typeId, 'ordered' => $q['ordered'], 'received' => $q['received'],
+                'remaining' => max(0, $q['ordered'] - $q['received']),
             ];
         }
         if ($simsOrdered > 0 || $simsReceived > 0) {
             $lines[] = [
-                'key'            => 'sim',
-                'kind'           => SupplierDelivery::KIND_SIM,
-                'device_type_id' => null,
-                'name'           => $simName ?? 'SIM cards',
-                'ordered'        => $simsOrdered,
-                'received'       => $simsReceived,
-                'remaining'      => max(0, $simsOrdered - $simsReceived),
+                'key' => 'sim', 'kind' => SupplierDelivery::KIND_SIM, 'device_type_id' => null,
+                'name' => $simName ?? 'SIM cards', 'ordered' => $simsOrdered, 'received' => $simsReceived,
+                'remaining' => max(0, $simsOrdered - $simsReceived),
+                'sim_type' => SupplierCatalogue::simTypeFrom([$simName]),
             ];
         }
 
@@ -332,7 +328,7 @@ class PurchaseOrders
     public static function isSimLine(SupplierInvoiceItem $item): bool
     {
         return strtoupper((string) $item->type) === 'SIM'
-            || preg_match('/\bsim\b/i', (string) $item->product?->product_name) === 1;
+            || SupplierCatalogue::isSimProduct($item->product);
     }
 
     // ------------------------------------------------------------------------------------------------ internals

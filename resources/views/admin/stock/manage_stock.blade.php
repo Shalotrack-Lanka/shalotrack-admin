@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShaloTrack Admin - Manage Raw Stock</title>
     @vite(['resources/css/app.css','resources/js/app.js'])
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="{ sidebarOpen: false }">
 
@@ -38,6 +37,13 @@
                 </div>
             @endif
 
+            @if($deliveryOnly)
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600">
+                    Stock is added only from received deliveries, so it can never be more than the supplier delivered
+                    (the Excel stock import is closed). Order the goods (Supplier Management &rarr; Invoices), receive them
+                    (Supplier Management &rarr; Receive delivery), then add the delivery to stock below.
+                </div>
+            @else
             {{-- BULK IMPORT STOCK --}}
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
@@ -65,6 +71,7 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             {{-- ADD RAW DEVICES --}}
             <div x-data="addStockManager()" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
@@ -91,21 +98,22 @@
                                     <option :value="prod.id" x-text="prod.name"></option>
                                 </template>
                             </select>
-                            @if($deliveriesOn)
+                            @if($deliveryOnly)
                                 <p x-show="selectedSupplier && productsList.length === 0" x-cloak class="mt-2 text-xs font-bold text-amber-700">
-                                    Nothing from this supplier is waiting to be added. Stock is added from what the supplier actually delivered:
-                                    receive the delivery first (Supplier Management &rarr; Receive delivery, against its purchase order), then add it here.
-                                </p>
-                            @else
-                                <p x-show="selectedSupplier && productsList.length === 0" x-cloak class="mt-2 text-xs font-bold text-amber-700">
-                                    This supplier has no devices on its product list. Open Supplier Management, edit this supplier and add the device types it supplies, then come back. (A device stays on the list after stock is added.)
+                                    Nothing from this supplier is waiting to be added. Stock is added from what the supplier actually delivered: receive the delivery first (Supplier Management &rarr; Receive delivery, against its purchase order), then add it here.
                                 </p>
                             @endif
+                            <p @if($deliveryOnly) x-show="false" @else x-show="selectedSupplier && productsList.length === 0" @endif x-cloak class="mt-2 text-xs font-bold text-amber-700">
+                                This supplier has no devices on its product list. Open Supplier Management, edit this supplier and add the device types it supplies, then come back. (A device stays on the list after stock is added.)
+                            </p>
                         </div>
                         <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-2">Stock In (Qty)</label>
-                            <input type="number" name="stock_in" x-model.number="stockQty" min="1" :required="!deliveriesOn" :readonly="deliveriesOn || !!selectedDelivery" :class="(deliveriesOn || selectedDelivery) ? 'bg-slate-100' : ''" class="w-full border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700">
-                            <p x-show="deliveriesOn" x-cloak class="mt-2 text-[11px] text-slate-500">Filled in from the scanned delivery; it cannot be typed.</p>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Stock In (Qty){{ $deliveryOnly ? ' - scanned units' : '' }}</label>
+                            @if($deliveryOnly)
+                                <input type="number" x-model.number="stockQty" readonly placeholder="From the delivery" class="w-full border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700 bg-slate-100">
+                            @else
+                                <input type="number" name="stock_in" x-model.number="stockQty" min="1" required :readonly="!!selectedDelivery" :class="selectedDelivery ? 'bg-slate-100' : ''" class="w-full border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700">
+                            @endif
                         </div>
                         <div x-show="deliveriesFor.length > 0" x-cloak class="md:col-span-4">
                             <label class="block text-sm font-bold text-slate-700 mb-2">Scanned delivery waiting for this supplier and device</label>
@@ -117,8 +125,13 @@
                             </select>
                             <p class="mt-2 text-xs font-bold text-emerald-700">The quantity is the number of scanned units, so the stock always matches what was scanned.</p>
                         </div>
+                        @if($deliveryOnly)
+                            <p x-show="selectedSupplier && selectedDevice && deliveriesFor.length === 0" x-cloak class="md:col-span-4 text-xs font-bold text-amber-700">
+                                Nothing to add: this supplier has no received delivery of this device waiting. Receive it first (Supplier Management &rarr; Receive delivery, against a purchase order).
+                            </p>
+                        @endif
                         <div class="flex gap-2">
-                            <button type="submit" class="w-full bg-[#0d9488] hover:bg-[#0f766e] text-white font-bold py-3 px-4 rounded-xl transition shadow-md text-sm cursor-pointer">
+                            <button type="submit" @if($deliveryOnly) :disabled="!selectedDelivery" @endif class="disabled:opacity-40 disabled:cursor-not-allowed w-full bg-[#0d9488] hover:bg-[#0f766e] text-white font-bold py-3 px-4 rounded-xl transition shadow-md text-sm cursor-pointer">
                                 Add Stock
                             </button>
                         </div>
@@ -249,7 +262,7 @@ document.addEventListener('alpine:init', () => {
 
     const openDeliveries = @json($openDeliveries);
     // With delivery scanning on, only what was received can be stocked in: the device list is the waiting deliveries.
-    const deliveriesOn = @json($deliveriesOn);
+    const deliveryOnly = @json($deliveryOnly);
 
     Alpine.data('addStockManager', () => ({
         deliveriesOn,
@@ -269,7 +282,7 @@ document.addEventListener('alpine:init', () => {
             this.selectedDelivery = '';
             this.stockQty = 0;
             this.productsList = [];
-            if (!deliveriesOn && this.selectedSupplier && allSuppliersData[this.selectedSupplier]) {
+            if (!deliveryOnly && this.selectedSupplier && allSuppliersData[this.selectedSupplier]) {
                 this.productsList = allSuppliersData[this.selectedSupplier].slice();
             }
             for (const d of (openDeliveries[this.selectedSupplier] || [])) {

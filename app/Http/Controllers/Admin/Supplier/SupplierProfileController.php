@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use App\Models\StockTransferLedger;
 use App\Models\SupplierInvoice;
+use App\Models\SupplierPayment;
 use App\Services\Supplier\PurchaseOrders;
+use App\Services\Supplier\SupplierPayments;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -44,6 +46,16 @@ class SupplierProfileController extends Controller
         $orders = app(PurchaseOrders::class);
         $orderSummaries = $invoices->mapWithKeys(fn ($i) => [$i->id => $orders->summary($i)]);
 
+        // What has been paid: per order, and what is still owed to this supplier overall.
+        $paymentsReady = SupplierPayments::ready();
+        $money = app(SupplierPayments::class)->forOrders($invoices);
+        $orderMoney = $money['orders'];
+        $owedCents = $money['owed_cents'];
+        $paidCents = $money['paid_cents'];
+        $paymentList = $paymentsReady
+            ? SupplierPayment::where('supplier_id', $supplier->id)->with('purchaseOrder')->orderByDesc('paid_on')->orderByDesc('id')->get()
+            : collect();
+
         $recentActivity = $stockHistory->take(5)->map(function ($entry) {
             return [
                 'date' => $entry->created_at,
@@ -59,7 +71,12 @@ class SupplierProfileController extends Controller
             'totalInvoiceValue',
             'totalInvoices',
             'recentActivity',
-            'orderSummaries'
+            'orderSummaries',
+            'paymentsReady',
+            'orderMoney',
+            'owedCents',
+            'paidCents',
+            'paymentList'
         ));
     }
 

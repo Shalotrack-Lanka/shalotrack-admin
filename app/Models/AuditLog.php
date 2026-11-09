@@ -48,6 +48,8 @@ class AuditLog extends Model
         'supplier_po.created'        => [self::CATEGORY_MONEY, 'Supplier purchase order placed'],
         'supplier_po.updated'        => [self::CATEGORY_MONEY, 'Supplier purchase order edited'],
         'supplier_po.cancelled'      => [self::CATEGORY_MONEY, 'Supplier purchase order cancelled'],
+        'supplier_payment.recorded'  => [self::CATEGORY_MONEY, 'Payment to a supplier recorded'],
+        'supplier_payment.voided'    => [self::CATEGORY_MONEY, 'Payment to a supplier voided'],
         'supplier.products_removed'  => [self::CATEGORY_DEVICE, 'Products removed from a supplier\'s list'],
         'invoice.issued'             => [self::CATEGORY_MONEY, 'Wholesale invoice issued'],
         'credit_note.issued'         => [self::CATEGORY_MONEY, 'Credit note issued'],

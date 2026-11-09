@@ -14,8 +14,9 @@ return new class extends Migration
      *                                  It can be edited while ORDERED and nothing has been received against it,
      *                                  and cancelled (with a reason) instead of deleted.
      *   supplier_deliveries.supplier_invoice_id
-     *                                  the purchase order a delivery was received against (optional). Once a
-     *                                  delivery points at an order, that order is locked.
+     *                                  the purchase order a delivery was received against (the application requires
+     *                                  one and holds the delivery to its quantity). Once a delivery points at an
+     *                                  order, that order is locked.
      *   supplier_delivery_units.sim_number
      *                                  the 10-digit SIM number scanned with each ICCID on a SIM delivery, checked
      *                                  again when the SIM is registered (Add SIM / Setup Device).

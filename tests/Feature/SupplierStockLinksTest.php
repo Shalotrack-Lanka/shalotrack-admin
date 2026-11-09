@@ -218,10 +218,10 @@ class SupplierStockLinksTest extends TestCase
         $this->receive($s, $t, 1);
 
         $this->get(route('admin.stock.manage'))->assertOk()
-            ->assertViewHas('deliveriesOn', true)
+            ->assertViewHas('deliveryOnly', true)
             ->assertViewHas('openDeliveries', fn ($d) => $d[$s->id]->count() === 1)
             ->assertDontSee('action="' . route('admin.stock.import') . '"', false)
-            ->assertSee('Stock is added only from scanned supplier deliveries');
+            ->assertSee('Stock is added only from received deliveries');
     }
 
     // ------------------------------------------------------------------------------------------ device types
@@ -368,9 +368,7 @@ class SupplierStockLinksTest extends TestCase
         $sim = Product::create(['product_name' => 'Dialog SIM card']);
         $s->products()->attach($sim->id, ['price' => 150, 'qty' => 0]);
         $po = $this->order($s, $sim, 1, 'SIM');
-        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'purchase_order_id' => $po->id, 'scans' => [['iccid' => $iccid, 'sim_number' => '0771234567']]])->assertOk();
-        $this->post(route('admin.stock.sim.store'), ['sim_type' => 'dialog', 'sim_number' => '0771234567', 'imsi' => '413021234567890', 'iccid' => $iccid, 'sim_status' => 'Activated'])
-            ->assertSessionHasNoErrors();
+        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'purchase_order_id' => $po->id, 'sim_type' => 'dialog', 'scans' => [['iccid' => $iccid, 'sim_number' => '0771234567', 'imsi' => '413021234567890']]])->assertOk();
 
         $this->get(route('admin.add-sim'))->assertOk()->assertSee('Dialog Supplies');
     }
