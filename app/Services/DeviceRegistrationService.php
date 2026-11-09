@@ -7,6 +7,7 @@ use App\Models\DeviceType;
 use App\Models\SetupShalotrackDevice;
 use App\Models\Sim;
 use App\Models\Stock;
+use App\Services\Delivery\SupplierDeliveryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -27,6 +28,10 @@ use Illuminate\Validation\ValidationException;
  */
 class DeviceRegistrationService
 {
+    public function __construct(private SupplierDeliveryService $deliveries)
+    {
+    }
+
     /**
      * @param  string      $source  'manual' | 'scan'
      * @param  string|null $adminId Admins.admin_id of whoever is registering
@@ -51,6 +56,10 @@ class DeviceRegistrationService
             if (SetupShalotrackDevice::where('imei_number', $imei)->exists()) {
                 throw ValidationException::withMessages(['imei' => 'This IMEI number is already registered.']);
             }
+
+            // Supplier delivery check (no-op while the feature is off): refuses a wrong device type or, from the
+            // enforcement date, an IMEI that never arrived on a delivery; otherwise the unit is stamped below.
+            $provenance = $this->deliveries->verify('DEVICE', $imei, $deviceType->id, 'imei');
 
             $sim = null;
             if ($iccid !== null && $iccid !== '') {
@@ -94,6 +103,8 @@ class DeviceRegistrationService
             // of Activated SIMs (existing behaviour) — its identity now lives
             // on the device row snapshot above.
             $sim?->delete();
+
+            $this->deliveries->stamp($provenance['unit'], (string) $device->shdevice_id);
 
             return $device;
         });

@@ -8,6 +8,9 @@ use App\Models\DeviceType;
 use App\Models\SetupShalotrackDevice;
 use App\Models\Sim;
 use App\Services\DeviceRegistrationService;
+use App\Services\Delivery\DeliveryPolicy;
+use App\Services\Delivery\SupplierDeliveryService;
+use Illuminate\Support\Facades\DB;
 use App\Traits\PushesDeviceToApi;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,6 +51,7 @@ class ScanDeviceController extends Controller
         $data = $request->validate([
             'imei'  => ['nullable', 'string', 'max:32'],
             'iccid' => ['nullable', 'string', 'max:32'],
+            'device_type_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $out = [];
@@ -60,6 +64,18 @@ class ScanDeviceController extends Controller
                 $out['imei'] = ['ok' => false, 'message' => 'This IMEI is already registered.'];
             } else {
                 $out['imei'] = ['ok' => true];
+
+                // Supplier delivery rule (nothing happens while the feature is off): a wrong device type or, from
+                // the enforcement date, an IMEI that never arrived on a delivery is refused right here; before
+                // that date a missing delivery is only a warning. commit() applies the same rule again.
+                $p = app(SupplierDeliveryService::class)->preview('DEVICE', $imei, isset($data['device_type_id']) ? (int) $data['device_type_id'] : null);
+                if (in_array($p['status'], [DeliveryPolicy::BLOCKED, DeliveryPolicy::MISMATCH, DeliveryPolicy::REGISTERED], true)) {
+                    $out['imei'] = ['ok' => false, 'message' => $p['message']];
+                } elseif ($p['status'] === DeliveryPolicy::UNVERIFIED) {
+                    $out['imei']['warning'] = $p['message'];
+                } elseif ($p['status'] === DeliveryPolicy::OK) {
+                    $out['imei']['from'] = $p['from'];
+                }
             }
         }
 
@@ -194,15 +210,26 @@ class ScanDeviceController extends Controller
             'confirm_activated.accepted' => 'Confirm that the carrier has activated this SIM.',
         ]);
 
+        $deliveries = app(SupplierDeliveryService::class);
+
         try {
-            $sim = Sim::create([
-                'sim_number'          => $data['sim_number'],
-                'sim_type'            => trim($data['sim_type']),
-                'imsi'                => $data['imsi'],
-                'iccid'               => $data['iccid'],
-                'activation_required' => false,
-                'sim_status'          => 'Activated',
-            ]);
+            $sim = DB::transaction(function () use ($data, $deliveries) {
+                // Supplier delivery check (no-op while the feature is off); a refusal comes back as a 422 on iccid.
+                $provenance = $deliveries->verify('SIM', $data['iccid'], null, 'iccid');
+
+                $sim = Sim::create([
+                    'sim_number'          => $data['sim_number'],
+                    'sim_type'            => trim($data['sim_type']),
+                    'imsi'                => $data['imsi'],
+                    'iccid'               => $data['iccid'],
+                    'activation_required' => false,
+                    'sim_status'          => 'Activated',
+                ]);
+
+                $deliveries->stamp($provenance['unit'], (string) $sim->id);
+
+                return $sim;
+            });
         } catch (\Illuminate\Database\QueryException $e) {
             // The UNIQUE indexes are the real guard if someone else added it a moment ago.
             Log::warning('Scan intake SIM quick-add rejected by database', ['iccid' => $data['iccid'], 'error' => $e->getMessage()]);

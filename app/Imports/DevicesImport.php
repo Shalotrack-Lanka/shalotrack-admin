@@ -7,6 +7,8 @@ use App\Models\SetupShalotrackDevice;
 use App\Models\DeviceType;
 use App\Models\Sim;
 use App\Models\Stock;
+use App\Services\Delivery\DeliveryPolicy;
+use App\Services\Delivery\SupplierDeliveryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -22,6 +24,9 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
     use SkipsFailures, SkipsErrors;
 
     public array $created = [];
+
+    /** Devices registered although they were not received on a supplier delivery (warning phase). */
+    public int $unverified = 0;
 
     public function model(array $row)
     {
@@ -42,7 +47,12 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
         $deviceCategoryLabel = $deviceType->device_category . ' ' . $deviceType->model;
 
         // Reduce the stock and save the device in one transaction
-        $device = DB::transaction(function () use ($row, $deviceType, $deviceCategoryLabel) {
+        $deliveries = app(SupplierDeliveryService::class);
+
+        $device = DB::transaction(function () use ($row, $deviceType, $deviceCategoryLabel, $deliveries) {
+            // Supplier delivery check under lock (no-op while the feature is off). The same rule was already
+            // applied when the row was validated; this is the race-proof second look.
+            $provenance = $deliveries->verify('DEVICE', trim((string) $row['imei_number']), $deviceType->id, 'imei_number');
             
             $stock = Stock::where('device_type_id', $deviceType->id)->lockForUpdate()->first();
 
@@ -79,6 +89,12 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
             // Remove the given SIM from the activated list
             // (its identity now lives on the device row: iccid/imsi above)
             $sim?->delete();
+
+            $deliveries->stamp($provenance['unit'], (string) $newDevice->shdevice_id);
+
+            if ($provenance['status'] === DeliveryPolicy::UNVERIFIED) {
+                $this->unverified++;
+            }
 
             return $newDevice;
         });
@@ -136,6 +152,15 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
 
                 if (! $stock || $stock->company_available_stock < 1) {
                     $validator->errors()->add("{$rowNumber}.device_category", "No company stock left for '{$type->device_category} {$type->model}'.");
+                }
+
+                // Supplier delivery rule (no-op while the feature is off): wrong device type or, from the
+                // enforcement date, an IMEI that never arrived on a delivery is reported as a failed row.
+                if (is_scalar($data['imei_number'] ?? null) && preg_match('/^\d{15}$/', trim((string) $data['imei_number']))) {
+                    $p = app(SupplierDeliveryService::class)->preview('DEVICE', trim((string) $data['imei_number']), $type->id);
+                    if (in_array($p['status'], [DeliveryPolicy::BLOCKED, DeliveryPolicy::MISMATCH, DeliveryPolicy::REGISTERED], true)) {
+                        $validator->errors()->add("{$rowNumber}.imei_number", $p['message']);
+                    }
                 }
             }
         });
