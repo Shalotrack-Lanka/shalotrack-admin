@@ -33,6 +33,12 @@ class Supplier extends Model
                      ->withTimestamps();
     }
 
+    // Deliveries (scanned IMEIs / ICCIDs) received from this supplier.
+    public function deliveries()
+    {
+        return $this->hasMany(SupplierDelivery::class);
+    }
+
     // Inverse of Stock::supplier(). This IS the "Supply / Stock History"
     // requirement — every stock-in row received from this supplier already
     // carries device_type_id, stock_in (quantity), and created_at (date)
