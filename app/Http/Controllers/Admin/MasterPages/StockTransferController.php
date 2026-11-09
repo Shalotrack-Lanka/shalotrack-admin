@@ -50,7 +50,7 @@ class StockTransferController extends Controller
             ->orderByDesc('allocated_at')
             ->get();
 
-        // 💡 අලුතින් එකතු කළ කොටස: සෑම Category එකකටම අදාළ SIM ටික Page එක Load වෙද්දිම ලබා ගැනීම
+        // 💡 Newly added: load the SIMs for every category when the page loads
         $simsByCategory = SetupShalotrackDevice::companyStockForTransfer()
             ->get(['device_category', 'sim_number'])
             ->groupBy('device_category')
@@ -60,7 +60,7 @@ class StockTransferController extends Controller
 
         return view(
             'admin.master_pages.stock_transfer',
-            // simsByCategory යන්න compact එකට අනිවාර්යයෙන්ම එකතු කරන්න
+            // Make sure simsByCategory is added to compact
             compact('deviceCategories', 'dealers', 'parents', 'transfers', 'allocatedDevices', 'simsByCategory', 'awaitingActivation', 'activatedWithoutSim')
         );
     }

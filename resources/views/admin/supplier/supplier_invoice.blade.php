@@ -190,7 +190,7 @@ document.addEventListener('alpine:init', () => {
                 .then(data => {
                     this.supplierDetails = data.supplier;
                     this.availableProducts = data.products || [];
-                    this.items = []; // වෙනත් supplier කෙනෙක් තේරූ විට පරණ items මකා දමයි
+                    this.items = []; // When another supplier is chosen, clear the old items
                     this.isLoading = false;
                 })
                 .catch(err => {

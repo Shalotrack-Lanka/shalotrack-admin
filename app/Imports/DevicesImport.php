@@ -25,28 +25,28 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
 
     public function model(array $row)
     {
-        // 1. Excel හි Columns වලින් Category එක සහ Model එක වෙන වෙනම ලබා ගැනීම
+        // 1. Read the category and the model from separate Excel columns
         $categoryInput = trim($row['device_category']);
         $modelInput = trim($row['model']);
 
-        // 2. වෙන වෙනම ලබාගත් දත්ත අනුව Device Type එක Database එකෙන් සෙවීම
+        // 2. Look up the device type in the database using those values
         $deviceType = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower($categoryInput)])
             ->whereRaw('LOWER(model) = ?', [strtolower($modelInput)])
             ->first();
 
         if (!$deviceType) {
-            return null; // Device Type එක පද්ධතියේ නැත්නම් මේ පේළිය මඟහරියි (skip කරයි)
+            return null; // Device type is not in the system: skip this row
         }
 
-        // 3. 'with' ඉවත් කර හිස්තැනක් පමණක් තබා නම සැකසීම (උදා: "V10 Plus")
+        // 3. Remove "with" and build the name with a single space (e.g. "V10 Plus")
         $deviceCategoryLabel = $deviceType->device_category . ' ' . $deviceType->model;
 
-        // Transaction එකක් හරහා Stock එක අඩු කර Device එක Save කිරීම
+        // Reduce the stock and save the device in one transaction
         $device = DB::transaction(function () use ($row, $deviceType, $deviceCategoryLabel) {
             
             $stock = Stock::where('device_type_id', $deviceType->id)->lockForUpdate()->first();
 
-            // Stock එකේ බඩු නැත්නම් දත්ත Save නොකරයි
+            // If there is no stock, do not save the data
             if (!$stock || $stock->company_available_stock < 1) {
                 return null;
             }
@@ -76,7 +76,7 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
                 'dealer_id'       => null,
             ]);
 
-            // දුන් SIM එක පද්ධතියේ Activated ලැයිස්තුවෙන් ඉවත් කිරීම
+            // Remove the given SIM from the activated list
             // (its identity now lives on the device row: iccid/imsi above)
             $sim?->delete();
 
@@ -99,11 +99,11 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
                 'nullable', 
                 'numeric', 
                 'digits:10', 
-                // SIM එක අනිවාර්යයෙන්ම පද්ධතියේ තිබිය යුතු අතර එය Activated එකක් විය යුතුය
+                // The SIM must exist in the system and must be activated
                 Rule::exists('sims', 'sim_number')->where('sim_status', 'Activated')
             ],
             'device_category' => ['required', 'string', 'max:100'],
-            'model'           => ['required', 'string', 'max:100'], // Model එකත් අනිවාර්ය කර ඇත
+            'model'           => ['required', 'string', 'max:100'], // Model is also required
         ];
     }
 
@@ -144,10 +144,10 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
     public function customValidationMessages()
     {
         return [
-            'sim_number.exists' => 'SIM අංකය (:input) පද්ධතියේ නොමැත හෝ එය තවමත් Activated තත්වයේ නොමැත.',
-            'imei_number.unique' => 'IMEI අංකය (:input) දැනටමත් පද්ධතියේ පවතී.',
-            'device_category.required' => 'Device Category එක ඇතුලත් කිරීම අනිවාර්ය වේ.',
-            'model.required' => 'Model එක ඇතුලත් කිරීම අනිවාර්ය වේ.',
+            'sim_number.exists' => 'The SIM number (:input) is not in the system or is not activated yet.',
+            'imei_number.unique' => 'The IMEI number (:input) already exists in the system.',
+            'device_category.required' => 'The device category is required.',
+            'model.required' => 'The model is required.',
         ];
     }
 }

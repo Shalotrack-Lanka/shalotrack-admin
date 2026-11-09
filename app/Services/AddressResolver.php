@@ -17,7 +17,7 @@ class AddressResolver
         }
 
         try {
-            // 1. Google Maps API එක Try කිරීම
+            // 1. Try the Google Maps API
             $googleKey = config('services.google.maps_api_key') ?? env('GOOGLE_MAPS_API_KEY');
 
             if (!empty($googleKey)) {
@@ -36,7 +36,7 @@ class AddressResolver
                 }
             }
 
-            // 2. Google API වැඩ නොකරන්නේ නම් OpenStreetMap (Free Fallback) මගින් Address එක ගැනීම
+            // 2. If the Google API does not work, get the address from OpenStreetMap (free fallback)
             $osmResponse = Http::timeout(5)
                 ->withHeaders(['User-Agent' => 'ShaloTrackAdmin/1.0'])
                 ->get('https://nominatim.openstreetmap.org/reverse', [

@@ -97,7 +97,7 @@ class CancelDeviceController extends Controller
         // NEW: push this device's updated state to the API
         $synced = $this->pushDeviceToApi($device);
 
-        // 💡 මෙතන තමයි පරණ Route එක තිබුණේ, එය admin.cancel_device.index ලෙස නිවැරදි කර ඇත.
+        // 💡 This is where the old route was; it has been corrected to admin.cancel_device.index.
         $redirect = redirect()->route('admin.cancel_device.index')
             ->with('success', "Device #{$device->shdevice_id} updated to \"{$device->status}\".");
 

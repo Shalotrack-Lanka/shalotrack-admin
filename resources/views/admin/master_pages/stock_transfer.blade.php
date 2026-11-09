@@ -298,14 +298,14 @@
             nuOfDevices.value = 0;
             transferBtn.disabled = true;
         }
-        // 💡 PHP වලින් ආපු SIM දත්ත ටික Page එකේ JS Variable එකක ගබඩා කරගැනීම
+        // 💡 Store the SIM data that came from PHP in a JS variable on the page
         const simsByCategory = @json($simsByCategory);
 
         function loadSimNumbers(category, selectEl, callback) {
-            // Loading... පෙන්වන එක අයින් කරලා කෙළින්ම හිස් කරනවා
+            // Remove the "Loading..." display and clear the list directly
             selectEl.innerHTML = '';
 
-            // අදාළ Category එකට අදාළ SIM ටික Variable එකෙන් කෙළින්ම ගන්නවා
+            // Take the SIMs for the category directly from the variable
             const data = simsByCategory[category] || [];
 
             if (data.length === 0) {

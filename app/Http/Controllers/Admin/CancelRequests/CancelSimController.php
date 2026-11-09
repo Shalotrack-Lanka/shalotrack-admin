@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin\CancelRequests; // 💡 අලුත් Namespace එක
+namespace App\Http\Controllers\Admin\CancelRequests; // 💡 New namespace
 
 use App\Http\Controllers\Controller;
 use App\Models\Sim;
@@ -21,7 +21,7 @@ class CancelSimController extends Controller
             return response()->json($sims);
         }
 
-        // 💡 අලුත් View Path එක (cancel_requests ෆෝල්ඩර් එක)
+        // 💡 New view path (the cancel_requests folder)
         return view('admin.cancel_requests.cancel_sim', compact('sims'));
     }
 

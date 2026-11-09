@@ -352,7 +352,7 @@
      style="position: fixed; top: 1.25rem; right: 1.25rem; z-index: 50; transform: translateY(-200%);">
     <div class="flex items-center p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-2xl space-x-3.5 w-80 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
 
-        <!-- ක්ලික් කළ හැකි ප්‍රදේශය (Dealer Complaints පිටුවට යයි) -->
+        <!-- Clickable area (goes to the Dealer Complaints page) -->
         <div onclick="window.location.href='{{ route('dealer.complaints') }}'" class="flex items-center flex-1 space-x-3.5 cursor-pointer">
             <div class="flex-shrink-0 bg-blue-500 text-white p-2.5 rounded-full shadow-md">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -365,7 +365,7 @@
             </div>
         </div>
 
-        <!-- Close Button (මෙය එබූ විට ලින්ක් එකට යන්නේ නැත, Box එක පමණක් වැසේ) -->
+        <!-- Close button (clicking it closes only the box, it does not follow the link) -->
         <button onclick="hideToast()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors ml-auto z-10 relative">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -442,7 +442,7 @@
     pollEvery('/dealer/check-new-replies', 20000, data => {
         if (data.has_new_reply) {
             const who = data.author_name || 'ShaloTrack Support';
-            showToast(who + " reply කර ඇත!");
+            showToast(who + " has replied!");
         }
     }, "Dealer replies");
 </script>

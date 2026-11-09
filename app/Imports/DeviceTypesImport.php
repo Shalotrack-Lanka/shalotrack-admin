@@ -23,33 +23,33 @@ class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, Skip
     {
         $featureIds = [];
 
-        // Features කොලම් එකේ දත්ත තියෙනවා නම් ඒවා කඩා වෙන් කර ගැනීම (උදා: "Ignition Alert, Speed alert")
+        // If the Features column has data, split it (e.g. "Ignition Alert, Speed alert")
         if (!empty($row['features'])) {
-            // කොමා (,) වලින් වෙන් කර Array එකක් සෑදීම
+            // Split on commas to make an array
             $featureNames = array_map('trim', explode(',', $row['features']));
             
-            // එක් එක් Feature නමට අදාළ ID එක සොයා ගැනීම
+            // Find the ID for each feature name
             foreach ($featureNames as $name) {
                 if (!empty($name)) {
-                    // Feature එක Database එකේ තියෙනවාද බලනවා (කැපිටල්/සිම්පල් නොසලකා)
+                    // Check whether the feature exists in the database (case-insensitive)
                     $feature = Feature::whereRaw('LOWER(name) = ?', [strtolower($name)])->first();
                     
-                    // Feature එක නැත්නම් අලුතින් සාදා එහි ID එක ගන්නවා
+                    // If the feature does not exist, create it and take its ID
                     if (!$feature) {
                         $feature = Feature::create(['name' => $name]);
                     }
                     
-                    $featureIds[] = (string) $feature->id; // JSON වලට ගැලපෙන්න String ලෙස ගන්නවා
+                    $featureIds[] = (string) $feature->id; // Keep it as a string so it matches the JSON
                 }
             }
         }
 
-        // Database එකට දත්ත ඇතුළත් කිරීම
+        // Insert the data into the database
         $deviceType = DeviceType::create([
             'device_category' => trim($row['device_category']),
             'model'           => trim($row['model']),
             'protocol'        => trim($row['protocol']),
-            'features'        => $featureIds, // [ "1", "2" ] වගේ Array එකක් ලෙස සේව් වේ
+            'features'        => $featureIds, // Saved as an array like [ "1", "2" ]
         ]);
 
         $this->created[] = $deviceType->id;
@@ -67,7 +67,7 @@ class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, Skip
         ];
     }
 
-    // එකම Category සහ Model එක දෙපාරක් ආවොත් වැළැක්වීම
+    // Prevent the same category and model appearing twice
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {

@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sims', function (Blueprint $table) {
-            // පරණ status එක වෙනස් නොකර අලුත් එකක් දානවා
+            // Add a new status without changing the old one
             $table->string('sim_status')->default('Not Activated')->after('status');
         });
     }

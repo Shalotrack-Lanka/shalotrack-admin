@@ -18,25 +18,25 @@
         @include('partials.header')
 
         <main class="p-4 md:p-6 flex-1 w-full max-w-full" x-data="{ 
-            activeTab: 'replace_request', {{-- Device Replace Request ටැබ් එක මුලින්ම පෙනෙන්න සකසා ඇත --}}
+            activeTab: 'replace_request', {{-- The Device Replace Request tab is set to show first --}}
             statusFilter: 'Open',
             complaintType: 'All',
             complaintSource: 'All',
             fitterRequest: '',
             feedbackType: 'All',
             ratingFilter: 'All',
-            subTab: 'new_request' {{-- Sub-tabs සඳහා විචල්‍යය --}}
+            subTab: 'new_request' {{-- Variable for the sub-tabs --}}
         }">
             
 
             <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden w-full">
                 
                 <div x-show="activeTab === 'view_complaints'" x-transition class="p-6 space-y-6 w-full">
-                    {{-- පෙර කේතයන් එලෙසම පවතී --}}
+                    {{-- The previous code stays as it was --}}
                 </div>
 
                 <div x-show="activeTab === 'feedback'" x-transition class="p-6 space-y-6 w-full">
-                    {{-- පෙර කේතයන් එලෙසම පවතී --}}
+                    {{-- The previous code stays as it was --}}
                 </div>
 
                 <div x-show="activeTab === 'replace_request'" x-transition class="p-6 space-y-6 w-full">

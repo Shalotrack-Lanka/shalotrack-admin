@@ -20,7 +20,7 @@ class AddFaultyDeviceController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Data Validation (IMEI එක unique ද කියා බලනවා)
+        // 1. Data validation (check the IMEI is unique)
         $validated = $request->validate([
             'imei_number'   => 'required|string|unique:devices,imei_number|max:255',
             'sim_number'    => 'nullable|string|max:255',
@@ -30,11 +30,11 @@ class AddFaultyDeviceController extends Controller
             'description'   => 'nullable|string|max:1000',
         ]);
 
-        // 2. තෝරාගත් Device Model එකට අදාළ Master Stock Record එක database එකෙන් සොයා ගැනීම
+        // 2. Find the master stock record for the selected device model
         $stock = Stock::firstOrCreate(
-    ['product_model' => $request->device_model], // v5_basic හෝ v5_plus ද කියා සොයයි
+    ['product_model' => $request->device_model], // looks up v5_basic or v5_plus
     [
-        // 🟢 ජනනය වන ලස්සන Display Name එක (v5_basic -> V5 Basic)
+        // 🟢 Generated display name (v5_basic -> V5 Basic)
         'product_name' => ucwords(str_replace('_', ' ', $request->device_model)), 
         'stock_in' => 0,
         'company_available_stock' => 0,
@@ -44,13 +44,13 @@ class AddFaultyDeviceController extends Controller
 );
 
         if (!$stock) {
-            return redirect()->back()->withErrors(['device_model' => 'තෝරාගත් Device Model එක Stock Summary එකේ ලියාපදිංචි කර නැත. මුලින්ම එය සාදන්න.']);
+            return redirect()->back()->withErrors(['device_model' => 'The selected device model is not registered in the Stock Summary. Create it first.']);
         }
 
-        // 3. Database Transaction එකක් ඇතුළත එකවර වැඩ දෙකම සිදු කිරීම (ආරක්ෂිත ක්‍රමය)
+        // 3. Do both writes inside one database transaction (the safe way)
         DB::transaction(function () use ($validated, $stock, $request) {
             
-            // (A) Device එක Devices Table එකට Save කිරීම (`stock_id` එකද සහිතව)
+            // (A) Save the device to the devices table (including stock_id)
             Device::create([
                 'stock_id'     => $stock->id,
                 'imei_number'  => $validated['imei_number'],
@@ -61,14 +61,14 @@ class AddFaultyDeviceController extends Controller
                 'description'  => $request->description,
             ]);
 
-            // (B) Device Status එක අනුව Master Stock Table එක ස්වයංක්‍රීයව Update කිරීම
+            // (B) Update the master stock table automatically according to the device status
             if ($request->status === 'Available') {
-                $stock->increment('stock_in'); // මුළු Stock එක 1කින් වැඩි කරයි
-                $stock->increment('company_available_stock'); // Company Available එක 1කින් වැඩි කරයි
+                $stock->increment('stock_in'); // Increase the total stock by 1
+                $stock->increment('company_available_stock'); // Increase company available by 1
             } 
             elseif ($request->status === 'Faulty') {
-                // Faulty device එකක් නම් මුළු stock_in එකට එකතු වී company stock එක අඩු විය යුතු නම් හෝ වෙනත් logic එකක් නම් මෙතන වෙනස් කරන්න පුළුවන්.
-                // දැනට සාමාන්‍යයෙන් Faulty ආපු එකක් නිසා stock_in එක 1කින් වැඩි කරමු:
+                // If a faulty device should be added to the total stock_in while reducing company stock, or needs other logic, change it here.
+                // For now, since it came back as faulty, increase stock_in by 1:
                 $stock->increment('stock_in');
             }
         });

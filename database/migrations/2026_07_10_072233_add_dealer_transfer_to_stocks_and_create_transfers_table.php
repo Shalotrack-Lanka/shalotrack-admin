@@ -8,12 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // 1. stocks table එකට අලුත් column එකක් දානවා
+        // 1. Add a new column to the stocks table
         Schema::table('stocks', function (Blueprint $table) {
             $table->integer('dealer_transferred')->default(0)->after('company_available_stock');
         });
 
-        // 2. Transfers history එක තියාගන්න table එක
+        // 2. Table that keeps the transfer history
         Schema::create('stock_transfers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('stock_id')->constrained('stocks')->onDelete('cascade');

@@ -48,7 +48,7 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
 
         DB::transaction(function () use ($deviceType, $deviceLabel, $supplier, $qty, $stockedInDate) {
             
-            // Table එකේ තියෙන Columns වලට විතරක් දත්ත දැමීම
+            // Insert data only into the columns that exist on the table
             $stock = Stock::firstOrCreate(
                 ['device_type_id' => $deviceType->id],
                 ['company_available_stock' => 0]
@@ -59,7 +59,7 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
             $stock->updated_at = now();
             $stock->save();
 
-            // අනෙකුත් සියලුම විස්තර Ledger එකට දැමීම
+            // Put all the other details into the ledger
             StockTransferLedger::create([
                 'stock_id'             => $stock->id,
                 'device_category_type' => $deviceLabel,
