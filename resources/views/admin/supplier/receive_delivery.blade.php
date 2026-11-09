@@ -28,7 +28,7 @@
 
             {{-- All values the script needs are passed as plain data (no comments inside @js). --}}
             <main class="p-4 md:p-6 flex-1 space-y-6"
-                x-data="deliveryScan({ postUrl: @js(route('admin.suppliers.deliveries.store', $supplier->id)), max: @js($maxScans), onlyTypeId: @js($deviceTypes->count() === 1 ? $deviceTypes->first()->id : null), orders: @js($openOrders) })"
+                x-data="deliveryScan({ postUrl: @js(route('admin.suppliers.deliveries.store', $supplier->id)), max: @js($maxScans), orders: @js($openOrders) })"
                 x-init="init()">
 
                 <div class="flex items-center justify-between">
@@ -51,58 +51,58 @@
                     </div>
                 @endif
 
-                {{-- 1. WHAT IS ARRIVING --}}
+                {{-- 1. WHAT IS ARRIVING: always against a purchase order, so only what was ordered (and is still to come) can be received --}}
                 <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                     <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">1. What is arriving</div>
-                    <div class="p-5 text-xs font-semibold text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block mb-1">Delivery type</label>
-                            <select x-model="kind" :disabled="rows.length > 0" class="w-full rounded-lg border-gray-300 h-10 shadow-sm disabled:bg-gray-100">
-                                <option value="DEVICE">Devices (scan IMEI)</option>
-                                <option value="SIM">SIM cards (scan ICCID)</option>
-                            </select>
-                            <p x-show="rows.length > 0" x-cloak class="text-[11px] text-gray-400 mt-1">Clear the list to change the delivery type.</p>
+                    @if($openOrders->isEmpty())
+                        <div class="p-5 text-xs">
+                            <div class="p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
+                                Nothing is on order from {{ $supplier->name }}: there is no purchase order still waiting for goods.
+                                Goods are only received against a purchase order, so place the order first (what is ordered and how many),
+                                then come back here when the goods arrive.
+                                <a href="{{ route('admin.supplier-invoice', ['supplier_id' => $supplier->id]) }}" class="font-bold underline">Place a purchase order</a>
+                            </div>
                         </div>
-                        <div x-show="kind === 'DEVICE'" x-cloak>
-                            <label class="block mb-1">Product from {{ $supplier->name }} (applies to the whole delivery)</label>
-                            @if($deviceTypes->isEmpty())
-                                <div class="p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 font-normal">
-                                    {{ $supplier->name }} has no devices on its product list yet. Add the devices it supplies
-                                    (Supplier Management &rarr; Edit &rarr; Products), then come back here.
-                                    <a href="{{ route('admin.suppliers') }}" class="font-bold underline">Go to Supplier Management</a>
-                                </div>
-                            @else
-                                <select x-model="deviceTypeId" :disabled="rows.length > 0" class="w-full rounded-lg border-gray-300 h-10 shadow-sm disabled:bg-gray-100">
-                                    @if($deviceTypes->count() > 1)
-                                        <option value="">-- Select product --</option>
-                                    @endif
-                                    @foreach($deviceTypes as $type)
-                                        <option value="{{ $type->id }}">{{ $type->device_category }} {{ $type->model }}</option>
-                                    @endforeach
+                    @else
+                        <div class="p-5 text-xs font-semibold text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="block mb-1">Purchase order</label>
+                                <select x-model="orderId" :disabled="rows.length > 0" class="w-full rounded-lg border-gray-300 h-10 shadow-sm disabled:bg-gray-100">
+                                    <option value="">-- Select the purchase order --</option>
+                                    <template x-for="o in orders" :key="o.id">
+                                        <option :value="String(o.id)" x-text="o.number + ' (' + (o.date || '') + ')'"></option>
+                                    </template>
                                 </select>
-                                <p class="text-[11px] font-normal text-gray-400 mt-1">Only the devices on this supplier's product list are shown.</p>
-                            @endif
+                                <p class="text-[11px] font-normal text-gray-400 mt-1">Only {{ $supplier->name }}'s orders that are still waiting for goods are listed.</p>
+                            </div>
+
+                            <div class="md:col-span-2" x-show="order" x-cloak>
+                                <label class="block mb-1">What arrived on this order (applies to the whole delivery)</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    <template x-for="l in (order ? order.lines : [])" :key="l.key">
+                                        <label class="flex items-center gap-3 p-3 border rounded-lg"
+                                            :class="l.remaining < 1 ? 'opacity-50 cursor-not-allowed bg-gray-50' : (lineKey === l.key ? 'border-emerald-400 bg-emerald-50 cursor-pointer' : 'border-gray-200 cursor-pointer')">
+                                            <input type="radio" name="line" :value="l.key" x-model="lineKey" :disabled="l.remaining < 1 || rows.length > 0">
+                                            <span class="flex-1">
+                                                <span class="block font-bold text-gray-800" x-text="l.name + (l.kind === 'SIM' ? ' (scan ICCID)' : ' (scan IMEI)')"></span>
+                                                <span class="block font-normal text-gray-500" x-text="l.received + ' of ' + l.ordered + ' received, ' + (l.remaining > 0 ? l.remaining + ' still to come' : 'all received')"></span>
+                                            </span>
+                                        </label>
+                                    </template>
+                                </div>
+                                <p x-show="rows.length > 0" x-cloak class="text-[11px] text-gray-400 mt-1">Clear the list to change the order or the product.</p>
+                            </div>
+
+                            <div>
+                                <label class="block mb-1">Supplier delivery note / invoice no. (optional)</label>
+                                <input type="text" x-model="reference" maxlength="100" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block mb-1">Note (optional)</label>
+                                <input type="text" x-model="note" maxlength="500" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                            </div>
                         </div>
-                        <div>
-                            <label class="block mb-1">Supplier delivery note / invoice no. (optional)</label>
-                            <input type="text" x-model="reference" maxlength="100" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
-                        </div>
-                        <div>
-                            <label class="block mb-1">Note (optional)</label>
-                            <input type="text" x-model="note" maxlength="500" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block mb-1">Against purchase order <span class="font-normal text-gray-400">(optional, recommended: shows what is still to come and locks the order)</span></label>
-                            <select x-model="orderId" :disabled="rows.length > 0" class="w-full rounded-lg border-gray-300 h-10 shadow-sm disabled:bg-gray-100">
-                                <option value="">-- Not against a purchase order --</option>
-                                <template x-for="o in matchingOrders" :key="o.id">
-                                    <option :value="String(o.id)" x-text="orderLabel(o)"></option>
-                                </template>
-                            </select>
-                            <p x-show="kind === 'DEVICE' && deviceTypeId && matchingOrders.length === 0" x-cloak class="text-[11px] text-gray-400 mt-1">No open purchase order from this supplier includes this product.</p>
-                            <p x-show="kind === 'SIM' && matchingOrders.length === 0" x-cloak class="text-[11px] text-gray-400 mt-1">No open purchase order from this supplier includes SIM cards.</p>
-                        </div>
-                    </div>
+                    @endif
                 </div>
 
                 {{-- 2. SCAN --}}
@@ -112,9 +112,11 @@
                         <div>
                             <label class="block mb-1">Scan here <span class="font-normal text-gray-400">(click the box, then pull the scanner trigger)</span></label>
                             <input type="text" x-ref="scanInput" x-model="input" @keydown.enter.prevent="onScan()"
-                                :disabled="kind === 'DEVICE' && !deviceTypeId" autocomplete="off" inputmode="numeric"
+                                :disabled="!line" autocomplete="off" inputmode="numeric"
                                 class="w-full rounded-lg border-gray-300 h-11 shadow-sm font-mono text-sm disabled:bg-gray-100"
-                                :placeholder="kind === 'DEVICE' ? (deviceTypeId ? 'Scan an IMEI...' : 'Choose the device type first') : (pendingSim ? 'Now scan or type the 10-digit SIM number of ' + pendingSim + '...' : 'Scan a SIM ICCID...')">
+                                :placeholder="!line ? 'Choose the purchase order and what arrived first' : (kind === 'DEVICE' ? 'Scan an IMEI...' : (pendingSim ? 'Now scan or type the 10-digit SIM number of ' + pendingSim + '...' : 'Scan a SIM ICCID...'))">
+                            <p x-show="line" x-cloak class="text-[11px] font-bold mt-1" :class="rows.length >= (line ? line.remaining : 0) ? 'text-amber-700' : 'text-gray-500'"
+                                x-text="line ? (rows.length + ' of ' + line.remaining + ' still to come on this order scanned.') : ''"></p>
                             <p x-show="kind === 'SIM'" x-cloak class="text-[11px] font-normal text-gray-400 mt-1">For each SIM: scan the ICCID, then the 10-digit SIM number on the pack (the same pairing as Setup Device). A number can also be typed in the list below.</p>
                         </div>
                         <div x-show="flash.text" x-cloak class="p-3 border rounded-lg text-xs font-bold"
@@ -153,7 +155,7 @@
                             class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-bold shadow-sm text-xs">
                             <span x-show="!saving">Save delivery</span><span x-show="saving" x-cloak>Saving...</span>
                         </button>
-                        <span class="text-[11px] text-gray-400">Up to <span x-text="max"></span> scans at a time.</span>
+                        <span class="text-[11px] text-gray-400">No more than the order is still waiting for<span x-show="line" x-cloak> (<span x-text="line ? line.remaining : 0"></span>)</span>, up to <span x-text="max"></span> scans at a time.</span>
                     </div>
                 </div>
 
@@ -166,8 +168,11 @@
                     </div>
                     <div x-show="result && result.warning" x-cloak class="p-3 border rounded-lg text-xs font-bold bg-amber-50 border-amber-200 text-amber-800" x-text="result ? result.warning : ''"></div>
                     <div x-show="result && result.delivery_id" x-cloak class="text-xs font-bold">
-                        <template x-if="kind === 'DEVICE'">
+                        <template x-if="result && result.kind === 'DEVICE'">
                             <a href="{{ route('admin.stock.manage') }}" class="text-blue-700 hover:underline mr-4">Add this delivery to stock</a>
+                        </template>
+                        <template x-if="result && result.kind === 'SIM'">
+                            <a href="{{ route('admin.add-sim') }}" class="text-blue-700 hover:underline mr-4">Register these SIMs on Add SIM</a>
                         </template>
                         <a href="" class="text-gray-600 hover:underline">Refresh the list below</a>
                     </div>
@@ -213,7 +218,11 @@
                                     <td class="p-3 font-mono">{{ $d->purchaseOrder->invoice_number ?? '-' }}</td>
                                     <td class="p-3">
                                         @if($d->kind === 'SIM')
-                                            <span class="text-gray-500">Recorded</span>
+                                            @if($d->registered_count >= $d->units_count)
+                                                <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">All registered</span>
+                                            @else
+                                                <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">{{ $d->registered_count }} of {{ $d->units_count }} registered</span>
+                                            @endif
                                         @elseif($d->stocked_in_at)
                                             <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">In stock</span>
                                         @else
@@ -224,7 +233,10 @@
                                         @if($d->kind === 'DEVICE' && ! $d->stocked_in_at)
                                             <a href="{{ route('admin.stock.manage') }}" class="text-blue-700 font-bold hover:underline mr-3">Add to stock</a>
                                         @endif
-                                        @if(! $d->stocked_in_at)
+                                        @if($d->kind === 'SIM' && $d->registered_count < $d->units_count)
+                                            <a href="{{ route('admin.add-sim') }}" class="text-blue-700 font-bold hover:underline mr-3">Register SIMs</a>
+                                        @endif
+                                        @if(! $d->stocked_in_at && (int) $d->registered_count === 0)
                                             <form method="POST" action="{{ route('admin.suppliers.deliveries.void', [$supplier->id, $d->id]) }}" class="inline"
                                                 onsubmit="const r = prompt('Why is this delivery being cancelled? (its scans will be removed)'); if (!r || r.trim().length < 3) { return false; } this.reason.value = r.trim(); return true;">
                                                 @csrf @method('DELETE')
@@ -263,11 +275,10 @@
             return {
                 postUrl: cfg.postUrl,
                 max: cfg.max,
-                kind: 'DEVICE',
-                // A supplier with exactly one device product has nothing to choose: it is selected already.
-                deviceTypeId: cfg.onlyTypeId ? String(cfg.onlyTypeId) : '',
+                // Everything is received against a purchase order line (a device type, or SIMs).
                 orders: cfg.orders || [],
-                orderId: '',
+                orderId: (cfg.orders || []).length === 1 ? String(cfg.orders[0].id) : '',
+                lineKey: '',
                 numbers: {},         // SIM delivery: ICCID -> 10-digit SIM number
                 reference: '',
                 note: '',
@@ -277,10 +288,24 @@
                 saving: false,
                 result: null,
 
+                get order() {
+                    return this.orders.find(o => String(o.id) === this.orderId) || null;
+                },
+                get line() {
+                    return this.order ? (this.order.lines.find(l => l.key === this.lineKey && l.remaining > 0) || null) : null;
+                },
+                get kind() {
+                    return this.line ? this.line.kind : 'DEVICE';
+                },
+                get deviceTypeId() {
+                    return this.line && this.line.kind === 'DEVICE' ? String(this.line.device_type_id) : '';
+                },
+
                 get canSave() {
-                    if (this.saving || this.rows.length === 0) return false;
+                    if (this.saving || this.rows.length === 0 || !this.line) return false;
+                    if (this.rows.length > this.line.remaining) return false;
                     if (this.kind === 'SIM') return this.rows.every(r => this.validNumber(this.numbers[r]));
-                    return !!this.deviceTypeId;
+                    return true;
                 },
 
                 // The last ICCID still waiting for its SIM number.
@@ -296,24 +321,16 @@
                     return /^\d{10}$/.test(n || '');
                 },
 
-                // Purchase orders that include what is being received (this device type, or SIMs).
-                get matchingOrders() {
-                    return this.orders.filter(o => this.kind === 'SIM'
-                        ? o.sims_ordered > 0
-                        : (this.deviceTypeId && o.device_types[this.deviceTypeId] && o.device_types[this.deviceTypeId].ordered > 0));
-                },
-
-                orderLabel(o) {
-                    const q = this.kind === 'SIM'
-                        ? { ordered: o.sims_ordered, received: o.sims_received }
-                        : (o.device_types[this.deviceTypeId] || { ordered: 0, received: 0 });
-                    return o.number + ' (' + (o.date || '') + '): ' + q.received + ' of ' + q.ordered + ' received';
+                // An order (or the one product on it still to come) that leaves nothing to choose is chosen already.
+                pickOnlyLine() {
+                    const open = this.order ? this.order.lines.filter(l => l.remaining > 0) : [];
+                    this.lineKey = open.length === 1 ? open[0].key : '';
                 },
 
                 init() {
-                    // A purchase order picked for one product does not carry over to another.
-                    this.$watch('kind', () => { this.orderId = ''; });
-                    this.$watch('deviceTypeId', () => { this.orderId = ''; });
+                    this.pickOnlyLine();
+                    this.$watch('orderId', () => { this.pickOnlyLine(); this.focusInput(); });
+                    this.$watch('lineKey', () => this.focusInput());
                     this.$nextTick(() => this.focusInput());
                 },
                 focusInput() {
@@ -341,6 +358,15 @@
                     if (!v) return;
                     this.result = null;
 
+                    if (!this.line) {
+                        this.say('Choose the purchase order and what arrived first.', false);
+                        return this.beep(false);
+                    }
+                    const isSimNumber = this.kind === 'SIM' && /^\d{10}$/.test(v);
+                    if (!isSimNumber && this.rows.length >= this.line.remaining) {
+                        this.say(this.order.number + ' is waiting for only ' + this.line.remaining + ' of ' + this.line.name + '. ' + v.slice(0, 24) + ' is more than was ordered: put it aside and ask the supplier, or place a new purchase order for it.', false);
+                        return this.beep(false);
+                    }
                     if (this.rows.length >= this.max) {
                         this.say('The list is full (' + this.max + '). Save this delivery, then scan the rest as a new one.', false);
                         return this.beep(false);
@@ -426,7 +452,12 @@
                         }
                         if (!res.ok) throw new Error('Server error (' + res.status + '). Nothing was confirmed; check recent deliveries before retrying.');
 
-                        this.result = data;
+                        this.result = Object.assign({ kind: this.kind }, data);
+                        // Keep "still to come" right without a reload, so the next scan is capped correctly.
+                        if (data.accepted > 0 && this.line) {
+                            this.line.received += data.accepted;
+                            this.line.remaining = Math.max(0, this.line.remaining - data.accepted);
+                        }
                         this.rows = [];
                         this.numbers = {};
                         this.say('', true);

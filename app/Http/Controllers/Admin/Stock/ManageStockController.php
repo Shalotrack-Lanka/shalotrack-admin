@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\DeviceType;
 use App\Models\Stock;
 use App\Services\Audit;
-use App\Services\Delivery\DeliveryPolicy;
 use App\Services\Delivery\SupplierDeliveryService;
 use App\Services\Supplier\SupplierCatalogue;
 use App\Models\StockTransferLedger;
@@ -46,7 +45,7 @@ class ManageStockController extends Controller
             ])->groupBy('supplier_id')->map->values()
             : collect();
 
-        return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers', 'openDeliveries'));
+        return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers', 'openDeliveries') + ['deliveriesOn' => SupplierDeliveryService::isEnabled()]);
     }
 
     public function store(Request $request, SupplierDeliveryService $deliveries)
@@ -57,14 +56,17 @@ class ManageStockController extends Controller
             'device_type_id' => 'bail|required|integer|min:1|exists:device_types,id',
             // Only an Active supplier (the screen lists only those); bail keeps text / huge ids away from the database.
             'supplier_id'    => ['bail', 'required', 'integer', 'min:1', \Illuminate\Validation\Rule::exists('suppliers', 'id')->where('status', 'Active')],
-            // A scanned delivery is chosen instead of typing a quantity: its quantity IS the number of scanned units.
-            'delivery_id'    => ['nullable', 'integer', 'min:1'],
+            // With delivery scanning on, stock comes ONLY from a scanned delivery: its quantity is the number of units
+            // actually received (never a typed number), so no more can be added than the supplier really delivered.
+            'delivery_id'    => $deliveriesOn ? ['required', 'integer', 'min:1'] : ['nullable', 'integer', 'min:1'],
             'stock_in'       => $deliveriesOn
-                ? ['required_without:delivery_id', 'nullable', 'integer', 'min:1', 'max:1000000']
+                ? ['nullable', 'integer', 'min:1', 'max:1000000']
                 : ['required', 'integer', 'min:1', 'max:1000000'],
+        ], [
+            'delivery_id.required' => 'Choose the scanned delivery to add. Stock is added from what was received (Supplier Management -> Receive delivery), so it always matches what the supplier actually delivered.',
         ]);
 
-        $deliveryId = $deliveriesOn ? ((int) $request->input('delivery_id') ?: null) : null;
+        $deliveryId = $deliveriesOn ? (int) $request->input('delivery_id') : null;
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $deliveries, $deliveriesOn, $deliveryId) {
             
@@ -85,20 +87,8 @@ class ManageStockController extends Controller
             $qty = (int) $request->stock_in;
             $delivery = null;
             if ($deliveriesOn) {
-                if ($deliveryId) {
-                    ['delivery' => $delivery, 'qty' => $qty] = $deliveries->claimForStockIn((int) $request->supplier_id, $deviceType->id, $deliveryId);
-                } elseif ($deliveries->hasOpenDeviceDelivery((int) $request->supplier_id, $deviceType->id)) {
-                    // Typing a number now would add the same devices again when the scanned delivery is added later.
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'delivery_id' => 'This supplier has a scanned delivery of this device waiting. Choose it so the stock matches the scanned units.'
-                    ]);
-                } elseif (DeliveryPolicy::enforcing(config('supplier_deliveries.enforce_from'), now()->toDateString())) {
-                    // From the enforcement date every device must arrive on a scanned delivery: a typed number
-                    // would be stock with no IMEIs behind it.
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'stock_in' => 'Stock is now added only from scanned deliveries. Scan this delivery under Supplier Management -> Receive delivery, then choose it here.'
-                    ]);
-                }
+                // The quantity is the delivery's scanned units; whatever was typed is ignored.
+                ['delivery' => $delivery, 'qty' => $qty] = $deliveries->claimForStockIn((int) $request->supplier_id, $deviceType->id, $deliveryId);
             }
 
             // Insert data only into the columns that exist on the table

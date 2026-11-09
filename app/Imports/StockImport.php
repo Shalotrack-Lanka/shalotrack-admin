@@ -6,7 +6,6 @@ use App\Models\DeviceType;
 use App\Models\Stock;
 use App\Models\StockTransferLedger;
 use App\Models\Supplier;
-use App\Services\Delivery\DeliveryPolicy;
 use App\Services\Supplier\SupplierCatalogue;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -143,7 +142,9 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
                         );
                     }
                 }
-                if ($deliveries && DeliveryPolicy::enforcing(config('supplier_deliveries.enforce_from'), now()->toDateString())) {
+                // With delivery scanning on, stock comes only from scanned deliveries: a typed quantity in a file could
+                // add more devices than the supplier actually delivered.
+                if ($deliveries) {
                     $validator->errors()->add(
                         "{$rowNumber}.stock_in",
                         'Stock is now added only from scanned deliveries (Supplier Management -> Receive delivery), not from a file.'

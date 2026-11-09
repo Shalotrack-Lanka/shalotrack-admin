@@ -52,9 +52,51 @@ class SupplierStockLinksTest extends TestCase
         return Supplier::latest('id')->firstOrFail();
     }
 
+    private int $serial = 0;
+
+    /** A new valid IMEI each call (Luhn check digit). */
+    private function imei(): string
+    {
+        $body = '35517210' . str_pad((string) ++$this->serial, 6, '0', STR_PAD_LEFT);
+        $sum = 0;
+        for ($i = 0; $i < 14; $i++) {
+            $d = (int) $body[$i];
+            if ($i % 2 === 1) {
+                $d *= 2;
+                if ($d > 9) {
+                    $d -= 9;
+                }
+            }
+            $sum += $d;
+        }
+
+        return $body . ((10 - $sum % 10) % 10);
+    }
+
+    private function order(Supplier $s, Product $p, int $qty, string $type = 'Device'): SupplierInvoice
+    {
+        $this->post(route('admin.supplier-invoice.store'), ['supplier_id' => $s->id, 'items' => [
+            ['product_id' => $p->id, 'type' => $type, 'order_qty' => $qty, 'unit_price' => 10],
+        ]])->assertSessionHasNoErrors();
+
+        return SupplierInvoice::where('supplier_id', $s->id)->latest('id')->firstOrFail();
+    }
+
+    /** Order $count devices and receive them on one scanned delivery; returns the delivery id. */
+    private function receive(Supplier $s, DeviceType $t, int $count = 1, ?array $imeis = null): int
+    {
+        $imeis ??= array_map(fn () => $this->imei(), range(1, $count));
+        $po = $this->order($s, Product::where('device_type_id', $t->id)->firstOrFail(), count($imeis));
+
+        return (int) $this->postJson(route('admin.suppliers.deliveries.store', $s->id), [
+            'kind' => 'DEVICE', 'device_type_id' => $t->id, 'purchase_order_id' => $po->id, 'scans' => $imeis,
+        ])->assertOk()->json('delivery_id');
+    }
+
+    /** Stock-in the way the screen does it: from a scanned delivery of $qty devices. */
     private function stockIn(Supplier $s, DeviceType $t, $qty = 5)
     {
-        return $this->post(route('admin.stock.store'), ['supplier_id' => $s->id, 'device_type_id' => $t->id, 'stock_in' => $qty]);
+        return $this->post(route('admin.stock.store'), ['supplier_id' => $s->id, 'device_type_id' => $t->id, 'delivery_id' => $this->receive($s, $t, $qty)]);
     }
 
     // ------------------------------------------------------------------------------------------ supplier products
@@ -115,8 +157,7 @@ class SupplierStockLinksTest extends TestCase
     {
         $t = $this->type();
         $s = $this->supplierWith($t);
-        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'DEVICE', 'device_type_id' => $t->id, 'scans' => [self::IMEI_A]])
-            ->assertOk()->assertJsonPath('accepted', 1);
+        $this->receive($s, $t, 1, [self::IMEI_A]);
 
         $this->put(route('admin.suppliers.update', $s->id), $this->supplierForm([], ['supplier_name' => 'Changed']))->assertSessionHasErrors('products');
         $this->assertSame('Suwen test', $s->fresh()->name, 'nothing about the supplier changed');
@@ -130,7 +171,8 @@ class SupplierStockLinksTest extends TestCase
         $other = $this->type('Other', 'Plus');
         $s = $this->supplierWith($t);
 
-        $this->stockIn($s, $other)->assertSessionHasErrors('device_type_id');
+        $this->post(route('admin.stock.store'), ['supplier_id' => $s->id, 'device_type_id' => $other->id, 'delivery_id' => $this->receive($s, $t, 1)])
+            ->assertSessionHasErrors('device_type_id');
         $this->assertSame(0, (int) Stock::where('device_type_id', $other->id)->value('company_available_stock'));
 
         $this->stockIn($s, $t, 5)->assertSessionHasNoErrors();
@@ -150,17 +192,36 @@ class SupplierStockLinksTest extends TestCase
         $this->assertSame(15, (int) Stock::where('device_type_id', $t->id)->value('company_available_stock'));
     }
 
-    public function test_from_the_enforcement_date_stock_comes_only_from_scanned_deliveries(): void
+    public function test_stock_comes_only_from_scanned_deliveries_and_never_more_than_was_delivered(): void
     {
         $t = $this->type();
         $s = $this->supplierWith($t);
-        config(['supplier_deliveries.enforce_from' => now()->subDay()->toDateString()]);
 
-        $this->stockIn($s, $t, 5)->assertSessionHasErrors('stock_in');
+        // A typed number is not stock: nothing was received.
+        $this->post(route('admin.stock.store'), ['supplier_id' => $s->id, 'device_type_id' => $t->id, 'stock_in' => 5])
+            ->assertSessionHasErrors('delivery_id');
+        $this->assertSame(0, (int) Stock::where('device_type_id', $t->id)->value('company_available_stock'));
 
-        $id = $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'DEVICE', 'device_type_id' => $t->id, 'scans' => [self::IMEI_A]])->json('delivery_id');
-        $this->post(route('admin.stock.store'), ['supplier_id' => $s->id, 'device_type_id' => $t->id, 'delivery_id' => $id])->assertSessionHasNoErrors();
-        $this->assertSame(1, (int) Stock::where('device_type_id', $t->id)->value('company_available_stock'));
+        // A delivery of 2: typing 50 next to it still adds exactly the 2 that arrived, and only once.
+        $id = $this->receive($s, $t, 2);
+        $this->post(route('admin.stock.store'), ['supplier_id' => $s->id, 'device_type_id' => $t->id, 'delivery_id' => $id, 'stock_in' => 50])->assertSessionHasNoErrors();
+        $this->assertSame(2, (int) Stock::where('device_type_id', $t->id)->value('company_available_stock'));
+
+        $this->post(route('admin.stock.store'), ['supplier_id' => $s->id, 'device_type_id' => $t->id, 'delivery_id' => $id])->assertSessionHasErrors('delivery_id');
+        $this->assertSame(2, (int) Stock::where('device_type_id', $t->id)->value('company_available_stock'));
+    }
+
+    public function test_the_stock_page_offers_only_what_is_waiting_and_no_typed_import(): void
+    {
+        $t = $this->type();
+        $s = $this->supplierWith($t);
+        $this->receive($s, $t, 1);
+
+        $this->get(route('admin.stock.manage'))->assertOk()
+            ->assertViewHas('deliveriesOn', true)
+            ->assertViewHas('openDeliveries', fn ($d) => $d[$s->id]->count() === 1)
+            ->assertDontSee('action="' . route('admin.stock.import') . '"', false)
+            ->assertSee('Stock is added only from scanned supplier deliveries');
     }
 
     // ------------------------------------------------------------------------------------------ device types
@@ -276,7 +337,7 @@ class SupplierStockLinksTest extends TestCase
         $s = $this->supplierWith($t);
         Stock::where('device_type_id', $t->id)->delete();
         Stock::create(['device_type_id' => $t->id, 'company_available_stock' => 5]);   // other stock exists
-        $id = $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'DEVICE', 'device_type_id' => $t->id, 'scans' => [self::IMEI_A]])->json('delivery_id');
+        $id = $this->receive($s, $t, 1, [self::IMEI_A]);
         config(['supplier_deliveries.enforce_from' => now()->subDay()->toDateString()]);
 
         $p = app(\App\Services\Delivery\SupplierDeliveryService::class)->preview('DEVICE', self::IMEI_A, $t->id);
@@ -304,7 +365,10 @@ class SupplierStockLinksTest extends TestCase
     {
         $s = Supplier::create(['name' => 'Dialog Supplies', 'status' => 'Active']);
         $iccid = '8994011234567890123';
-        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'scans' => [['iccid' => $iccid, 'sim_number' => '0771234567']]])->assertOk();
+        $sim = Product::create(['product_name' => 'Dialog SIM card']);
+        $s->products()->attach($sim->id, ['price' => 150, 'qty' => 0]);
+        $po = $this->order($s, $sim, 1, 'SIM');
+        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'purchase_order_id' => $po->id, 'scans' => [['iccid' => $iccid, 'sim_number' => '0771234567']]])->assertOk();
         $this->post(route('admin.stock.sim.store'), ['sim_type' => 'dialog', 'sim_number' => '0771234567', 'imsi' => '413021234567890', 'iccid' => $iccid, 'sim_status' => 'Activated'])
             ->assertSessionHasNoErrors();
 

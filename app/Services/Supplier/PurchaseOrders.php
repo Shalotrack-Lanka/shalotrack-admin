@@ -229,27 +229,34 @@ class PurchaseOrders
             ->limit(50)
             ->get();
 
-        return $orders->map(fn (SupplierInvoice $o) => $this->summary($o))->values();
+        // An order whose goods have all arrived has nothing left to receive, so it is not offered again.
+        return $orders->map(fn (SupplierInvoice $o) => $this->summary($o))
+            ->filter(fn (array $s) => collect($s['lines'])->contains(fn ($l) => $l['remaining'] > 0))
+            ->values();
     }
 
     /**
      * What an order is for and how much of it has arrived: per device type ordered vs received, and SIMs.
      *
-     * @return array{id:int, number:string, date:?string, status:string, device_types: array<int,array{ordered:int, received:int}>, sims_ordered:int, sims_received:int, editable:bool}
+     * @return array{id:int, number:string, date:?string, status:string, device_types: array<int,array{ordered:int, received:int}>, sims_ordered:int, sims_received:int, lines: list<array{key:string, kind:string, device_type_id:?int, name:string, ordered:int, received:int, remaining:int}>, editable:bool}
      */
     public function summary(SupplierInvoice $order): array
     {
         $order->loadMissing('items.product');
 
         $types = [];
+        $names = [];
         $simsOrdered = 0;
+        $simName = null;
         foreach ($order->items as $item) {
             $typeId = $item->product?->device_type_id;
             if ($typeId) {
                 $types[(int) $typeId]['ordered'] = ($types[(int) $typeId]['ordered'] ?? 0) + (int) $item->order_qty;
                 $types[(int) $typeId]['received'] = 0;
+                $names[(int) $typeId] ??= (string) $item->product->product_name;
             } elseif (self::isSimLine($item)) {
                 $simsOrdered += (int) $item->order_qty;
+                $simName ??= (string) ($item->product?->product_name ?? 'SIM cards');
             }
         }
 
@@ -268,6 +275,32 @@ class PurchaseOrders
             }
         }
 
+        // One line per thing on the order (each device type, and SIMs), with what is still to come. This is what
+        // the Receive delivery screen offers, and receiving more than "remaining" is refused.
+        $lines = [];
+        foreach ($types as $typeId => $q) {
+            $lines[] = [
+                'key'            => 'dt:' . $typeId,
+                'kind'           => SupplierDelivery::KIND_DEVICE,
+                'device_type_id' => $typeId,
+                'name'           => $names[$typeId] ?? 'Device type #' . $typeId,
+                'ordered'        => $q['ordered'],
+                'received'       => $q['received'],
+                'remaining'      => max(0, $q['ordered'] - $q['received']),
+            ];
+        }
+        if ($simsOrdered > 0 || $simsReceived > 0) {
+            $lines[] = [
+                'key'            => 'sim',
+                'kind'           => SupplierDelivery::KIND_SIM,
+                'device_type_id' => null,
+                'name'           => $simName ?? 'SIM cards',
+                'ordered'        => $simsOrdered,
+                'received'       => $simsReceived,
+                'remaining'      => max(0, $simsOrdered - $simsReceived),
+            ];
+        }
+
         return [
             'id'            => (int) $order->id,
             'number'        => (string) $order->invoice_number,
@@ -276,8 +309,23 @@ class PurchaseOrders
             'device_types'  => $types,
             'sims_ordered'  => $simsOrdered,
             'sims_received' => $simsReceived,
+            'lines'         => $lines,
             'editable'      => $this->lockReason($order) === null,
         ];
+    }
+
+    /**
+     * How many more units of this device type (or SIMs, $deviceTypeId null) the order is still waiting for.
+     */
+    public function remaining(SupplierInvoice $order, string $kind, ?int $deviceTypeId): int
+    {
+        $summary = $this->summary($order);
+
+        [$ordered, $received] = $kind === SupplierDelivery::KIND_DEVICE
+            ? [$summary['device_types'][(int) $deviceTypeId]['ordered'] ?? 0, $summary['device_types'][(int) $deviceTypeId]['received'] ?? 0]
+            : [$summary['sims_ordered'], $summary['sims_received']];
+
+        return max(0, $ordered - $received);
     }
 
     /** A line with no device type that is a SIM (the product or the line says so). */
