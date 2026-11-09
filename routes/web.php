@@ -169,6 +169,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('admin/master-pages')->middleware('role:ADMIN')->group(function () {
 
+        // Device price master: landing cost + company / distributor / retailer margins per device type.
+        Route::get('/device-prices', [\App\Http\Controllers\Admin\DevicePriceController::class, 'index'])->name('admin.device-prices');
+        Route::patch('/device-prices/{deviceType}', [\App\Http\Controllers\Admin\DevicePriceController::class, 'update'])
+            ->name('admin.device-prices.update')->where('deviceType', '[0-9]{1,18}');
+
         Route::get('/setup-device', [AddDeviceController::class, 'index'])->name('admin.setup-device');
         Route::post('/setup-device', [AddDeviceController::class, 'store'])->name('admin.device.store');
         Route::get('/setup-device/list', [AddDeviceController::class, 'list'])->name('admin.device.list');

@@ -60,6 +60,20 @@ jobs:
           php artisan list > /dev/null
           php artisan route:list > /dev/null
 
+      # Compiles every Blade view. A template syntax error (the kind that gave a production 500 on
+      # Manage Stock) now fails here instead of on the live page.
+      - name: Every Blade view compiles
+        run: php artisan view:cache
+
+      - name: Automated tests
+        run: php artisan test
+
+      # Known-vulnerable dependencies are reported on every run but do not block a deploy: a new advisory
+      # on an unrelated package should not stop an urgent fix. Read the output.
+      - name: Dependency vulnerability report
+        continue-on-error: true
+        run: composer audit --locked
+
   # Only for a push to main, only after the check passed. Never runs for pull requests, so an
   # unreviewed pull request can no longer overwrite the production image tag.
   build-and-push:
