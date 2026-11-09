@@ -85,11 +85,11 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        // Admin Sidebar එක සඳහා
+        // For the admin sidebar
         View::composer('partials.sidebars.admin', function ($view) {
             if (auth()->check() && auth()->user()->role === 'ADMIN') {
                 
-                // තත්පර 1ක Cache එකක් දැමීම (මෙහි 1 යනු තත්පර 1යි)
+                // Add a 1-second cache (the 1 here means 1 second)
                 $adminCount = Cache::remember('admin_complaints_count', 1, function () {
                     // The sidebar is on every page: when the mobile API is down it must show 0, never crash the page.
                     try {
@@ -119,7 +119,7 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        // Dealer Sidebar එක සඳහා
+        // For the dealer sidebar
         View::composer('layouts.dealer', function ($view) {
             if (auth()->check() && auth()->user()->role === 'DEALER') {
                 
@@ -129,7 +129,7 @@ class AppServiceProvider extends ServiceProvider
                 if ($dealer) {
                     $dealerCacheKey = 'dealer_complaints_count_' . $dealer->id;
                     
-                    // තත්පර 1ක Cache එකක් දැමීම
+                    // Add a 1-second cache
                     $dealerCount = Cache::remember($dealerCacheKey, 1, function () use ($dealer) {
                         // Same rule as the admin sidebar: an unreachable API shows 0, it never crashes the page.
                         try {

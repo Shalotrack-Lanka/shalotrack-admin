@@ -18,7 +18,7 @@
         @include('partials.header')
 
         <main class="p-4 md:p-6 flex-1 w-full max-w-full" x-data="{ 
-            activeTab: 'feedback', {{-- Feedback ටැබ් එක මුලින්ම පෙනෙන්න සකසා ඇත --}}
+            activeTab: 'feedback', {{-- The Feedback tab is set to show first --}}
             statusFilter: 'Open',
             complaintType: 'All',
             complaintSource: 'All',

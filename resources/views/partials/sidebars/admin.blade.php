@@ -372,7 +372,7 @@
                     <div class="flex items-center space-x-2">
                         <span>Complains</span>
 
-                        <!-- Count එක 0 ට වඩා වැඩි නම් පමණක් Badge එක පෙන්වීම -->
+                        <!-- Show the badge only if the count is greater than 0 -->
                         @if(isset($complaintsCount) && $complaintsCount > 0)
                             <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
                                 {{ $complaintsCount }}
@@ -495,7 +495,7 @@
      style="position: fixed; top: 1.25rem; right: 1.25rem; z-index: 50; transform: translateY(-200%);">
     <div class="flex items-center p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-2xl space-x-3.5 w-80 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
 
-        <!-- ක්ලික් කළ හැකි ප්‍රදේශය (Admin Complaints පිටුවට යයි) -->
+        <!-- Clickable area (goes to the Admin Complaints page) -->
         <div onclick="window.location.href='{{ route('admin.complaints.index') }}'" class="flex items-center flex-1 space-x-3.5 cursor-pointer">
             <div class="flex-shrink-0 bg-blue-500 text-white p-2.5 rounded-full shadow-md">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -584,8 +584,8 @@
     // Every 20 s (staggered from the 15 s poll): did anyone reply to an open complaint?
     pollEvery("{{ route('admin.complaints.check-new-replies') }}", 20000, data => {
         if (data.has_new_reply) {
-            const who = data.author_name || 'ඩීලරයෙකු';
-            showToast(who + " reply කර ඇත!");
+            const who = data.author_name || 'A dealer';
+            showToast(who + " has replied!");
         }
     }, "Admin replies");
 </script>

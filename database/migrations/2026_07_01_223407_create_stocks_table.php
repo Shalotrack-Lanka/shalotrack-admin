@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
        Schema::create('stocks', function (Blueprint $table) {
-            $table->id(); // Primary Key (ID එක)
-            $table->string('product_name'); // Product එකේ නම (e.g., Letstrack Basic)
-            $table->string('product_model'); // Model එකේ නම (e.g., Letstrack Basic Series)
-            $table->integer('stock_in')->default(0); // මුළු Stock ප්‍රමාණය
-            $table->integer('company_available_stock')->default(0); // සමාගම සතුව ඇති Stock ප්‍රමාණය
-            $table->integer('dealer_available_stock')->default(0); // ඩීලර්ලා සතුව ඇති Stock ප්‍රමාණය
-            $table->integer('sold_to_customer')->default(0); // පාරිභෝගිකයින්ට විකුණා ඇති ප්‍රමාණය
-            $table->timestamps(); // Created_at සහ Updated_at (දිනය සහ වේලාව සටහන් වීමට)
+            $table->id(); // Primary key (ID)
+            $table->string('product_name'); // Product name (e.g., Letstrack Basic)
+            $table->string('product_model'); // Model name (e.g., Letstrack Basic Series)
+            $table->integer('stock_in')->default(0); // Total stock quantity
+            $table->integer('company_available_stock')->default(0); // Quantity held by the company
+            $table->integer('dealer_available_stock')->default(0); // Quantity held by dealers
+            $table->integer('sold_to_customer')->default(0); // Quantity sold to customers
+            $table->timestamps(); // created_at and updated_at (record date and time)
         });
     }
 

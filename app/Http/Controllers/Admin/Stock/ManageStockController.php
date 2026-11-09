@@ -56,13 +56,13 @@ class ManageStockController extends Controller
 
             if (!$deviceType) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'device_type_id' => 'මෙම භාණ්ඩයට අදාළ Device Type එකක් සම්බන්ධ කර නොමැත!'
+                    'device_type_id' => 'No device type is linked to this item!'
                 ]);
             }
 
             $deviceLabel = trim("{$deviceType->device_category} {$deviceType->model}");
 
-            // මෙතැනයි වෙනස: Table එකේ තියෙන Columns වලට විතරක් දත්ත දැමීම
+            // Insert data only into the columns that exist on the table
             $stock = \App\Models\Stock::firstOrCreate(
                 ['device_type_id' => $deviceType->id],
                 ['company_available_stock' => 0]
@@ -78,7 +78,7 @@ class ManageStockController extends Controller
             $stock->updated_at = now(); 
             $stock->save();
 
-            // අනෙකුත් සියලුම විස්තර Ledger එකට දැමීම
+            // Put all the other details into the ledger
             $supplier = \App\Models\Supplier::findOrFail($request->supplier_id);
 
             // The supplier's line is what is still ON ORDER. Receiving part of it must leave the rest on the line;
@@ -108,7 +108,7 @@ class ManageStockController extends Controller
             ]);
         });
 
-        return redirect()->back()->with('success', 'Stock එක සාර්ථකව පද්ධතියට එකතු කරන ලදී!');
+        return redirect()->back()->with('success', 'Stock was added to the system successfully!');
     }
 
     public function importStock(Request $request)
@@ -143,7 +143,7 @@ class ManageStockController extends Controller
             return redirect()->back()->with([
                 'import_success_count' => count($import->created ?? []),
                 'import_total_stock_in' => $import->totalStockIn ?? 0,
-                'success'              => 'Excel දත්ත සාර්ථකව පද්ධතියට එකතු කරන ලදී!'
+                'success'              => 'Excel data was imported into the system successfully!'
             ]);
 
         } catch (\Throwable $e) {

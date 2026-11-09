@@ -20,11 +20,11 @@ class SimsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFail
 
     public function model(array $row)
     {
-        // 'yes', 'y', '1' ආදිය true බවටත්, අනෙකුත් ඒවා false බවටත් හැරවීම
+        // Convert 'yes', 'y', '1' etc. to true and everything else to false
         $activationInput = strtolower(trim($row['activation_required'] ?? 'no'));
         $isActivationRequired = in_array($activationInput, ['yes', 'y', '1', 'true']);
 
-        // Excel හි අංක Scientific Notation වීම වැළැක්වීමට (string) ලෙස Cast කිරීම
+        // Cast to string so Excel numbers do not turn into scientific notation
         $sim = Sim::create([
             'sim_type'            => trim($row['sim_type']),
             'sim_number'          => trim((string)$row['sim_number']),
@@ -51,13 +51,13 @@ class SimsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFail
         ];
     }
     
-    // අවශ්‍ය නම් අමතර Custom Error Messages මෙතනින් ලබා දිය හැක
+    // Extra custom error messages can be given here if needed
     public function customValidationMessages()
     {
         return [
-            'sim_number.unique' => 'SIM අංකය (:input) දැනටමත් පද්ධතියේ පවතී.',
-            'imsi.unique'       => 'IMSI අංකය (:input) දැනටමත් පද්ධතියේ පවතී.',
-            'iccid.unique'      => 'ICCID අංකය (:input) දැනටමත් පද්ධතියේ පවතී.',
+            'sim_number.unique' => 'The SIM number (:input) already exists in the system.',
+            'imsi.unique'       => 'The IMSI number (:input) already exists in the system.',
+            'iccid.unique'      => 'The ICCID number (:input) already exists in the system.',
         ];
     }
 }

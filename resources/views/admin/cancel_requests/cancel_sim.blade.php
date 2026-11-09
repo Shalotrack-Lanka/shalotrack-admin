@@ -178,7 +178,7 @@ function cancelSimPage() {
             sim.saving = true;
 
             try {
-                // 💡 මෙතන තමයි නිවැරදි URL එක යාවත්කාලීන කර ඇත්තේ
+                // 💡 The correct URL has been updated here
                 const response = await fetch(`/admin/cancel-requests/cancel-sim/${sim.id}`, {
                     method: 'PATCH',
                     headers: {
