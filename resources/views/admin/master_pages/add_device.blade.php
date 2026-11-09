@@ -193,6 +193,7 @@
                                 <th class="px-5 py-2">Device Category</th>
                                 <th class="px-5 py-2">IMEI Number</th>
                                 <th class="px-5 py-2">SIM Number</th>
+                                @if($showSupplier)<th class="px-5 py-2">Supplier</th>@endif
                                 <th class="px-5 py-2">Setup Date</th>
                             </tr>
                         </thead>
@@ -203,10 +204,11 @@
                                     <td class="px-5 py-2">{{ $device->device_category }}</td>
                                     <td class="px-5 py-2">{{ $device->imei_number }}</td>
                                     <td class="px-5 py-2">{{ $device->sim_number ?? '-' }}</td>
+                                    @if($showSupplier)<td class="px-5 py-2">{{ $supplierNames[$device->imei_number] ?? 'Unknown' }}</td>@endif
                                     <td class="px-5 py-2">{{ $device->created_at->local()->format('Y-m-d H:i') }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="px-5 py-6 text-center text-gray-400">No devices setup yet.</td></tr>
+                                <tr><td colspan="{{ $showSupplier ? 6 : 5 }}" class="px-5 py-6 text-center text-gray-400">No devices setup yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -220,6 +222,9 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 
 <script>
+const showSupplier = {{ $showSupplier ? 'true' : 'false' }};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+
 document.getElementById('refreshBtn').addEventListener('click', function () {
     const icon = document.getElementById('refreshIcon');
     const body = document.getElementById('deviceTableBody');
@@ -235,7 +240,7 @@ document.getElementById('refreshBtn').addEventListener('click', function () {
         })
         .then(devices => {
             if (!devices.length) {
-                body.innerHTML = `<tr><td colspan="5" class="px-5 py-6 text-center text-gray-400">No devices setup yet.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="${showSupplier ? 6 : 5}" class="px-5 py-6 text-center text-gray-400">No devices setup yet.</td></tr>`;
                 return;
             }
             body.innerHTML = devices.map(d => `
@@ -244,6 +249,7 @@ document.getElementById('refreshBtn').addEventListener('click', function () {
                     <td class="px-5 py-2">${d.device_category}</td>
                     <td class="px-5 py-2">${d.imei_number}</td>
                     <td class="px-5 py-2">${d.sim_number ?? '-'}</td>
+                    ${showSupplier ? `<td class="px-5 py-2">${esc(d.supplier ?? 'Unknown')}</td>` : ''}
                     <td class="px-5 py-2">${new Date(d.created_at).toLocaleString()}</td>
                 </tr>
             `).join('');

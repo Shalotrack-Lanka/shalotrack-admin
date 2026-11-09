@@ -21,6 +21,12 @@
         <main class="p-4 md:p-6 flex-1">
             @yield('content')
 
+            @if(session('warning'))
+                <div class="mb-4 p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-lg text-xs font-bold">
+                    {{ session('warning') }}
+                </div>
+            @endif
+
             @if(session('import_success_count') !== null)
                 <div class="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-xs font-bold">
                     {{ session('import_success_count') }} SIM(s) imported successfully.

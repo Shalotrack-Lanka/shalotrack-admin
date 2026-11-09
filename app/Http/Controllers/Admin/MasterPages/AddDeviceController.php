@@ -8,6 +8,7 @@ use App\Models\SetupShalotrackDevice;
 use App\Models\DeviceType;
 use App\Models\Sim;
 use App\Models\Stock;
+use App\Services\Delivery\SupplierDeliveryService;
 use App\Imports\DevicesImport;
 use App\Traits\PushesDeviceToApi;
 use App\Exports\DeviceImportTemplateExport;
@@ -40,9 +41,13 @@ class AddDeviceController extends Controller
             ->orderBy('sim_number')
             ->pluck('sim_number');
 
+        // Supplier of each device (from the delivery records); empty while the feature is off.
+        $supplierNames = app(SupplierDeliveryService::class)->supplierNamesByImei($devices->pluck('imei_number')->all());
+        $showSupplier = app(SupplierDeliveryService::class)->enabled();
+
         return view(
             'admin.master_pages.add_device',
-            compact('devices', 'deviceTypes', 'activatedSimNumbers')
+            compact('devices', 'deviceTypes', 'activatedSimNumbers', 'supplierNames', 'showSupplier')
         );
     }
 
@@ -102,7 +107,14 @@ class AddDeviceController extends Controller
         // Company Available Stock must cover this setup — one unit of
         // physical stock is consumed per device setup, for this Device
         // Category / Type specifically.
-        $device = DB::transaction(function () use ($deviceType, $deviceCategory, $validated) {
+        $deliveries = app(SupplierDeliveryService::class);
+        $provenanceStatus = 'off';
+
+        $device = DB::transaction(function () use ($deviceType, $deviceCategory, $validated, $deliveries, &$provenanceStatus) {
+            // Supplier delivery check (no-op while the feature is off); see DeliveryPolicy.
+            $provenance = $deliveries->verify('DEVICE', $validated['imei_number'], $deviceType->id, 'imei_number');
+            $provenanceStatus = $provenance['status'];
+
             $stock = Stock::where('device_type_id', $deviceType->id)->lockForUpdate()->first();
 
             if (!$stock || $stock->company_available_stock < 1) {
@@ -151,6 +163,8 @@ class AddDeviceController extends Controller
             // identity lives on the device row (iccid/imsi above).
             $sim?->delete();
 
+            $deliveries->stamp($provenance['unit'], (string) $device->shdevice_id);
+
             return $device;
         });
 
@@ -162,7 +176,7 @@ class AddDeviceController extends Controller
             ->route('admin.setup-device')
             ->with(
                 'success',
-                'Device Setup Completed Successfully!'
+                'Device Setup Completed Successfully!' . (($note = SupplierDeliveryService::warningFor($provenanceStatus, 'IMEI')) ? ' ' . $note : '')
             );
 
         return $synced ? $redirect : $redirect->with('warning', self::SYNC_WARNING);
@@ -183,6 +197,11 @@ class AddDeviceController extends Controller
                 'dealer_id',
                 'created_at',
             ]);
+
+        // Same supplier lookup for the Refresh button (a plain attribute on the JSON, never saved).
+        $svc = app(SupplierDeliveryService::class);
+        $names = $svc->supplierNamesByImei($devices->pluck('imei_number')->all());
+        $devices->each(fn ($d) => $d->setAttribute('supplier', $svc->enabled() ? ($names[$d->imei_number] ?? null) : null));
 
         return response()->json($devices);
     }
@@ -235,6 +254,8 @@ class AddDeviceController extends Controller
                 'import_sync_failed'   => $syncFailed,
                 'import_failures'      => $import->failures(),
                 'import_errors'        => $import->errors(),
-            ]);
+            ] + ($import->unverified > 0
+                ? ['warning' => $import->unverified . ' of the imported device(s) were not received on any supplier delivery, so their supplier is unknown.']
+                : []));
     }
 }

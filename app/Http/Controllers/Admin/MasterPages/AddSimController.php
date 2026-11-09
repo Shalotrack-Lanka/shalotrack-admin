@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin\MasterPages;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sim;
+use App\Services\Delivery\SupplierDeliveryService;
+use Illuminate\Support\Facades\DB;
 use App\Imports\SimsImport;
 use App\Exports\SimImportTemplateExport;
 use Illuminate\Http\Request;
@@ -38,16 +40,30 @@ class AddSimController extends Controller
             'iccid.unique'      => 'This ICCID is already registered.',
         ]);
 
-        Sim::create([
-            'sim_number'           => $validated['sim_number'],
-            'sim_type'             => $validated['sim_type'],
-            'imsi'                 => $validated['imsi'],
-            'iccid'                => $validated['iccid'],
-            'activation_required'  => $request->boolean('activation_required'),
-            'sim_status'           => $validated['sim_status'],
-        ]);
+        // Supplier delivery check (no-op while the feature is off): from the enforcement date a SIM that was not
+        // received on a supplier delivery is refused; before it, the SIM is added with a warning.
+        $deliveries = app(SupplierDeliveryService::class);
 
-        return redirect()->back()->with('success', 'SIM Product Registered Successfully!');
+        $status = DB::transaction(function () use ($validated, $request, $deliveries) {
+            $provenance = $deliveries->verify('SIM', $validated['iccid'], null, 'iccid');
+
+            $sim = Sim::create([
+                'sim_number'           => $validated['sim_number'],
+                'sim_type'             => $validated['sim_type'],
+                'imsi'                 => $validated['imsi'],
+                'iccid'                => $validated['iccid'],
+                'activation_required'  => $request->boolean('activation_required'),
+                'sim_status'           => $validated['sim_status'],
+            ]);
+
+            $deliveries->stamp($provenance['unit'], (string) $sim->id);
+
+            return $provenance['status'];
+        });
+
+        $note = SupplierDeliveryService::warningFor($status, 'SIM');
+
+        return redirect()->back()->with('success', 'SIM Product Registered Successfully!' . ($note ? ' ' . $note : ''));
     }
 
     public function updateStatus(Request $request, Sim $sim)
@@ -116,6 +132,8 @@ class AddSimController extends Controller
             ->with([
                 'import_success_count' => count($import->created),
                 'import_failures'      => $import->failures(),
-            ]);
+            ] + ($import->unverified > 0
+                ? ['warning' => $import->unverified . ' of the imported SIM(s) were not received on any supplier delivery, so their supplier is unknown.']
+                : []));
     }
 }

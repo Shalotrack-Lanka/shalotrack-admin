@@ -196,7 +196,11 @@
                                 <template x-for="(r, i) in rows" :key="r.imei">
                                     <tr :class="r.error ? 'bg-red-50' : ''">
                                         <td class="px-5 py-2" x-text="i + 1"></td>
-                                        <td class="px-5 py-2 font-mono" x-text="r.imei"></td>
+                                        <td class="px-5 py-2 font-mono">
+                                            <span x-text="r.imei"></span>
+                                            <span x-show="r.from" x-cloak class="block font-sans text-[10px] font-bold text-green-700" x-text="'From ' + r.from"></span>
+                                            <span x-show="r.warn" x-cloak class="block font-sans text-[10px] font-bold text-amber-700" x-text="r.warn"></span>
+                                        </td>
                                         <td class="px-5 py-2 font-mono">
                                             <span x-show="!r.checking" x-text="r.iccid || '-'"></span>
                                             <span x-show="r.checking" x-cloak class="inline-flex items-center gap-1.5 text-gray-400 font-sans">
@@ -351,7 +355,9 @@
                     const settled = this.rows.filter(r => !r.pending).map(r => ({
                         ...r,
                         checking: false,
-                        error: null
+                        error: null,
+                        from: null,
+                        warn: null
                     }));
                     try {
                         localStorage.setItem(DRAFT_KEY, JSON.stringify({
@@ -448,6 +454,8 @@
                         iccid: null,
                         simNumber: null,
                         error: null,
+                        from: null,
+                        warn: null,
                         pending: true,
                         checking: false
                     });
@@ -461,7 +469,8 @@
                         ({
                             data
                         } = await this.post(this.checkUrl, {
-                            imei
+                            imei,
+                            device_type_id: this.deviceTypeId ? Number(this.deviceTypeId) : null
                         }));
                     } catch (e) {
                         drop();
@@ -475,7 +484,11 @@
                     }
 
                     const row = this.rows.find(r => r.imei === imei);
-                    if (row) row.pending = false; // (row is gone if the operator removed it meanwhile)
+                    if (row) {
+                        row.pending = false; // (row is gone if the operator removed it meanwhile)
+                        row.from = (data.imei && data.imei.from) || null; // supplier delivery it arrived on
+                        row.warn = (data.imei && data.imei.warning) || null; // not on any delivery (warning phase)
+                    }
                     this.save();
                     this.beep(true);
                     this.say('Added ' + imei + '. Scan its SIM barcode next, or the next IMEI.', true);

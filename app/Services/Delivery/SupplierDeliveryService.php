@@ -233,6 +233,130 @@ class SupplierDeliveryService
         });
     }
 
+    // ------------------------------------------------------------------------------------------------
+    // Registration checks. Every way a device or SIM enters the system calls these, so the rule is the
+    // same everywhere (see DeliveryPolicy). All of it is a no-op while the feature is switched off.
+    // ------------------------------------------------------------------------------------------------
+
+    public function enabled(): bool
+    {
+        return (bool) config('supplier_deliveries.enabled');
+    }
+
+    /**
+     * Read-only look (no lock), for screens and bulk validation.
+     *
+     * @return array{status: string, unit: ?SupplierDeliveryUnit, from: ?string, message: ?string}
+     */
+    public function preview(string $kind, string $identifier, ?int $deviceTypeId): array
+    {
+        if (! $this->enabled()) {
+            return ['status' => DeliveryPolicy::OFF, 'unit' => null, 'from' => null, 'message' => null];
+        }
+
+        $unit = SupplierDeliveryUnit::where('identifier', $identifier)->where('kind', $kind)->with('delivery.supplier')->first();
+
+        return $this->describe($kind, $unit, $deviceTypeId);
+    }
+
+    /**
+     * Inside the caller's registration transaction: lock the unit, apply the rule, and either return what to
+     * stamp afterwards or throw a ValidationException (the caller's transaction then rolls back, nothing saved).
+     *
+     * @return array{status: string, unit: ?SupplierDeliveryUnit}
+     */
+    public function verify(string $kind, string $identifier, ?int $deviceTypeId, string $errorField): array
+    {
+        if (! $this->enabled()) {
+            return ['status' => DeliveryPolicy::OFF, 'unit' => null];
+        }
+
+        $unit = SupplierDeliveryUnit::where('identifier', $identifier)->where('kind', $kind)->with('delivery.supplier')->lockForUpdate()->first();
+        $d = $this->describe($kind, $unit, $deviceTypeId);
+
+        if (in_array($d['status'], [DeliveryPolicy::BLOCKED, DeliveryPolicy::MISMATCH, DeliveryPolicy::REGISTERED], true)) {
+            throw ValidationException::withMessages([$errorField => $d['message']]);
+        }
+
+        return ['status' => $d['status'], 'unit' => $unit];
+    }
+
+    /** After the device / SIM row exists (same transaction): record what the unit became. */
+    public function stamp(?SupplierDeliveryUnit $unit, string $ref): void
+    {
+        if ($unit) {
+            $unit->forceFill(['registered_at' => now(), 'registered_ref' => mb_substr($ref, 0, 64)])->save();
+        }
+    }
+
+    /** The warning shown after a registration that was allowed without a delivery, or null. */
+    public static function warningFor(string $status, string $what): ?string
+    {
+        return $status === DeliveryPolicy::UNVERIFIED
+            ? "Note: this {$what} was not received on any supplier delivery, so its supplier is unknown."
+            : null;
+    }
+
+    /**
+     * Supplier name for each IMEI (for the Setup Devices list). One query for the whole list.
+     *
+     * @param  array<int,string> $imeis
+     * @return array<string,string>
+     */
+    public function supplierNamesByImei(array $imeis): array
+    {
+        if (! $this->enabled() || $imeis === []) {
+            return [];
+        }
+
+        $out = [];
+        SupplierDeliveryUnit::where('kind', SupplierDelivery::KIND_DEVICE)->whereIn('identifier', $imeis)->with('delivery.supplier')->get()
+            ->each(function ($u) use (&$out) {
+                $out[$u->identifier] = $u->delivery?->supplier?->name ?? '-';
+            });
+
+        return $out;
+    }
+
+    /** @return array{status: string, unit: ?SupplierDeliveryUnit, from: ?string, message: ?string} */
+    private function describe(string $kind, ?SupplierDeliveryUnit $unit, ?int $deviceTypeId): array
+    {
+        $status = DeliveryPolicy::decide(
+            true,
+            config('supplier_deliveries.enforce_from'),
+            now()->toDateString(),
+            $unit !== null,
+            $unit?->registered_at !== null,
+            $unit?->delivery?->device_type_id !== null ? (int) $unit->delivery->device_type_id : null,
+            $kind === SupplierDelivery::KIND_DEVICE ? $deviceTypeId : null,
+        );
+
+        $what = $kind === SupplierDelivery::KIND_DEVICE ? 'IMEI' : 'SIM';
+        $from = $unit?->delivery
+            ? ($unit->delivery->supplier?->name ?? 'a supplier') . ' (delivery #' . $unit->supplier_delivery_id . ')'
+            : null;
+
+        $message = match ($status) {
+            DeliveryPolicy::BLOCKED => "This {$what} was not received on a supplier delivery. Record the delivery under Supplier Management first.",
+            DeliveryPolicy::REGISTERED => "This {$what} has already been registered.",
+            DeliveryPolicy::MISMATCH => sprintf(
+                'This IMEI was delivered as %s, not as the device type you chose. Choose the type it was delivered as.',
+                $this->typeName((int) $unit->delivery->device_type_id)
+            ),
+            DeliveryPolicy::UNVERIFIED => "Not received on any supplier delivery (supplier unknown).",
+            default => null,
+        };
+
+        return ['status' => $status, 'unit' => $unit, 'from' => $from, 'message' => $message];
+    }
+
+    private function typeName(int $id): string
+    {
+        $t = DeviceType::find($id);
+
+        return $t ? trim($t->device_category . ' ' . $t->model) : 'another device type';
+    }
+
     /** Which supplier and delivery did this IMEI / ICCID come from? null = never received through a delivery. */
     public function provenance(string $identifier): ?SupplierDeliveryUnit
     {
