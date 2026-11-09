@@ -65,6 +65,14 @@ jobs:
       - name: Every Blade view compiles
         run: php artisan view:cache
 
+      # CI has no .env (it is never committed), so the tests had no APP_KEY and 250+ failed with
+      # "No application encryption key has been specified". A throw-away key for the test run only; the
+      # production key is a build secret and is never used here.
+      - name: Test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
       - name: Automated tests
         run: php artisan test
 
