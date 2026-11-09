@@ -3,11 +3,11 @@
 return [
 
     /*
-    | Supplier delivery scanning (goods receipt of devices and SIMs). OFF by default: the code is deployed
-    | dark and nothing in the portal changes until SUPPLIER_DELIVERIES_ENABLED=true. Turning it off again
-    | hides the feature without a deploy; the recorded deliveries stay in the database.
+    | Supplier delivery scanning (goods receipt of devices and SIMs). ON by default. It stays quietly off until
+    | the database migrations for it have run (see SupplierDeliveryService::isEnabled). SUPPLIER_DELIVERIES_ENABLED=false
+    | is the emergency switch: it hides the feature without a deploy; recorded deliveries stay in the database.
     */
-    'enabled' => (bool) env('SUPPLIER_DELIVERIES_ENABLED', false),
+    'enabled' => filter_var(env('SUPPLIER_DELIVERIES_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
 
     /*
     | Enforcement date (YYYY-MM-DD). Empty (the default) = WARN ONLY: a device or SIM that was not received on a

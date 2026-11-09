@@ -31,7 +31,7 @@ class ManageStockController extends Controller
         $suppliers = Supplier::where('status', 'Active')->orderBy('name')->get();
 
         // Scanned device deliveries waiting to be added to stock, grouped by supplier (empty while the feature is off).
-        $openDeliveries = config('supplier_deliveries.enabled')
+        $openDeliveries = SupplierDeliveryService::isEnabled()
             ? app(SupplierDeliveryService::class)->openDeviceDeliveries()->map(fn ($d) => [
                 'id'             => $d->id,
                 'supplier_id'    => $d->supplier_id,
@@ -48,7 +48,7 @@ class ManageStockController extends Controller
 
     public function store(Request $request, SupplierDeliveryService $deliveries)
     {
-        $deliveriesOn = (bool) config('supplier_deliveries.enabled');
+        $deliveriesOn = SupplierDeliveryService::isEnabled();
 
         $request->validate([
             'device_type_id' => 'bail|required|integer|min:1|exists:device_types,id',
