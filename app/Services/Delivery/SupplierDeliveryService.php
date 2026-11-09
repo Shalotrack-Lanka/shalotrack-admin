@@ -43,9 +43,9 @@ class SupplierDeliveryService
 
     /**
      * Record a delivery. DEVICE: $scans is a list of IMEIs. SIM: $scans is a list of {iccid, sim_number}.
-     * $purchaseOrderId (optional) is the supplier's purchase order the goods arrived against: it must be this
-     * supplier's, still ORDERED, and contain this device type (or SIMs). Receiving more than was ordered is
-     * allowed (the admin decides) but comes back as a warning.
+     * $purchaseOrderId is REQUIRED: goods are only received against something we ordered. The order must be this
+     * supplier's, still ORDERED, and contain this device type (or SIMs), and the delivery may not bring more than
+     * the order is still waiting for (ordered minus already received). Extra goods need a new purchase order.
      *
      * @param  array<int,mixed> $scans raw scanned values
      * @return array{delivery: ?SupplierDelivery, accepted: list<string>, rejected: list<array{identifier: string, reason: string}>, warning: ?string}
@@ -81,6 +81,13 @@ class SupplierDeliveryService
             $deviceTypeId = null;
         }
 
+        if ($purchaseOrderId === null) {
+            throw ValidationException::withMessages(['purchase_order_id' => sprintf(
+                'Choose the purchase order this delivery is for. Goods are only received against an order; if %s sent something that was not ordered, place a purchase order for it first.',
+                $supplier->name
+            )]);
+        }
+
         try {
             if ($kind === SupplierDelivery::KIND_SIM) {
                 $batch = ScanBatch::classifySims($scans);
@@ -104,11 +111,11 @@ class SupplierDeliveryService
             return ['delivery' => null, 'accepted' => [], 'rejected' => $rejected, 'warning' => null];
         }
 
-        $warning = null;
-
         try {
-            $delivery = DB::transaction(function () use ($kind, $supplier, $deviceTypeId, $reference, $note, $adminId, $purchaseOrderId, &$toSave, &$rejected, &$numbers, &$warning) {
-                $order = $purchaseOrderId !== null ? $this->claimOrder($purchaseOrderId, $supplier->id, $kind, $deviceTypeId) : null;
+            $delivery = DB::transaction(function () use ($kind, $supplier, $deviceTypeId, $reference, $note, $adminId, $purchaseOrderId, &$toSave, &$rejected, &$numbers) {
+                // Locked for the whole save, so two people receiving against the same order cannot both take
+                // the last units it is waiting for.
+                $order = $this->claimOrder($purchaseOrderId, $supplier->id, $kind, $deviceTypeId);
 
                 // Already received before (any supplier): the identifier is unique, so say which delivery.
                 $known = SupplierDeliveryUnit::whereIn('identifier', $toSave)->with('delivery.supplier')->get()->keyBy('identifier');
@@ -157,8 +164,16 @@ class SupplierDeliveryService
                     return null;
                 }
 
-                if ($order !== null) {
-                    $warning = $this->overReceiptWarning($order, $kind, $deviceTypeId, count($toSave));
+                // Never more than was ordered: the supplier cannot deliver (and we cannot pay for) what we did not order.
+                $remaining = app(PurchaseOrders::class)->remaining($order, $kind, $deviceTypeId);
+                if (count($toSave) > $remaining) {
+                    throw ValidationException::withMessages(['scans' => sprintf(
+                        '%s is waiting for only %d more %s, but %d were scanned. Nothing was saved. Remove the extra scans; if the supplier really sent more, place a new purchase order for the extra units first.',
+                        $order->invoice_number,
+                        $remaining,
+                        $kind === SupplierDelivery::KIND_DEVICE ? 'of this device' : 'SIM(s)',
+                        count($toSave)
+                    )]);
                 }
 
                 $delivery = SupplierDelivery::create([
@@ -169,7 +184,7 @@ class SupplierDeliveryService
                     'received_on'         => now()->toDateString(),
                     'note'                => $note !== null ? mb_substr(trim($note), 0, 500) ?: null : null,
                     'received_by'         => $adminId,
-                    'supplier_invoice_id' => $order?->id,
+                    'supplier_invoice_id' => $order->id,
                 ]);
 
                 $now = now();
@@ -206,7 +221,7 @@ class SupplierDeliveryService
             );
         }
 
-        return ['delivery' => $delivery, 'accepted' => $delivery ? $toSave : [], 'rejected' => $rejected, 'warning' => $warning];
+        return ['delivery' => $delivery, 'accepted' => $delivery ? $toSave : [], 'rejected' => $rejected, 'warning' => null];
     }
 
     /** Lock the purchase order and check the goods belong on it. */
@@ -233,20 +248,6 @@ class SupplierDeliveryService
         }
 
         return $order;
-    }
-
-    private function overReceiptWarning(SupplierInvoice $order, string $kind, ?int $deviceTypeId, int $adding): ?string
-    {
-        $summary = app(PurchaseOrders::class)->summary($order);
-        [$ordered, $received] = $kind === SupplierDelivery::KIND_DEVICE
-            ? [$summary['device_types'][(int) $deviceTypeId]['ordered'] ?? 0, $summary['device_types'][(int) $deviceTypeId]['received'] ?? 0]
-            : [$summary['sims_ordered'], $summary['sims_received']];
-
-        $after = $received + $adding;
-
-        return $after > $ordered
-            ? "More received than ordered on {$order->invoice_number}: {$after} received, {$ordered} ordered. Check with the supplier before paying."
-            : null;
     }
 
     /**
@@ -428,6 +429,61 @@ class SupplierDeliveryService
         $n = SupplierDeliveryUnit::where('identifier', $iccid)->where('kind', SupplierDelivery::KIND_SIM)->value('sim_number');
 
         return $n !== null ? (string) $n : null;
+    }
+
+    /**
+     * SIMs that arrived on a supplier delivery but are not registered yet (on Add SIM, Setup Device or an import).
+     * They are physically here, so Add SIM lists them to be registered; only the IMSI still has to be entered.
+     * The SIM type is guessed from the product name on the order or the supplier's list ("Mobitel SIM" -> mobitel).
+     *
+     * @return \Illuminate\Support\Collection<int,array{iccid:string, sim_number:?string, supplier:string, delivery_id:int, order:?string, received_on:?string, sim_type:?string}>
+     */
+    public function waitingSims()
+    {
+        if (! $this->enabled()) {
+            return collect();
+        }
+
+        $units = SupplierDeliveryUnit::where('kind', SupplierDelivery::KIND_SIM)
+            ->whereNull('registered_at')
+            ->whereNotIn('identifier', \App\Models\Sim::query()->select('iccid'))
+            ->with(['delivery.supplier.products', 'delivery.purchaseOrder.items.product'])
+            ->orderBy('supplier_delivery_id')->orderBy('id')
+            ->limit(500)
+            ->get();
+
+        return $units->map(function (SupplierDeliveryUnit $u) {
+            $delivery = $u->delivery;
+            $names = collect($delivery?->purchaseOrder?->items ?? [])
+                ->filter(fn ($i) => PurchaseOrders::isSimLine($i))
+                ->map(fn ($i) => (string) $i->product?->product_name)
+                ->merge(collect($delivery?->supplier?->products ?? [])->whereNull('device_type_id')->pluck('product_name'));
+
+            return [
+                'iccid'       => (string) $u->identifier,
+                'sim_number'  => $u->sim_number !== null ? (string) $u->sim_number : null,
+                'supplier'    => $delivery?->supplier?->name ?? '-',
+                'delivery_id' => (int) $u->supplier_delivery_id,
+                'order'       => $delivery?->purchaseOrder?->invoice_number,
+                'received_on' => $delivery?->received_on?->format('Y-m-d'),
+                'sim_type'    => self::simTypeFrom($names->all()),
+            ];
+        })->values();
+    }
+
+    /** "Mobitel SIM 4G" -> mobitel, "Dialog SIM card" -> dialog (the values of the SIM Type list), else null. */
+    public static function simTypeFrom(array $productNames): ?string
+    {
+        foreach ($productNames as $name) {
+            $name = mb_strtolower((string) $name);
+            foreach (['mobitel', 'dialog'] as $type) {
+                if (str_contains($name, $type)) {
+                    return $type;
+                }
+            }
+        }
+
+        return null;
     }
 
     /** A SIM received with one number but being registered with another: refused (it is the SIM's identity). */

@@ -34,7 +34,7 @@ class SupplierDeliveryController extends Controller
 
         $deliveries = SupplierDelivery::where('supplier_id', $supplier->id)
             ->with(['deviceType', 'purchaseOrder'])
-            ->withCount('units')
+            ->withCount(['units', 'units as registered_count' => fn ($q) => $q->whereNotNull('registered_at')])
             ->orderByDesc('id')
             ->limit(15)
             ->get();

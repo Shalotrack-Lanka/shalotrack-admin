@@ -25,7 +25,10 @@ class AddSimController extends Controller
         $simSuppliers = $deliveries->supplierNamesByIccid($notActivatedSims->pluck('iccid')->merge($activatedSims->pluck('iccid'))->all());
         $showSupplier = $deliveries->enabled();
 
-        return view('admin.master_pages.add_sim', compact('notActivatedSims', 'activatedSims', 'simSuppliers', 'showSupplier'));
+        // SIMs received from suppliers (Receive delivery) that still have to be registered here.
+        $waitingSims = $deliveries->waitingSims();
+
+        return view('admin.master_pages.add_sim', compact('notActivatedSims', 'activatedSims', 'simSuppliers', 'showSupplier', 'waitingSims'));
     }
 
     public function store(Request $request)
