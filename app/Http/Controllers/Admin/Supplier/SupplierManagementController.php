@@ -8,7 +8,9 @@ use App\Models\Admin;
 use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\DeviceType;
+use App\Services\Supplier\SupplierCatalogue;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class SupplierManagementController extends Controller
@@ -22,6 +24,8 @@ class SupplierManagementController extends Controller
         $deviceTypes = DeviceType::orderBy('device_category')->orderBy('model')->get();
 
         $allProducts = Product::orderBy('product_name')->get();
+        // Non-device products (SIM packages, services) for the product picker; devices are picked by device type.
+        $otherProducts = $allProducts->whereNull('device_type_id')->values();
 
         $allSuppliers = Supplier::query()
             ->with(['products'])
@@ -62,6 +66,7 @@ class SupplierManagementController extends Controller
             'search',
             'status',
             'allProducts',
+            'otherProducts',
             'deviceTypes'
         ));
     }
@@ -70,7 +75,7 @@ class SupplierManagementController extends Controller
     {
         $validated = $this->validateSupplierInput($request);
 
-        $supplier = Supplier::create([
+        $supplier = DB::transaction(fn () => tap(Supplier::create([
             'name'         => $validated['supplier_name'],
             'address'      => $validated['address'] ?? null,
             'country'      => $validated['country'] ?? null,
@@ -80,9 +85,7 @@ class SupplierManagementController extends Controller
             'website'      => $validated['website'] ?? null,
             'gstin_number' => $validated['gstin'] ?? null,
             'status'       => 'Active',
-        ]);
-
-        $this->syncProducts($supplier, $request->products);
+        ]), fn ($supplier) => $this->syncProducts($supplier, $validated['products'] ?? null)));
 
         return redirect()
             ->route('admin.suppliers')
@@ -95,18 +98,22 @@ class SupplierManagementController extends Controller
 
         $validated = $this->validateSupplierInput($request, $supplier->id);
 
-        $supplier->update([
-            'name'         => $validated['supplier_name'],
-            'address'      => $validated['address'] ?? null,
-            'country'      => $validated['country'] ?? null,
-            'state'        => $validated['state'] ?? null,
-            'phone_number' => $validated['phone_number'] ?? null,
-            'email'        => $validated['email_id'] ?? null,
-            'website'      => $validated['website'] ?? null,
-            'gstin_number' => $validated['gstin'] ?? null,
-        ]);
+        // One transaction: if a product cannot be removed (an open order or a waiting delivery needs it), nothing
+        // about the supplier is changed.
+        DB::transaction(function () use ($supplier, $validated) {
+            $supplier->update([
+                'name'         => $validated['supplier_name'],
+                'address'      => $validated['address'] ?? null,
+                'country'      => $validated['country'] ?? null,
+                'state'        => $validated['state'] ?? null,
+                'phone_number' => $validated['phone_number'] ?? null,
+                'email'        => $validated['email_id'] ?? null,
+                'website'      => $validated['website'] ?? null,
+                'gstin_number' => $validated['gstin'] ?? null,
+            ]);
 
-        $this->syncProducts($supplier, $request->products);
+            $this->syncProducts($supplier, $validated['products'] ?? null);
+        });
 
         return redirect()
             ->route('admin.suppliers')
@@ -161,19 +168,10 @@ class SupplierManagementController extends Controller
             'qty'            => 'required|integer|min:0|max:1000000',
         ]);
 
-        if (!empty($validated['device_type_id'])) {
-            $deviceType = DeviceType::findOrFail($validated['device_type_id']);
-            $productName = trim("{$deviceType->device_category} {$deviceType->model}");
-
-            $product = Product::firstOrCreate(
-                ['device_type_id' => $deviceType->id],
-                ['product_name' => $productName]
-            );
-        } else {
-            $product = Product::firstOrCreate([
-                'product_name' => trim($validated['product_name']),
-            ]);
-        }
+        $product = app(SupplierCatalogue::class)->resolveProduct(
+            ! empty($validated['device_type_id']) ? (int) $validated['device_type_id'] : null,
+            $validated['product_name'] ?? null,
+        );
 
         $supplier->products()->syncWithoutDetaching([
             $product->id => [
@@ -193,7 +191,7 @@ class SupplierManagementController extends Controller
     public function detachProduct($id, $productId)
     {
         $supplier = Supplier::findOrFail($id);
-        $supplier->products()->detach($productId);
+        app(SupplierCatalogue::class)->detach($supplier, (int) $productId);
 
         return redirect()
             ->route('admin.suppliers')
@@ -241,47 +239,38 @@ class SupplierManagementController extends Controller
         ]);
     }
 
-    // UPDATE: take the device type ID, create the product and link the matching device_type_id
-    private function syncProducts(Supplier $supplier, ?array $products)
+    /**
+     * Save the supplier's product list. Each line is a device type (device_type_id) or a product name; see
+     * SupplierCatalogue::resolveProduct(). Two lines for the same product are merged (the last price wins, the
+     * quantities are added) instead of one silently replacing the other.
+     */
+    private function syncProducts(Supplier $supplier, ?array $products): void
     {
-        if (is_array($products)) {
-            $syncData = [];
-            foreach ($products as $prod) {
-                // If a device type ID or a product name comes from the dropdown
-                $deviceTypeId = $prod['device_type_id'] ?? $prod['product_name'] ?? null;
+        $catalogue = app(SupplierCatalogue::class);
+        $syncData = [];
 
-                if (!empty($deviceTypeId)) {
-
-                    // 1. Check whether a device type ID came in
-                    // (only a whole number is ever looked up by id: a free-text name used to be sent to the
-                    // database as an id and failed there)
-                    $deviceType = ctype_digit((string) $deviceTypeId) ? DeviceType::find($deviceTypeId) : null;
-
-                    if ($deviceType) {
-                        $productName = trim("{$deviceType->device_category} {$deviceType->model}");
-
-                        // Create or find the product in the products table (together with device_type_id)
-                        $product = Product::firstOrCreate(
-                            ['device_type_id' => $deviceType->id],
-                            ['product_name' => $productName]
-                        );
-                    } else {
-                        // If a product name comes in directly (fallback)
-                        $productName = trim($deviceTypeId);
-                        $product = Product::firstOrCreate(
-                            ['product_name' => $productName]
-                        );
-                    }
-
-                    $syncData[$product->id] = [
-                        'price' => $prod['price'] ?? 0,
-                        'qty'   => $prod['qty'] ?? 0,
-                    ];
-                }
+        foreach ($products ?? [] as $prod) {
+            $raw = $prod['device_type_id'] ?? null;
+            // Older forms sent the device type id in product_name; a whole number there is still a device type id.
+            if (($raw === null || $raw === '') && isset($prod['product_name']) && ctype_digit(trim((string) $prod['product_name']))) {
+                $raw = trim((string) $prod['product_name']);
             }
-            $supplier->products()->sync($syncData);
-        } else {
-            $supplier->products()->sync([]);
+
+            $product = $catalogue->resolveProduct(
+                ($raw !== null && $raw !== '') ? (int) $raw : null,
+                ($raw !== null && $raw !== '') ? null : ($prod['product_name'] ?? null),
+            );
+            if (! $product) {
+                continue;
+            }
+
+            $qty = (int) ($prod['qty'] ?? 0) + (int) ($syncData[$product->id]['qty'] ?? 0);
+            $syncData[$product->id] = [
+                'price' => $prod['price'] ?? 0,
+                'qty'   => $qty,
+            ];
         }
+
+        $catalogue->sync($supplier, $syncData);
     }
 }

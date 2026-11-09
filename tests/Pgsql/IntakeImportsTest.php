@@ -421,7 +421,7 @@ class IntakeImportsTest extends PgsqlTestCase
         $form = $this->typeForm(['features' => [$f1->id, $f2->id]]);
 
         $this->actingAs($this->admin())->post(route('admin.device-types.store'), $form)
-            ->assertRedirect()->assertSessionHas('success', 'Device Type added successfully!');
+            ->assertRedirect()->assertSessionHas('success', fn ($m) => str_starts_with($m, 'Device Type added.'));
 
         $type = DeviceType::where('device_category', $form['device_category'])->sole();
         $this->assertEquals([$f1->id, $f2->id], $type->features);

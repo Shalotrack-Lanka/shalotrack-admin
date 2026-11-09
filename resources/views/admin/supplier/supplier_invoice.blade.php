@@ -332,6 +332,7 @@ document.addEventListener('alpine:init', () => {
             if (prod) {
                 item.unit_price = prod.price || 0;
                 item.type = prod.type || item.type;
+                if (Number(prod.qty) > 0) item.order_qty = Number(prod.qty);   // the supplier's usual order quantity
             }
         },
 

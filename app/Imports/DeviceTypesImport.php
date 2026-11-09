@@ -2,7 +2,9 @@
 
 namespace App\Imports;
 
+use App\Http\Controllers\Admin\MasterPages\AddDeviceTypeController;
 use App\Models\DeviceType;
+use App\Models\Stock;
 use App\Models\Feature;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -46,11 +48,17 @@ class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, Skip
 
         // Insert the data into the database
         $deviceType = DeviceType::create([
-            'device_category' => trim($row['device_category']),
+            'device_category' => trim(preg_replace('/\s+/', ' ', (string) $row['device_category'])),
             'model'           => trim($row['model']),
             'protocol'        => trim($row['protocol']),
             'features'        => $featureIds, // Saved as an array like [ "1", "2" ]
         ]);
+
+        // Its company stock row starts at 0 (same as adding one on the page).
+        Stock::firstOrCreate(
+            ['device_type_id' => $deviceType->id],
+            ['company_available_stock' => 0, 'device_category_type' => trim($deviceType->device_category . ' ' . $deviceType->model)]
+        );
 
         $this->created[] = $deviceType->id;
 
@@ -74,15 +82,22 @@ class DeviceTypesImport implements ToModel, WithHeadingRow, WithValidation, Skip
             // Laravel hands us {excelRowNumber: rowValues}; errors must be added under "<row>.<field>".
             // (Before this fix the code looked for 'device_category' at the top level, never found it,
             // and so the duplicate check never ran.)
+            $inFile = [];
             foreach ($validator->getData() as $rowNumber => $data) {
                 if (! is_string($data['device_category'] ?? null) || ! is_string($data['model'] ?? null)
                     || trim($data['device_category']) === '' || trim($data['model']) === '') {
                     continue;
                 }
 
-                $exists = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($data['device_category']))])
-                    ->whereRaw('LOWER(model) = ?', [strtolower(trim($data['model']))])
-                    ->exists();
+                // Same rule as the page: capitals and extra spaces do not make a different device type.
+                $key = mb_strtolower(trim(preg_replace('/\s+/', ' ', $data['device_category']))) . '|' . mb_strtolower(trim($data['model']));
+                if (isset($inFile[$key])) {
+                    $validator->errors()->add("{$rowNumber}.device_category", "'{$data['device_category']} / {$data['model']}' is in the file twice (row {$inFile[$key]}).");
+                    continue;
+                }
+                $inFile[$key] = $rowNumber;
+
+                $exists = AddDeviceTypeController::nameTaken($data['device_category'], $data['model']);
 
                 if ($exists) {
                     $validator->errors()->add(

@@ -109,7 +109,9 @@ class SupplierInvoiceController extends Controller
                 'id'             => $product->id,
                 'product_name'   => $product->product_name,
                 'price'          => (float) $product->pivot->price,
-                // supplier_products has no discount column: a discount is agreed per order, on the order line.
+                'qty'            => (int) ($product->pivot->qty ?? 0),     // the usual order quantity
+                // supplier_products.discount exists but no screen fills it in (and the relation never loaded it, so it
+                // always came through as 0). A discount is agreed per order, on the order line.
                 'discount'       => 0.0,
                 'device_type_id' => $product->device_type_id,
                 'type'           => $product->device_type_id ? 'Device' : (preg_match('/\bsim\b/i', (string) $product->product_name) ? 'SIM' : 'Other'),

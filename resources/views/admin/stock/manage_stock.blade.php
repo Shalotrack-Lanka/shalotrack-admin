@@ -83,7 +83,7 @@
                                 </template>
                             </select>
                             <p x-show="selectedSupplier && productsList.length === 0" x-cloak class="mt-2 text-xs font-bold text-amber-700">
-                                This supplier has no stock-tracked devices listed. Open Suppliers, edit this supplier and add the device type (with its quantity), then come back. A device type leaves the supplier's list once its stock is added.
+                                This supplier has no devices on its product list. Open Supplier Management, edit this supplier and add the device types it supplies, then come back. (A device stays on the list after stock is added.)
                             </p>
                         </div>
                         <div>
@@ -224,7 +224,6 @@ document.addEventListener('alpine:init', () => {
                     return [
                         'id' => $prod->device_type_id,
                         'name' => $prod->product_name,
-                        'qty' => $prod->pivot->qty ?? 1
                     ];
                 })
             ];
@@ -255,19 +254,15 @@ document.addEventListener('alpine:init', () => {
             }
             for (const d of (openDeliveries[this.selectedSupplier] || [])) {
                 if (!this.productsList.some(p => p.id == d.device_type_id)) {
-                    this.productsList.push({ id: d.device_type_id, name: d.name, qty: d.units });
+                    this.productsList.push({ id: d.device_type_id, name: d.name });
                 }
             }
         },
 
         updateQuantity() {
             this.selectedDelivery = '';
-            let prod = this.productsList.find(p => p.id == this.selectedDevice);
-            if (prod) {
-                this.stockQty = prod.qty || 1;
-            } else {
-                this.stockQty = 0;
-            }
+            // A typed stock-in starts empty: the number must be counted, never taken from the supplier's list.
+            this.stockQty = '';
             if (this.deliveriesFor.length === 1) {
                 this.selectedDelivery = this.deliveriesFor[0].id;
                 this.pickDelivery();
