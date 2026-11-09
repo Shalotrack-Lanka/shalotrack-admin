@@ -114,7 +114,7 @@
                                                 </form>
 
                                                 <a href="{{ route('admin.supplier-invoice', ['supplier_id' => $supplier->id]) }}" class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-[11px] font-bold">Invoices</a>
-                                                @if(config('supplier_deliveries.enabled') && $supplier->status === 'Active')
+                                                @if(\App\Services\Delivery\SupplierDeliveryService::isEnabled() && $supplier->status === 'Active')
                                                     <a href="{{ route('admin.suppliers.deliveries', $supplier->id) }}" class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-bold">Receive delivery</a>
                                                 @endif
                                             </div>

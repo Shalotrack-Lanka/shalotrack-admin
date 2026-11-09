@@ -90,6 +90,6 @@ class SupplierDeliveryController extends Controller
 
     private function ensureEnabled(): void
     {
-        abort_unless(config('supplier_deliveries.enabled'), 404);
+        abort_unless(SupplierDeliveryService::isEnabled(), 404);
     }
 }

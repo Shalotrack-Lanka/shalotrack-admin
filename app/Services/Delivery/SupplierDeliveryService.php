@@ -10,6 +10,7 @@ use App\Models\SupplierDeliveryUnit;
 use App\Services\Audit;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -238,9 +239,36 @@ class SupplierDeliveryService
     // same everywhere (see DeliveryPolicy). All of it is a no-op while the feature is switched off.
     // ------------------------------------------------------------------------------------------------
 
+    private static bool $tablesReady = false;
+
     public function enabled(): bool
     {
-        return (bool) config('supplier_deliveries.enabled');
+        return self::isEnabled();
+    }
+
+    /**
+     * On unless SUPPLIER_DELIVERIES_ENABLED=false, AND only once the database has the delivery tables. Until the
+     * migrations have run the whole feature stays quietly off instead of failing pages with a missing-table
+     * error, so deploying the code before the migration is safe. (Only a positive answer is remembered.)
+     */
+    public static function isEnabled(): bool
+    {
+        if (! config('supplier_deliveries.enabled')) {
+            return false;
+        }
+        if (self::$tablesReady) {
+            return true;
+        }
+
+        try {
+            self::$tablesReady = Schema::hasTable('supplier_deliveries')
+                && Schema::hasTable('supplier_delivery_units')
+                && Schema::hasColumn('supplier_deliveries', 'stocked_in_at');
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        return self::$tablesReady;
     }
 
     /**

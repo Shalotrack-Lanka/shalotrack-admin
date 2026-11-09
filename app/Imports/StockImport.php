@@ -92,7 +92,7 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
         $validator->after(function ($validator) {
             // A scanned delivery waiting for this supplier and device type must be added from Manage Stock (its
             // quantity is the scanned count); importing a number as well would add the same devices twice.
-            $deliveries = config('supplier_deliveries.enabled') ? app(\App\Services\Delivery\SupplierDeliveryService::class) : null;
+            $deliveries = \App\Services\Delivery\SupplierDeliveryService::isEnabled() ? app(\App\Services\Delivery\SupplierDeliveryService::class) : null;
 
             // Laravel hands us {excelRowNumber: rowValues}; errors must be added under "<row>.<field>".
             // (The old code looked for the fields at the top level, never found them, and so an unknown device
