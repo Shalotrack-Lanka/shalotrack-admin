@@ -44,7 +44,7 @@ class RoleAccessSweepTest extends PgsqlTestCase
     private const POLICY = [
         [['admin/customer/device-management/*/bank-slip'], ['ADMIN', 'FINANCE']],
         [['admin/dealer/device-commands', 'dealer/device-commands', 'dealer/device-commands/*'], ['ADMIN', 'DEALER']],
-        [['admin/supplier/dashboard', 'admin/supplier/profile'], ['SUPPLIER']],
+        [['admin/supplier/dashboard', 'admin/supplier/profile', 'admin/supplier/orders/*/download'], ['SUPPLIER']],
         [[
             'admin/dealer/profile', 'admin/dealer/customers', 'admin/dealer/customer-ad', 'admin/dealer/customer-ad/*',
             'admin/dealer/assign-device', 'admin/dealer/unassign-device/*', 'admin/dealer/dealer/*',

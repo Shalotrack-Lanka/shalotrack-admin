@@ -84,6 +84,8 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
                 'imsi'            => $sim?->imsi,
                 'status'          => DeviceStatus::NotActivated->value,
                 'dealer_id'       => null,
+                'registered_by'   => auth()->user()?->admin_id,
+                'intake_source'   => 'import',
             ]);
 
             // Remove the given SIM from the activated list

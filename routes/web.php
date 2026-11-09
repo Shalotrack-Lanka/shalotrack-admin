@@ -475,6 +475,7 @@ Route::middleware(['auth'])->group(function () {
         // PUT '/profile' used to be swallowed by PUT '/{id}' (admin supplier update).
         Route::middleware('role:SUPPLIER')->group(function () {
             Route::get('/dashboard', [SupplierDashboardController::class, 'index'])->name('supplier.dashboard');
+            Route::get('/orders/{id}/download', [SupplierDashboardController::class, 'downloadOrder'])->name('supplier.orders.download');
             Route::get('/profile', [SupplierProfileController::class, 'edit'])->name('supplier.profile');
             Route::put('/profile', [SupplierProfileController::class, 'update'])->name('supplier.profile.update');
         });

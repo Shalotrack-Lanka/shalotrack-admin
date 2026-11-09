@@ -207,4 +207,107 @@ class SupplierStockLinksTest extends TestCase
         $this->assertSame($t->id, (int) $s->products()->value('device_type_id'));
         $this->assertSame(7, (int) Stock::find($stock->id)->company_available_stock, 'stock is not touched');
     }
+    // ------------------------------------------------------------------------------------------ sweep (round 3)
+
+    public function test_a_supplier_with_open_work_cannot_be_deactivated(): void
+    {
+        $t = $this->type();
+        $s = $this->supplierWith($t);
+        $product = Product::where('device_type_id', $t->id)->firstOrFail();
+        $this->post(route('admin.supplier-invoice.store'), ['supplier_id' => $s->id, 'items' => [
+            ['product_id' => $product->id, 'type' => 'Device', 'order_qty' => 2, 'unit_price' => 10],
+        ]]);
+
+        $this->patch(route('admin.suppliers.toggle-status', $s->id))->assertSessionHasErrors('status');
+        $this->assertSame('Active', $s->fresh()->status);
+
+        $this->patch(route('admin.supplier-invoice.cancel', SupplierInvoice::firstOrFail()->id), ['reason' => 'not needed']);
+        $this->patch(route('admin.suppliers.toggle-status', $s->id))->assertSessionHasNoErrors();
+        $this->assertSame('Inactive', $s->fresh()->status);
+    }
+
+    public function test_the_supplier_portal_shows_only_its_own_orders_and_their_pdfs(): void
+    {
+        $t = $this->type();
+        $mine = $this->supplierWith($t);
+        $product = Product::where('device_type_id', $t->id)->firstOrFail();
+        $this->post(route('admin.supplier-invoice.store'), ['supplier_id' => $mine->id, 'items' => [
+            ['product_id' => $product->id, 'type' => 'Device', 'order_qty' => 3, 'unit_price' => 10],
+        ]]);
+        $myOrder = SupplierInvoice::firstOrFail();
+
+        $other = Supplier::create(['name' => 'Other supplier', 'status' => 'Active']);
+        $other->products()->attach($product->id, ['price' => 1, 'qty' => 0]);
+        $this->post(route('admin.supplier-invoice.store'), ['supplier_id' => $other->id, 'items' => [
+            ['product_id' => $product->id, 'type' => 'Device', 'order_qty' => 1, 'unit_price' => 1],
+        ]]);
+        $theirOrder = SupplierInvoice::where('supplier_id', $other->id)->firstOrFail();
+
+        Admin::forceCreate(['admin_id' => 'sup-1', 'username' => 'sup', 'full_name' => 'Sup', 'role' => 'SUPPLIER', 'status' => 'ACTIVE', 'supplier_id' => $mine->id]);
+        $this->actingAs(Admin::find('sup-1'));
+
+        $this->get(route('supplier.dashboard'))->assertOk()
+            ->assertSee($myOrder->invoice_number)
+            ->assertDontSee($theirOrder->invoice_number)
+            ->assertDontSee('Feature not built');
+        $this->get(route('supplier.orders.download', $myOrder->id))->assertOk();
+        $this->get(route('supplier.orders.download', $theirOrder->id))->assertNotFound();
+    }
+
+    public function test_a_cancelled_order_pdf_says_cancelled(): void
+    {
+        $t = $this->type();
+        $s = $this->supplierWith($t);
+        $product = Product::where('device_type_id', $t->id)->firstOrFail();
+        $this->post(route('admin.supplier-invoice.store'), ['supplier_id' => $s->id, 'items' => [
+            ['product_id' => $product->id, 'type' => 'Device', 'order_qty' => 1, 'unit_price' => 10],
+        ]]);
+        $po = SupplierInvoice::firstOrFail();
+        $this->patch(route('admin.supplier-invoice.cancel', $po->id), ['reason' => 'wrong supplier']);
+
+        $html = view('admin.supplier.invoice_pdf', ['invoice' => $po->fresh()->load('supplier', 'items.product')])->render();
+        $this->assertStringContainsString('CANCELLED', $html);
+        $this->assertStringContainsString('wrong supplier', $html);
+    }
+
+    public function test_from_the_enforcement_date_a_device_is_registered_only_after_its_delivery_is_in_stock(): void
+    {
+        $t = $this->type();
+        $s = $this->supplierWith($t);
+        Stock::where('device_type_id', $t->id)->delete();
+        Stock::create(['device_type_id' => $t->id, 'company_available_stock' => 5]);   // other stock exists
+        $id = $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'DEVICE', 'device_type_id' => $t->id, 'scans' => [self::IMEI_A]])->json('delivery_id');
+        config(['supplier_deliveries.enforce_from' => now()->subDay()->toDateString()]);
+
+        $p = app(\App\Services\Delivery\SupplierDeliveryService::class)->preview('DEVICE', self::IMEI_A, $t->id);
+        $this->assertSame('blocked', $p['status']);
+        $this->assertStringContainsString('has not been added to stock', $p['message']);
+
+        $this->post(route('admin.stock.store'), ['supplier_id' => $s->id, 'device_type_id' => $t->id, 'delivery_id' => $id])->assertSessionHasNoErrors();
+        $this->assertSame('ok', app(\App\Services\Delivery\SupplierDeliveryService::class)->preview('DEVICE', self::IMEI_A, $t->id)['status']);
+    }
+
+    public function test_a_device_registered_by_hand_records_who_and_how(): void
+    {
+        $t = $this->type();
+        Stock::where('device_type_id', $t->id)->delete();
+        Stock::create(['device_type_id' => $t->id, 'company_available_stock' => 1]);
+
+        $this->post(route('admin.device.store'), ['device_type_id' => $t->id, 'imei_number' => self::IMEI_A])->assertSessionHasNoErrors();
+
+        $row = DB::table('setup_shalotrack_devices')->where('imei_number', self::IMEI_A)->first();
+        $this->assertSame('adm-1', $row->registered_by);
+        $this->assertSame('manual', $row->intake_source);
+    }
+
+    public function test_the_sim_list_shows_which_supplier_delivered_each_sim(): void
+    {
+        $s = Supplier::create(['name' => 'Dialog Supplies', 'status' => 'Active']);
+        $iccid = '8994011234567890123';
+        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'scans' => [['iccid' => $iccid, 'sim_number' => '0771234567']]])->assertOk();
+        $this->post(route('admin.stock.sim.store'), ['sim_type' => 'dialog', 'sim_number' => '0771234567', 'imsi' => '413021234567890', 'iccid' => $iccid, 'sim_status' => 'Activated'])
+            ->assertSessionHasNoErrors();
+
+        $this->get(route('admin.add-sim'))->assertOk()->assertSee('Dialog Supplies');
+    }
 }

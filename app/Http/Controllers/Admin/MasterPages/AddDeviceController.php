@@ -156,6 +156,11 @@ class AddDeviceController extends Controller
                 'status' => DeviceStatus::NotActivated->value,
 
                 'dealer_id' => null,
+
+                // Who registered it and how (the scan page and the service already record this).
+                'registered_by' => auth()->user()?->admin_id,
+
+                'intake_source' => 'manual',
             ]);
 
             // The SIM is now attached to a physical device, so it no longer

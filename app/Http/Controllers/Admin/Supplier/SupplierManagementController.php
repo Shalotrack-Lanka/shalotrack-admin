@@ -201,6 +201,14 @@ class SupplierManagementController extends Controller
     public function toggleStatus($id)
     {
         $supplier = Supplier::findOrFail($id);
+
+        // An Inactive supplier cannot be ordered from, received from or stocked in from, so open work would be
+        // stranded: finish or cancel it first.
+        if ($supplier->status === 'Active' && ($open = app(SupplierCatalogue::class)->openWork($supplier)) !== []) {
+            return redirect()->route('admin.suppliers')
+                ->withErrors(['status' => "{$supplier->name} cannot be deactivated yet: " . implode(' ', $open)]);
+        }
+
         $supplier->status = ($supplier->status === 'Active') ? 'Inactive' : 'Active';
         $supplier->save();
 

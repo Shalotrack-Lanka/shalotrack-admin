@@ -45,31 +45,33 @@
             <div class="text-4xl font-black text-blue-950 pl-4 mt-2">{{ $totalProducts }}</div>
         </div>
 
-        <!-- Total Supplied — NOT BUILT: no Order/shipment table exists -->
-        <div class="bg-slate-50 p-6 rounded-3xl border-y border-r border-l-4 border-l-slate-300 border-slate-200 opacity-60">
+        <!-- Units received from this supplier -->
+        <div class="bg-white p-6 rounded-3xl border-y border-r border-l-4 border-l-orange-500 border-slate-200 shadow-sm">
             <div class="flex items-center gap-2 mb-2">
-                <div class="w-2 h-6 bg-slate-300 rounded-full"></div>
-                <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Total Supplied</div>
+                <div class="w-2 h-6 bg-orange-500 rounded-full"></div>
+                <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Units Received</div>
             </div>
-            <div class="text-sm text-slate-400 font-semibold pl-4 mt-3">Not tracked yet</div>
+            <div class="text-4xl font-black text-blue-950 pl-4 mt-2">{{ number_format($unitsStocked) }}</div>
+            <div class="text-[11px] text-slate-400 pl-4 mt-1">added to stock &middot; {{ number_format($unitsScanned) }} scanned on deliveries</div>
         </div>
 
-        <!-- Pending Orders — NOT BUILT -->
-        <div class="bg-slate-50 p-6 rounded-3xl border-y border-r border-l-4 border-l-slate-300 border-slate-200 opacity-60">
+        <!-- Open purchase orders -->
+        <div class="bg-white p-6 rounded-3xl border-y border-r border-l-4 border-l-blue-600 border-slate-200 shadow-sm">
             <div class="flex items-center gap-2 mb-2">
-                <div class="w-2 h-6 bg-slate-300 rounded-full"></div>
-                <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Pending Orders</div>
+                <div class="w-2 h-6 bg-blue-600 rounded-full"></div>
+                <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">Open Orders</div>
             </div>
-            <div class="text-sm text-slate-400 font-semibold pl-4 mt-3">Feature not built</div>
+            <div class="text-4xl font-black text-blue-950 pl-4 mt-2">{{ $openOrders }}</div>
+            <div class="text-[11px] text-slate-400 pl-4 mt-1">ordered, nothing received yet</div>
         </div>
 
-        <!-- Pending Payments — NOT BUILT -->
+        <!-- Payments to suppliers are not recorded in the system yet -->
         <div class="bg-slate-50 p-6 rounded-3xl border-y border-r border-l-4 border-l-slate-300 border-slate-200 opacity-60">
             <div class="flex items-center gap-2 mb-2">
                 <div class="w-2 h-6 bg-slate-300 rounded-full"></div>
-                <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Pending Payments</div>
+                <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Payments</div>
             </div>
-            <div class="text-sm text-slate-400 font-semibold pl-4 mt-3">Feature not built</div>
+            <div class="text-sm text-slate-400 font-semibold pl-4 mt-3">Not recorded in the system yet</div>
         </div>
     </div>
 
@@ -139,8 +141,8 @@
                             <tr>
                                 <th class="px-8 py-5">Product</th>
                                 <th class="px-8 py-5">Description</th>
-                                <th class="px-8 py-5">Your Price</th>
-                                <th class="px-8 py-5">Discount</th>
+                                <th class="px-8 py-5">Agreed Price</th>
+                                <th class="px-8 py-5">Usual Order Qty</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200 text-slate-700 bg-white">
@@ -149,7 +151,7 @@
                                     <td class="px-8 py-5 font-bold text-blue-950">{{ $product->product_name }}</td>
                                     <td class="px-8 py-5 text-slate-600">{{ $product->description ?? '-' }}</td>
                                     <td class="px-8 py-5 font-bold text-blue-950">Rs. {{ number_format($product->pivot->price, 2) }}</td>
-                                    <td class="px-8 py-5 text-slate-600">{{ $product->pivot->discount }}%</td>
+                                    <td class="px-8 py-5 text-slate-600">{{ (int) ($product->pivot->qty ?? 0) }}</td>
                                 </tr>
                             @empty
                                 <tr>
@@ -163,18 +165,55 @@
                 </div>
             </div>
 
-            <!-- Orders & Invoices — NOT BUILT, honest placeholder instead of fake empty tables -->
-            <div class="bg-slate-50 rounded-3xl border border-dashed border-slate-300 p-8 flex items-start space-x-4">
-                <div class="p-2 bg-slate-200 rounded-xl text-slate-500 flex-shrink-0">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+            <!-- Purchase orders the company placed with this supplier (read-only) -->
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-6 md:p-8 border-b border-slate-200">
+                    <h2 class="font-extrabold text-blue-950 text-lg uppercase tracking-wider">Purchase Orders</h2>
+                    <p class="text-xs text-slate-500 mt-1">"Received" counts the units the company scanned in on deliveries against each order.</p>
                 </div>
-                <div>
-                    <h2 class="font-bold text-slate-700 text-sm mb-1">Supply Orders & Invoices — Not Built Yet</h2>
-                    <p class="text-xs text-slate-500 leading-relaxed">
-                        There's currently no Orders or Invoices system in the database — this needs new tables and
-                        a real purchase-order workflow (Admin creates an order → Supplier fulfills → invoice
-                        generated) before this section can show real data.
-                    </p>
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-extrabold tracking-widest border-b border-slate-200">
+                            <tr>
+                                <th class="px-6 py-4">PO #</th>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4 text-right">Total</th>
+                                <th class="px-6 py-4">Received</th>
+                                <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 text-slate-700">
+                            @forelse($purchaseOrders as $po)
+                                @php $sum = $summaries[$po->id] ?? null; @endphp
+                                <tr>
+                                    <td class="px-6 py-4 font-mono text-xs">{{ $po->invoice_number }}</td>
+                                    <td class="px-6 py-4">{{ $po->invoice_date?->format('d M Y') }}</td>
+                                    <td class="px-6 py-4 text-right font-bold">Rs. {{ number_format((float) $po->grand_total, 2) }}</td>
+                                    <td class="px-6 py-4 text-xs">
+                                        @if($sum)
+                                            @foreach($sum['device_types'] as $q)<div><b>{{ $q['received'] }}</b> / {{ $q['ordered'] }}</div>@endforeach
+                                            @if($sum['sims_ordered'] || $sum['sims_received'])<div>SIMs <b>{{ $sum['sims_received'] }}</b> / {{ $sum['sims_ordered'] }}</div>@endif
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        @if($po->isCancelled())
+                                            <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold text-[10px]">Cancelled</span>
+                                        @elseif($sum && $sum['editable'])
+                                            <span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px]">Ordered</span>
+                                        @else
+                                            <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">Receiving / received</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <a href="{{ route('supplier.orders.download', $po->id) }}" class="text-blue-700 font-bold text-xs hover:underline">PDF</a>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="px-6 py-10 text-center text-slate-400">No purchase orders yet.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

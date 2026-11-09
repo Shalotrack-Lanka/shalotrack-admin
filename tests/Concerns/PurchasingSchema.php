@@ -127,8 +127,15 @@ trait PurchasingSchema
             $t->string('sim_number')->nullable();
             $t->string('iccid', 20)->nullable()->unique();
             $t->string('imsi', 15)->nullable();
+            $t->string('registered_by')->nullable();
+            $t->string('intake_source', 16)->nullable();
+            $t->string('status')->nullable();
+            $t->string('cancel_reason')->nullable();
+            $t->timestamp('canceled_date')->nullable();
             $t->unsignedBigInteger('device_type_id')->nullable();
             $t->unsignedBigInteger('dealer_id')->nullable();
+            $t->unsignedBigInteger('transfer_id')->nullable();
+            $t->timestamp('allocated_at')->nullable();
             $t->timestamps();
         });
         Schema::create('device_prices', function (Blueprint $t) {

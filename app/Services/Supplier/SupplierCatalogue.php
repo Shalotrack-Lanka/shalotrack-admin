@@ -105,6 +105,38 @@ class SupplierCatalogue
         $supplier->products()->detach($productId);
     }
 
+    /**
+     * Work still open with this supplier: ORDERED purchase orders and scanned deliveries not yet in stock.
+     *
+     * @return list<string> one sentence per kind of open work (empty = nothing open)
+     */
+    public function openWork(Supplier $supplier): array
+    {
+        $out = [];
+
+        if (PurchaseOrders::ready()) {
+            $orders = DB::table('supplier_invoices')->where('supplier_id', $supplier->id)
+                ->where('status', PurchaseOrders::ORDERED)->orderBy('id')->pluck('invoice_number')->all();
+            // An ordered PO counts as open until something has been received against it.
+            $orders = array_values(array_filter($orders, fn ($n) => ! DB::table('supplier_deliveries')
+                ->join('supplier_invoices', 'supplier_invoices.id', '=', 'supplier_deliveries.supplier_invoice_id')
+                ->where('supplier_invoices.invoice_number', $n)->exists()));
+            if ($orders !== []) {
+                $out[] = 'open purchase order(s) ' . implode(', ', $orders) . ' (cancel them first).';
+            }
+        }
+
+        if (Schema::hasColumn('supplier_deliveries', 'stocked_in_at')) {
+            $waiting = SupplierDelivery::where('supplier_id', $supplier->id)->where('kind', SupplierDelivery::KIND_DEVICE)
+                ->whereNull('stocked_in_at')->orderBy('id')->pluck('id')->all();
+            if ($waiting !== []) {
+                $out[] = 'scanned delivery #' . implode(', #', $waiting) . ' waiting to be added to stock (add or cancel them first).';
+            }
+        }
+
+        return $out;
+    }
+
     /** @param list<int> $productIds */
     private function assertRemovable(Supplier $supplier, array $productIds): void
     {

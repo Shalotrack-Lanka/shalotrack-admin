@@ -18,6 +18,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class StockTransferController extends Controller
 {
+    use \App\Traits\PushesDeviceToApi;
+
     public function index()
     {
         // Only devices the company has ACTIVATED and not yet sold are transferable
@@ -223,9 +225,15 @@ class StockTransferController extends Controller
                 SetupShalotrackDevice::where('transfer_id', $ledger->id)
                     ->update(['dealer_id' => $validated['dealer_id']]);
 
+                $before = $ledger->only(['dealer_id', 'quantity']);
                 $ledger->dealer_id = $validated['dealer_id'];
                 $ledger->quantity = count($validated['sim_numbers']);
                 $ledger->save();
+
+                Audit::record('stock.transfer_edited', 'transfer_ledger', $ledger->id,
+                    $ledger->quantity . ' x ' . $ledger->device_category,
+                    Audit::diff($before, $ledger->only(['dealer_id', 'quantity']), ['dealer_id', 'quantity']),
+                    ['removed_sims' => array_values($simsToRemove), 'added_sims' => array_values($simsToAdd)]);
             });
 
             return back()->with('success', 'Transfer record updated successfully.');
@@ -239,23 +247,41 @@ class StockTransferController extends Controller
         }
     }
 
+    /**
+     * Undo a transfer made by mistake: its devices go back to company stock (no dealer, no transfer) and the
+     * history row is hidden (soft-deleted, recoverable) with an audit entry. It used to hide only the row and
+     * leave the devices with the dealer, so they could never be invoiced or transferred again.
+     * Only while the transfer is not locked (nothing sold, passed on, bound or invoiced, not sent by a distributor).
+     */
     public function destroy(DealerTransferLedger $ledger)
     {
-        if ($ledger->isLocked()) {
-            return back()->withErrors(['transfer' => 'This transfer cannot be removed from the history: some of its devices have already been passed on, sold or bound, or it was sent by a distributor.']);
-        }
-
-        // Only the history row is hidden — the linked devices keep their
-        // dealer assignment, per business decision: a deleted history record
-        // does not undo a transfer that already happened. The row is
-        // soft-deleted, so it stays recoverable (devices keep their
-        // transfer_id, so a restore reunites them) and the audit log keeps
-        // who removed it.
         $label    = $ledger->quantity . ' x ' . $ledger->device_category . ' to dealer #' . $ledger->dealer_id;
         $snapshot = $ledger->only(['dealer_id', 'device_category', 'quantity']);
         $ledgerId = $ledger->id;
+        $returned = [];
 
-        $ledger->delete();
+        try {
+            DB::transaction(function () use ($ledger, &$returned) {
+                $locked = DealerTransferLedger::whereKey($ledger->id)->lockForUpdate()->firstOrFail();
+                if ($locked->isLocked()) {
+                    throw new \DomainException('This transfer cannot be undone: some of its devices have already been passed on, sold, bound or invoiced, or it was sent by a distributor.');
+                }
+
+                $devices = SetupShalotrackDevice::where('transfer_id', $locked->id)->lockForUpdate()->get();
+                foreach ($devices as $device) {
+                    $device->dealer_id = null;
+                    $device->transfer_id = null;
+                    $device->allocated_at = null;
+                    $device->save();
+                    $returned[] = $device;
+                }
+
+                DealerTransferItem::where('ledger_id', $locked->id)->delete();
+                $locked->delete();
+            });
+        } catch (\DomainException $e) {
+            return back()->withErrors(['transfer' => $e->getMessage()]);
+        }
 
         Audit::record(
             'ledger.transfer_deleted',
@@ -263,9 +289,17 @@ class StockTransferController extends Controller
             $ledgerId,
             $label,
             collect($snapshot)->map(fn ($v) => ['from' => $v, 'to' => null])->all(),
+            ['undone' => true, 'devices_returned' => collect($returned)->pluck('imei_number')->take(200)->values()->all()],
         );
 
-        return back()->with('success', 'Transfer history record removed.');
+        // The app server keeps each device's dealer: tell it they are back with the company (non-fatal).
+        $syncFailed = collect($returned)->reject(fn ($d) => $this->pushDeviceToApi($d))->count();
+
+        $redirect = back()->with('success', 'Transfer undone: ' . count($returned) . ' device(s) are back in company stock.');
+
+        return $syncFailed > 0
+            ? $redirect->with('warning', "{$syncFailed} device(s) could not be synced to the app server just now. Ask your developer to re-run the device sync (devices:backfill).")
+            : $redirect;
     }
 
     public function getSimNumbers($category)

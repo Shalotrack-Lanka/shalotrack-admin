@@ -376,13 +376,19 @@ class DistributorTransferTest extends TestCase
         $this->assertSame(1, (int) $ledger->fresh()->quantity);
     }
 
-    public function test_untouched_admin_transfer_can_be_removed_from_history(): void
+    public function test_undoing_an_untouched_admin_transfer_returns_its_devices_to_company_stock(): void
     {
-        $this->device('111', null);
+        $d = $this->device('111', null);
         $ledger = $this->adminSends('111', $this->distA);
+        $this->assertSame((int) $this->distA, (int) $this->holder($d));
 
         $this->delete(route('admin.stock_transfer.destroy', $ledger))->assertSessionHasNoErrors()->assertSessionHas('success');
+
         $this->assertSoftDeleted('dealer_transfer_ledgers', ['id' => $ledger->id]);
+        $this->assertNull($this->holder($d), 'the device is back with the company, so it can be transferred and invoiced again');
+        $this->assertNull(DB::table('setup_shalotrack_devices')->where('shdevice_id', $d)->value('transfer_id'));
+        $this->assertSame(0, DealerTransferItem::where('ledger_id', $ledger->id)->count());
+        $this->assertSame(1, \App\Models\AuditLog::where('action', 'ledger.transfer_deleted')->count());
     }
 
     public function test_admin_transfer_is_locked_once_the_distributor_passed_a_device_on(): void
