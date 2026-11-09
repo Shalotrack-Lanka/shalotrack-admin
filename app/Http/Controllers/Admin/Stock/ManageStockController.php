@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DeviceType;
 use App\Models\Stock;
 use App\Services\Audit;
+use App\Services\Delivery\SupplierDeliveryService;
 use App\Models\StockTransferLedger;
 use App\Models\Supplier;
 use App\Imports\StockImport;
@@ -29,20 +30,40 @@ class ManageStockController extends Controller
         $deviceTypes = DeviceType::orderBy('device_category')->orderBy('model')->get();
         $suppliers = Supplier::where('status', 'Active')->orderBy('name')->get();
 
-        return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers'));
+        // Scanned device deliveries waiting to be added to stock, grouped by supplier (empty while the feature is off).
+        $openDeliveries = config('supplier_deliveries.enabled')
+            ? app(SupplierDeliveryService::class)->openDeviceDeliveries()->map(fn ($d) => [
+                'id'             => $d->id,
+                'supplier_id'    => $d->supplier_id,
+                'device_type_id' => $d->device_type_id,
+                'name'           => trim(($d->deviceType->device_category ?? '') . ' ' . ($d->deviceType->model ?? '')),
+                'units'          => $d->units_count,
+                'reference'      => $d->reference,
+                'date'           => $d->received_on?->format('Y-m-d'),
+            ])->groupBy('supplier_id')->map->values()
+            : collect();
+
+        return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers', 'openDeliveries'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, SupplierDeliveryService $deliveries)
     {
+        $deliveriesOn = (bool) config('supplier_deliveries.enabled');
 
         $request->validate([
             'device_type_id' => 'bail|required|integer|min:1|exists:device_types,id',
             // Only an Active supplier (the screen lists only those); bail keeps text / huge ids away from the database.
             'supplier_id'    => ['bail', 'required', 'integer', 'min:1', \Illuminate\Validation\Rule::exists('suppliers', 'id')->where('status', 'Active')],
-            'stock_in'       => 'required|integer|min:1|max:1000000',
+            // A scanned delivery is chosen instead of typing a quantity: its quantity IS the number of scanned units.
+            'delivery_id'    => ['nullable', 'integer', 'min:1'],
+            'stock_in'       => $deliveriesOn
+                ? ['required_without:delivery_id', 'nullable', 'integer', 'min:1', 'max:1000000']
+                : ['required', 'integer', 'min:1', 'max:1000000'],
         ]);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+        $deliveryId = $deliveriesOn ? ((int) $request->input('delivery_id') ?: null) : null;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $deliveries, $deliveriesOn, $deliveryId) {
             
             $inputId = $request->device_type_id;
             $deviceType = \App\Models\DeviceType::find($inputId);
@@ -62,6 +83,20 @@ class ManageStockController extends Controller
 
             $deviceLabel = trim("{$deviceType->device_category} {$deviceType->model}");
 
+            // Quantity: typed by hand, or (when a scanned delivery is chosen) the number of units scanned.
+            $qty = (int) $request->stock_in;
+            $delivery = null;
+            if ($deliveriesOn) {
+                if ($deliveryId) {
+                    ['delivery' => $delivery, 'qty' => $qty] = $deliveries->claimForStockIn((int) $request->supplier_id, $deviceType->id, $deliveryId);
+                } elseif ($deliveries->hasOpenDeviceDelivery((int) $request->supplier_id, $deviceType->id)) {
+                    // Typing a number now would add the same devices again when the scanned delivery is added later.
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'delivery_id' => 'This supplier has a scanned delivery of this device waiting. Choose it so the stock matches the scanned units.'
+                    ]);
+                }
+            }
+
             // Insert data only into the columns that exist on the table
             $stock = \App\Models\Stock::firstOrCreate(
                 ['device_type_id' => $deviceType->id],
@@ -74,7 +109,7 @@ class ManageStockController extends Controller
             $stock = \App\Models\Stock::whereKey($stock->getKey())->lockForUpdate()->firstOrFail();
 
             $stock->device_category_type = $deviceLabel;
-            $stock->company_available_stock = ($stock->company_available_stock ?? 0) + (int) $request->stock_in;
+            $stock->company_available_stock = ($stock->company_available_stock ?? 0) + $qty;
             $stock->updated_at = now(); 
             $stock->save();
 
@@ -89,7 +124,7 @@ class ManageStockController extends Controller
             // unrelated product that happened to share that number.
             $line = $supplier->products()->where('device_type_id', $deviceType->id)->first();
             if ($line) {
-                $remaining = (int) ($line->pivot->qty ?? 0) - (int) $request->stock_in;
+                $remaining = (int) ($line->pivot->qty ?? 0) - $qty;
 
                 if ($remaining > 0) {
                     $supplier->products()->updateExistingPivot($line->id, ['qty' => $remaining]);
@@ -98,14 +133,20 @@ class ManageStockController extends Controller
                 }
             }
 
-            \App\Models\StockTransferLedger::create([
+            $ledger = \App\Models\StockTransferLedger::create([
                 'stock_id'              => $stock->id,
                 'device_category_type'  => $deviceLabel,
                 'supplier_id'           => $supplier->id,
                 'supplier'              => $supplier->name,
-                'stock_in'              => $request->stock_in,
+                'stock_in'              => $qty,
+                'description'           => $delivery ? trim('Scanned delivery #' . $delivery->id . ($delivery->reference ? ' (' . $delivery->reference . ')' : '')) : null,
                 'stocked_in_date'       => now()->toDateString(),
             ]);
+
+            // Same transaction as the stock increase: the delivery is now in stock and can never be added twice.
+            if ($delivery) {
+                $deliveries->markStocked($delivery, $ledger->id);
+            }
         });
 
         return redirect()->back()->with('success', 'Stock was added to the system successfully!');

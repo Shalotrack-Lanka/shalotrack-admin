@@ -88,7 +88,17 @@
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Stock In (Qty)</label>
-                            <input type="number" name="stock_in" x-model.number="stockQty" min="1" required class="w-full border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700">
+                            <input type="number" name="stock_in" x-model.number="stockQty" min="1" required :readonly="!!selectedDelivery" :class="selectedDelivery ? 'bg-slate-100' : ''" class="w-full border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700">
+                        </div>
+                        <div x-show="deliveriesFor.length > 0" x-cloak class="md:col-span-4">
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Scanned delivery waiting for this supplier and device</label>
+                            <select name="delivery_id" x-model="selectedDelivery" @change="pickDelivery" :required="deliveriesFor.length > 0" :disabled="deliveriesFor.length === 0" class="w-full border-emerald-300 rounded-xl p-3 text-sm bg-emerald-50">
+                                <option value="">--Choose the scanned delivery--</option>
+                                <template x-for="d in deliveriesFor" :key="d.id">
+                                    <option :value="d.id" x-text="'Delivery #' + d.id + ': ' + d.units + ' scanned units' + (d.reference ? ' (' + d.reference + ')' : '') + ' on ' + d.date"></option>
+                                </template>
+                            </select>
+                            <p class="mt-2 text-xs font-bold text-emerald-700">The quantity is the number of scanned units, so the stock always matches what was scanned.</p>
                         </div>
                         <div class="flex gap-2">
                             <button type="submit" class="w-full bg-[#0d9488] hover:bg-[#0f766e] text-white font-bold py-3 px-4 rounded-xl transition shadow-md text-sm cursor-pointer">
@@ -221,28 +231,52 @@ document.addEventListener('alpine:init', () => {
         })
     );
 
+    const openDeliveries = @json($openDeliveries);
+
     Alpine.data('addStockManager', () => ({
         selectedSupplier: '',
         selectedDevice: '',
+        selectedDelivery: '',
         stockQty: 0,
         productsList: [],
 
+        get deliveriesFor() {
+            if (!this.selectedSupplier || !this.selectedDevice) return [];
+            return (openDeliveries[this.selectedSupplier] || []).filter(d => d.device_type_id == this.selectedDevice);
+        },
+
         fetchSupplierData() {
             this.selectedDevice = '';
+            this.selectedDelivery = '';
             this.stockQty = 0;
             this.productsList = [];
             if (this.selectedSupplier && allSuppliersData[this.selectedSupplier]) {
-                this.productsList = allSuppliersData[this.selectedSupplier];
+                this.productsList = allSuppliersData[this.selectedSupplier].slice();
+            }
+            for (const d of (openDeliveries[this.selectedSupplier] || [])) {
+                if (!this.productsList.some(p => p.id == d.device_type_id)) {
+                    this.productsList.push({ id: d.device_type_id, name: d.name, qty: d.units });
+                }
             }
         },
 
         updateQuantity() {
+            this.selectedDelivery = '';
             let prod = this.productsList.find(p => p.id == this.selectedDevice);
             if (prod) {
                 this.stockQty = prod.qty || 1;
             } else {
                 this.stockQty = 0;
             }
+            if (this.deliveriesFor.length === 1) {
+                this.selectedDelivery = this.deliveriesFor[0].id;
+                this.pickDelivery();
+            }
+        },
+
+        pickDelivery() {
+            const d = this.deliveriesFor.find(x => x.id == this.selectedDelivery);
+            if (d) this.stockQty = d.units;
         }
     }));
 });
