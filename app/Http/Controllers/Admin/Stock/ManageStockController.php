@@ -81,13 +81,21 @@ class ManageStockController extends Controller
             // අනෙකුත් සියලුම විස්තර Ledger එකට දැමීම
             $supplier = \App\Models\Supplier::findOrFail($request->supplier_id);
 
-            // මෙයින් අදාළ භාණ්ඩය සැපයුම්කරුගේ ලැයිස්තුවෙන් නිවැරදිව ඉවත් කරයි
-            $productToRemove = $supplier->products()->where('device_type_id', $deviceType->id)->first();
-            // Only detach the product that really belongs to this device type. The old fallback
-            // detach($inputId) passed a DEVICE TYPE id where a PRODUCT id is expected, so when the supplier had no
-            // matching product it could remove a different, unrelated product that happened to share that number.
-            if ($productToRemove) {
-                $supplier->products()->detach($productToRemove->id);
+            // The supplier's line is what is still ON ORDER. Receiving part of it must leave the rest on the line;
+            // only a fully received line leaves the supplier's list. (It used to be removed whole, so stocking in
+            // 10 of 20 made the other 10 impossible to add.)
+            // Only the product that really belongs to this device type is touched. The old fallback
+            // detach($inputId) passed a DEVICE TYPE id where a PRODUCT id is expected, so it could remove an
+            // unrelated product that happened to share that number.
+            $line = $supplier->products()->where('device_type_id', $deviceType->id)->first();
+            if ($line) {
+                $remaining = (int) ($line->pivot->qty ?? 0) - (int) $request->stock_in;
+
+                if ($remaining > 0) {
+                    $supplier->products()->updateExistingPivot($line->id, ['qty' => $remaining]);
+                } else {
+                    $supplier->products()->detach($line->id);
+                }
             }
 
             \App\Models\StockTransferLedger::create([
