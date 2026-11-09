@@ -30,10 +30,9 @@ class SupplierProfileController extends Controller
             ->get();
 
         // 💡 UPDATE: 'TOTAL UNITS RECEIVED' Card ekata supplier ge products wala QTY okkoma ekathu karanawa
-        $totalStockReceived = 0;
-        foreach ($supplier->products as $product) {
-            $totalStockReceived += ($product->pivot->qty ?? 0);
-        }
+        // Units actually received = what the stock-in ledger recorded. (The supplier's product qty is what is still
+        // ON ORDER, so summing it showed 0 after everything had been received.)
+        $totalStockReceived = (int) $stockHistory->sum('stock_in');
         
         $totalInvoiceValue  = $invoices->sum('grand_total');
         $totalInvoices      = $invoices->count();
