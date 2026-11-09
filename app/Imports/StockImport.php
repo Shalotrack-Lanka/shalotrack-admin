@@ -90,6 +90,10 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
     public function withValidator(Validator $validator)
     {
         $validator->after(function ($validator) {
+            // A scanned delivery waiting for this supplier and device type must be added from Manage Stock (its
+            // quantity is the scanned count); importing a number as well would add the same devices twice.
+            $deliveries = config('supplier_deliveries.enabled') ? app(\App\Services\Delivery\SupplierDeliveryService::class) : null;
+
             // Laravel hands us {excelRowNumber: rowValues}; errors must be added under "<row>.<field>".
             // (The old code looked for the fields at the top level, never found them, and so an unknown device
             // type or supplier was skipped silently while the screen still said "imported successfully".)
@@ -104,6 +108,19 @@ class StockImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
                         $validator->errors()->add(
                             "{$rowNumber}.device_category",
                             "Device Type '{$data['device_category']} / {$data['model']}' does not exist in the system."
+                        );
+                    }
+                }
+
+                if ($deliveries && is_string($data['supplier_name'] ?? null) && is_string($data['device_category'] ?? null) && is_string($data['model'] ?? null)) {
+                    $type = DeviceType::whereRaw('LOWER(device_category) = ?', [strtolower(trim($data['device_category']))])
+                        ->whereRaw('LOWER(model) = ?', [strtolower(trim($data['model']))])->first();
+                    $sup = Supplier::whereRaw('LOWER(name) = ?', [strtolower(trim($data['supplier_name']))])->where('status', 'Active')->first();
+
+                    if ($type && $sup && $deliveries->hasOpenDeviceDelivery($sup->id, $type->id)) {
+                        $validator->errors()->add(
+                            "{$rowNumber}.supplier_name",
+                            "{$sup->name} has a scanned delivery of {$type->device_category} {$type->model} waiting. Add it from Add Raw Devices (choose the delivery) instead of importing it."
                         );
                     }
                 }

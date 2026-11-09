@@ -492,6 +492,13 @@ Route::middleware(['auth'])->group(function () {
             // Admin-facing: dedicated full profile page for a specific supplier.
             Route::get('/{id}/profile', [SupplierProfileController::class, 'showForAdmin'])->name('admin.supplier.profile.show');
 
+            // Receive a delivery by scanning IMEIs / SIM ICCIDs (404 while SUPPLIER_DELIVERIES_ENABLED is off).
+            Route::get('/{id}/deliveries', [\App\Http\Controllers\Admin\Supplier\SupplierDeliveryController::class, 'create'])->name('admin.suppliers.deliveries');
+            Route::post('/{id}/deliveries', [\App\Http\Controllers\Admin\Supplier\SupplierDeliveryController::class, 'store'])
+                ->middleware('throttle:20,1')->name('admin.suppliers.deliveries.store');
+            Route::delete('/{id}/deliveries/{deliveryId}', [\App\Http\Controllers\Admin\Supplier\SupplierDeliveryController::class, 'void'])
+                ->where('deliveryId', '[0-9]{1,18}')->middleware('throttle:20,1')->name('admin.suppliers.deliveries.void');
+
             // Supplier Invoice Management
             Route::get('/supplier-management-invoice', [SupplierInvoiceController::class, 'index'])->name('admin.supplier-invoice');
             Route::post('/supplier-management-invoice', [SupplierInvoiceController::class, 'store'])->name('admin.supplier-invoice.store');

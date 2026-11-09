@@ -43,6 +43,8 @@ class AuditLog extends Model
         'package.updated'            => [self::CATEGORY_MONEY, 'Renewal package price / warranty changed'],
         'device_price.updated'       => [self::CATEGORY_MONEY, 'Device price / margins changed'],
         'supplier_delivery.received' => [self::CATEGORY_DEVICE, 'Supplier delivery (IMEIs / SIMs) received'],
+        'supplier_delivery.voided'   => [self::CATEGORY_DEVICE, 'Supplier delivery cancelled (scans removed)'],
+        'supplier_delivery.stocked'  => [self::CATEGORY_DEVICE, 'Supplier delivery added to stock'],
         'invoice.issued'             => [self::CATEGORY_MONEY, 'Wholesale invoice issued'],
         'credit_note.issued'         => [self::CATEGORY_MONEY, 'Credit note issued'],
         'receipt.recorded'           => [self::CATEGORY_MONEY, 'Payment receipt recorded'],
