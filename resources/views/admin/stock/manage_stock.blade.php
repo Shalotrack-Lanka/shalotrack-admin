@@ -203,15 +203,14 @@
     </div>
 </div>
 
+{{-- Only products linked to a device type are stock-tracked (a SIM package has none). Listing an unlinked product by its
+     PRODUCT id would be read by the server as a DEVICE TYPE id and could add stock to an unrelated device type. --}}
 <script>
 document.addEventListener('alpine:init', () => {
     const allSuppliersData = @json(
         $suppliers->mapWithKeys(function ($sup) {
             return [
-                // Only products linked to a device type are stock-tracked. A product with no device type (a SIM
-                // package, say) used to be listed with its PRODUCT id, which the server then read as a DEVICE TYPE
-                // id, so the stock could land on an unrelated device type that shared that number.
-                $sup->id => $sup->products->filter(fn ($prod) => $prod->device_type_id)->values()->map(function ($prod) {
+                $sup->id => $sup->products->whereNotNull('device_type_id')->values()->map(function ($prod) {
                     return [
                         'id' => $prod->device_type_id,
                         'name' => $prod->product_name,
