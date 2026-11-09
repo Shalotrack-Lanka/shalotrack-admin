@@ -42,6 +42,7 @@ class AuditLog extends Model
         'commission.rate_deleted'    => [self::CATEGORY_MONEY, 'Commission rate removed'],
         'package.updated'            => [self::CATEGORY_MONEY, 'Renewal package price / warranty changed'],
         'device_price.updated'       => [self::CATEGORY_MONEY, 'Device price / margins changed'],
+        'supplier_delivery.received' => [self::CATEGORY_DEVICE, 'Supplier delivery (IMEIs / SIMs) received'],
         'invoice.issued'             => [self::CATEGORY_MONEY, 'Wholesale invoice issued'],
         'credit_note.issued'         => [self::CATEGORY_MONEY, 'Credit note issued'],
         'receipt.recorded'           => [self::CATEGORY_MONEY, 'Payment receipt recorded'],
