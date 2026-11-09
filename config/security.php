@@ -67,7 +67,7 @@ return [
 
         'directives' => [
             'default-src'     => ["'self'"],
-            'script-src'      => ["'self'", "'nonce-{nonce}'", 'https://cdn.jsdelivr.net', 'https://unpkg.com', 'https://www.gstatic.com'],
+            'script-src'      => ["'self'", "'nonce-{nonce}'", 'https://unpkg.com', 'https://www.gstatic.com'],
             'style-src'       => ["'self'", "'nonce-{nonce}'", 'https://unpkg.com', 'https://fonts.bunny.net'],
             'style-src-attr'  => ["'unsafe-inline'"],
             'img-src'         => ["'self'", 'data:', 'blob:', 'https://unpkg.com', 'https://*.tile.openstreetmap.org', 'https://cdn-icons-png.flaticon.com'],

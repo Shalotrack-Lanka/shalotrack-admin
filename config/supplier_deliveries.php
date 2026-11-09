@@ -23,4 +23,18 @@ return [
     */
     'enforce_from' => env('SUPPLIER_DELIVERIES_ENFORCE_FROM'),
 
+    /*
+    | Goods are received AGAINST A PURCHASE ORDER and the order is the limit (received can never pass ordered).
+    | SUPPLIER_DELIVERIES_REQUIRE_PO=false lets a delivery be saved without an order (emergency switch only);
+    | a delivery that does name an order is always held to it.
+    */
+    'require_purchase_order' => filter_var(env('SUPPLIER_DELIVERIES_REQUIRE_PO', true), FILTER_VALIDATE_BOOLEAN),
+
+    /*
+    | Stock on Manage Stock (typed quantity and the stock import file) comes ONLY from a received delivery, so it
+    | can never be more than the supplier delivered. SUPPLIER_ALLOW_TYPED_STOCK=true re-opens typing and import
+    | (emergency switch only, for example before the first purchase order exists).
+    */
+    'allow_typed_stock' => filter_var(env('SUPPLIER_ALLOW_TYPED_STOCK', false), FILTER_VALIDATE_BOOLEAN),
+
 ];

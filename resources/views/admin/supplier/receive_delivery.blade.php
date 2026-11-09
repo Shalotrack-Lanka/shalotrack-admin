@@ -14,7 +14,6 @@
             display: none !important
         }
     </style>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
 <body x-data="{ sidebarOpen: false }">
@@ -28,15 +27,15 @@
 
             {{-- All values the script needs are passed as plain data (no comments inside @js). --}}
             <main class="p-4 md:p-6 flex-1 space-y-6"
-                x-data="deliveryScan({ postUrl: @js(route('admin.suppliers.deliveries.store', $supplier->id)), max: @js($maxScans), orders: @js($openOrders) })"
+                x-data="deliveryScan({ postUrl: @js(route('admin.suppliers.deliveries.store', $supplier->id)), max: @js($maxScans), onlyTypeId: @js($deviceTypes->count() === 1 ? $deviceTypes->first()->id : null), orders: @js($openOrders), simTypes: @js(\App\Services\Supplier\SupplierCatalogue::SIM_TYPES) })"
                 x-init="init()">
 
                 <div class="flex items-center justify-between">
                     <div>
                         <h1 class="text-sm font-bold text-gray-800">Receive delivery from {{ $supplier->name }}</h1>
                         <p class="text-xs text-gray-400 mt-1">
-                            Scan the IMEI of every device (or the ICCID of every SIM) on the delivery, then save. This records which supplier each unit came from.
-                            The stock count changes when you add the delivery to stock on Manage Stock (choose this delivery there; its quantity is the number of scanned units).
+                            Choose the purchase order the goods arrived against, then scan the IMEI of every device (or the ICCID, SIM number and IMSI of every SIM). You can never receive more than the order asked for.
+                            Devices are added to stock on Manage Stock (choose this delivery there; its quantity is the number of scanned units). SIMs go straight into the Add SIM list as Not Activated.
                         </p>
                     </div>
                     <a href="{{ route('admin.suppliers') }}" class="text-xs font-bold text-blue-600 hover:underline">&larr; Back to Supplier Management</a>
@@ -84,7 +83,7 @@
                                             :class="l.remaining < 1 ? 'opacity-50 cursor-not-allowed bg-gray-50' : (lineKey === l.key ? 'border-emerald-400 bg-emerald-50 cursor-pointer' : 'border-gray-200 cursor-pointer')">
                                             <input type="radio" name="line" :value="l.key" x-model="lineKey" :disabled="l.remaining < 1 || rows.length > 0">
                                             <span class="flex-1">
-                                                <span class="block font-bold text-gray-800" x-text="l.name + (l.kind === 'SIM' ? ' (scan ICCID)' : ' (scan IMEI)')"></span>
+                                                <span class="block font-bold text-gray-800" x-text="l.name + (l.kind === 'SIM' ? ' (scan ICCID, SIM number, IMSI)' : ' (scan IMEI)')"></span>
                                                 <span class="block font-normal text-gray-500" x-text="l.received + ' of ' + l.ordered + ' received, ' + (l.remaining > 0 ? l.remaining + ' still to come' : 'all received')"></span>
                                             </span>
                                         </label>
@@ -93,6 +92,13 @@
                                 <p x-show="rows.length > 0" x-cloak class="text-[11px] text-gray-400 mt-1">Clear the list to change the order or the product.</p>
                             </div>
 
+                            <div x-show="kind === 'SIM'" x-cloak>
+                                <label class="block mb-1">SIM type (applies to the whole delivery)</label>
+                                <select x-model="simType" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
+                                    <option value="">-- Select SIM type --</option>
+                                    <template x-for="(label, code) in simTypes" :key="code"><option :value="code" x-text="label"></option></template>
+                                </select>
+                            </div>
                             <div>
                                 <label class="block mb-1">Supplier delivery note / invoice no. (optional)</label>
                                 <input type="text" x-model="reference" maxlength="100" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
@@ -114,10 +120,10 @@
                             <input type="text" x-ref="scanInput" x-model="input" @keydown.enter.prevent="onScan()"
                                 :disabled="!line" autocomplete="off" inputmode="numeric"
                                 class="w-full rounded-lg border-gray-300 h-11 shadow-sm font-mono text-sm disabled:bg-gray-100"
-                                :placeholder="!line ? 'Choose the purchase order and what arrived first' : (kind === 'DEVICE' ? 'Scan an IMEI...' : (pendingSim ? 'Now scan or type the 10-digit SIM number of ' + pendingSim + '...' : 'Scan a SIM ICCID...'))">
+                                :placeholder="!line ? 'Choose the purchase order and what arrived first' : kind === 'DEVICE' ? 'Scan an IMEI...' : (pendingSim ? 'Now scan or type the ' + pendingSim.what + ' of ' + pendingSim.iccid + '...' : 'Scan a SIM ICCID...')">
                             <p x-show="line" x-cloak class="text-[11px] font-bold mt-1" :class="rows.length >= (line ? line.remaining : 0) ? 'text-amber-700' : 'text-gray-500'"
                                 x-text="line ? (rows.length + ' of ' + line.remaining + ' still to come on this order scanned.') : ''"></p>
-                            <p x-show="kind === 'SIM'" x-cloak class="text-[11px] font-normal text-gray-400 mt-1">For each SIM: scan the ICCID, then the 10-digit SIM number on the pack (the same pairing as Setup Device). A number can also be typed in the list below.</p>
+                            <p x-show="kind === 'SIM'" x-cloak class="text-[11px] font-normal text-gray-400 mt-1">For each SIM: scan the ICCID, then the 10-digit SIM number, then the 15-digit IMSI (the box tells them apart by length). They can also be typed in the list below.</p>
                         </div>
                         <div x-show="flash.text" x-cloak class="p-3 border rounded-lg text-xs font-bold"
                             :class="flash.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'"
@@ -135,7 +141,7 @@
                         <table class="w-full text-left text-xs">
                             <tbody class="divide-y divide-gray-100 font-mono">
                                 <template x-for="(r, i) in rows" :key="r">
-                                    <tr :class="kind === 'SIM' && !validNumber(numbers[r]) ? 'bg-amber-50' : ''">
+                                    <tr :class="kind === 'SIM' && !(validNumber(numbers[r]) && validImsi(imsis[r])) ? 'bg-amber-50' : ''">
                                         <td class="px-5 py-2 text-gray-400" x-text="i + 1"></td>
                                         <td class="px-2 py-2" x-text="r"></td>
                                         <td class="px-2 py-2" x-show="kind === 'SIM'">
@@ -143,10 +149,15 @@
                                                 @input="numbers[r] = (numbers[r] || '').replace(/\D/g, '')"
                                                 class="w-32 rounded border-gray-300 h-8 text-xs font-mono">
                                         </td>
+                                        <td class="px-2 py-2" x-show="kind === 'SIM'">
+                                            <input type="text" x-model="imsis[r]" maxlength="15" inputmode="numeric" placeholder="IMSI (15 digits)"
+                                                @input="imsis[r] = (imsis[r] || '').replace(/\D/g, '')"
+                                                class="w-40 rounded border-gray-300 h-8 text-xs font-mono">
+                                        </td>
                                         <td class="px-5 py-2 text-right"><button type="button" @click="remove(r)" class="text-red-600 font-sans font-bold hover:underline">Remove</button></td>
                                     </tr>
                                 </template>
-                                <tr x-show="!rows.length"><td colspan="4" class="px-5 py-6 text-center text-gray-400 font-sans">Nothing scanned yet.</td></tr>
+                                <tr x-show="!rows.length"><td colspan="5" class="px-5 py-6 text-center text-gray-400 font-sans">Nothing scanned yet.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -172,7 +183,7 @@
                             <a href="{{ route('admin.stock.manage') }}" class="text-blue-700 hover:underline mr-4">Add this delivery to stock</a>
                         </template>
                         <template x-if="result && result.kind === 'SIM'">
-                            <a href="{{ route('admin.add-sim') }}" class="text-blue-700 hover:underline mr-4">Register these SIMs on Add SIM</a>
+                            <a href="{{ route('admin.add-sim') }}" class="text-blue-700 hover:underline mr-4">Open the SIM list (Add SIM)</a>
                         </template>
                         <a href="" class="text-gray-600 hover:underline">Refresh the list below</a>
                     </div>
@@ -218,11 +229,7 @@
                                     <td class="p-3 font-mono">{{ $d->purchaseOrder->invoice_number ?? '-' }}</td>
                                     <td class="p-3">
                                         @if($d->kind === 'SIM')
-                                            @if($d->registered_count >= $d->units_count)
-                                                <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">All registered</span>
-                                            @else
-                                                <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">{{ $d->registered_count }} of {{ $d->units_count }} registered</span>
-                                            @endif
+                                            <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">In SIM list</span>
                                         @elseif($d->stocked_in_at)
                                             <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">In stock</span>
                                         @else
@@ -277,8 +284,11 @@
                 max: cfg.max,
                 // Everything is received against a purchase order line (a device type, or SIMs).
                 orders: cfg.orders || [],
+                simTypes: cfg.simTypes || {},
                 orderId: (cfg.orders || []).length === 1 ? String(cfg.orders[0].id) : '',
                 lineKey: '',
+                simType: '',
+                imsis: {},           // SIM delivery: ICCID -> 15-digit IMSI
                 numbers: {},         // SIM delivery: ICCID -> 10-digit SIM number
                 reference: '',
                 note: '',
@@ -304,33 +314,44 @@
                 get canSave() {
                     if (this.saving || this.rows.length === 0 || !this.line) return false;
                     if (this.rows.length > this.line.remaining) return false;
-                    if (this.kind === 'SIM') return this.rows.every(r => this.validNumber(this.numbers[r]));
+                    if (this.kind === 'SIM') return this.simType !== '' && this.rows.every(r => this.validNumber(this.numbers[r]) && this.validImsi(this.imsis[r]));
                     return true;
                 },
 
-                // The last ICCID still waiting for its SIM number.
+                // The last SIM still missing its SIM number or its IMSI (what to scan next).
                 get pendingSim() {
                     if (this.kind !== 'SIM') return null;
                     for (let i = this.rows.length - 1; i >= 0; i--) {
-                        if (!this.validNumber(this.numbers[this.rows[i]])) return this.rows[i];
+                        const r = this.rows[i];
+                        if (!this.validNumber(this.numbers[r])) return { iccid: r, what: 'SIM number (10 digits)' };
+                        if (!this.validImsi(this.imsis[r])) return { iccid: r, what: 'IMSI (15 digits)' };
                     }
                     return null;
+                },
+
+                validImsi(n) {
+                    return /^\d{15}$/.test(n || '');
                 },
 
                 validNumber(n) {
                     return /^\d{10}$/.test(n || '');
                 },
 
-                // An order (or the one product on it still to come) that leaves nothing to choose is chosen already.
+                // An order with only one product still to come has nothing to choose: it is chosen already.
                 pickOnlyLine() {
                     const open = this.order ? this.order.lines.filter(l => l.remaining > 0) : [];
                     this.lineKey = open.length === 1 ? open[0].key : '';
+                    if (open.length === 1 && open[0].sim_type) this.simType = open[0].sim_type;
                 },
 
                 init() {
                     this.pickOnlyLine();
                     this.$watch('orderId', () => { this.pickOnlyLine(); this.focusInput(); });
-                    this.$watch('lineKey', () => this.focusInput());
+                    this.$watch('lineKey', () => {
+                        const l = this.order ? this.order.lines.find(x => x.key === this.lineKey) : null;
+                        if (l && l.sim_type) this.simType = l.sim_type;
+                        this.focusInput();
+                    });
                     this.$nextTick(() => this.focusInput());
                 },
                 focusInput() {
@@ -362,8 +383,9 @@
                         this.say('Choose the purchase order and what arrived first.', false);
                         return this.beep(false);
                     }
-                    const isSimNumber = this.kind === 'SIM' && /^\d{10}$/.test(v);
-                    if (!isSimNumber && this.rows.length >= this.line.remaining) {
+                    // A SIM number or IMSI belongs to a SIM already in the list; only a new unit counts against the order.
+                    const isExtra = this.kind === 'SIM' && /^(\d{10}|\d{15})$/.test(v);
+                    if (!isExtra && this.rows.length >= this.line.remaining) {
                         this.say(this.order.number + ' is waiting for only ' + this.line.remaining + ' of ' + this.line.name + '. ' + v.slice(0, 24) + ' is more than was ordered: put it aside and ask the supplier, or place a new purchase order for it.', false);
                         return this.beep(false);
                     }
@@ -376,24 +398,27 @@
                             this.say(v.slice(0, 24) + ': not a valid IMEI (15 digits, correct check digit). Rescan it.', false);
                             return this.beep(false);
                         }
-                    } else if (/^\d{10}$/.test(v)) {
-                        // A SIM number: it belongs to the last ICCID that does not have one yet.
-                        const target = this.pendingSim;
+                    } else if (/^\d{10}$/.test(v) || /^\d{15}$/.test(v)) {
+                        // A SIM number (10 digits) or an IMSI (15 digits): it belongs to the last SIM still missing it.
+                        const isNumber = v.length === 10;
+                        const field = isNumber ? this.numbers : this.imsis;
+                        const target = this.rows.slice().reverse().find(r => !(isNumber ? this.validNumber(field[r]) : this.validImsi(field[r])));
                         if (!target) {
-                            this.say('Scan the SIM ICCID first, then its SIM number.', false);
+                            this.say('Scan the SIM ICCID first, then its SIM number and IMSI.', false);
                             return this.beep(false);
                         }
-                        const owner = Object.keys(this.numbers).find(k => this.numbers[k] === v && this.rows.includes(k));
+                        const owner = Object.keys(field).find(k => field[k] === v && this.rows.includes(k));
                         if (owner) {
-                            this.say('SIM number ' + v + ' is already on SIM ' + owner + '.', false);
+                            this.say((isNumber ? 'SIM number ' : 'IMSI ') + v + ' is already on SIM ' + owner + '.', false);
                             return this.beep(false);
                         }
-                        this.numbers[target] = v;
-                        this.say('SIM number ' + v + ' added to ' + target + '.', true);
+                        field[target] = v;
+                        const p = this.pendingSim;
+                        this.say((isNumber ? 'SIM number ' : 'IMSI ') + v + ' added to ' + target + '.' + (p ? ' Now scan its ' + p.what + '.' : ''), true);
                         this.beep(true);
                         return this.focusInput();
                     } else if (!/^\d{19,20}$/.test(v)) {
-                        this.say(v.slice(0, 24) + ': not a valid SIM ICCID (19-20 digits) or SIM number (10 digits). Rescan it.', false);
+                        this.say(v.slice(0, 24) + ': not a valid SIM ICCID (19-20 digits), SIM number (10 digits) or IMSI (15 digits). Rescan it.', false);
                         return this.beep(false);
                     }
                     if (this.rows.includes(v)) {
@@ -402,18 +427,20 @@
                     }
 
                     this.rows.push(v);
-                    this.say('Added ' + v + ' (' + this.rows.length + ' scanned).' + (this.kind === 'SIM' ? ' Now scan its SIM number.' : ''), true);
+                    this.say('Added ' + v + ' (' + this.rows.length + ' scanned).' + (this.kind === 'SIM' ? ' Now scan its SIM number and IMSI.' : ''), true);
                     this.beep(true);
                     this.focusInput();
                 },
                 remove(v) {
                     this.rows = this.rows.filter(r => r !== v);
                     delete this.numbers[v];
+                    delete this.imsis[v];
                     this.focusInput();
                 },
                 clearAll() {
                     this.rows = [];
                     this.numbers = {};
+                    this.imsis = {};
                     this.say('', true);
                     this.focusInput();
                 },
@@ -432,11 +459,12 @@
                             body: JSON.stringify({
                                 kind: this.kind,
                                 device_type_id: this.kind === 'DEVICE' ? Number(this.deviceTypeId) : null,
-                                purchase_order_id: this.orderId ? Number(this.orderId) : null,
+                                purchase_order_id: Number(this.orderId),
                                 reference: this.reference || null,
                                 note: this.note || null,
+                                sim_type: this.kind === 'SIM' ? this.simType : null,
                                 scans: this.kind === 'SIM'
-                                    ? this.rows.map(r => ({ iccid: r, sim_number: this.numbers[r] || '' }))
+                                    ? this.rows.map(r => ({ iccid: r, sim_number: this.numbers[r] || '', imsi: this.imsis[r] || '' }))
                                     : this.rows,
                             }),
                         });
@@ -452,14 +480,16 @@
                         }
                         if (!res.ok) throw new Error('Server error (' + res.status + '). Nothing was confirmed; check recent deliveries before retrying.');
 
-                        this.result = Object.assign({ kind: this.kind }, data);
                         // Keep "still to come" right without a reload, so the next scan is capped correctly.
+                        const kindNow = this.kind;
                         if (data.accepted > 0 && this.line) {
                             this.line.received += data.accepted;
                             this.line.remaining = Math.max(0, this.line.remaining - data.accepted);
                         }
+                        this.result = Object.assign({}, data, { kind: kindNow });
                         this.rows = [];
                         this.numbers = {};
+                        this.imsis = {};
                         this.say('', true);
                         this.beep(data.accepted > 0);
                     } catch (e) {

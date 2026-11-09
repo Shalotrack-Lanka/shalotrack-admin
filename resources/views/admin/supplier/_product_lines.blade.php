@@ -24,6 +24,7 @@
     <p class="text-[11px] text-gray-500 mb-3">
         Only devices on this list can be ordered, scanned in on a delivery and added to stock from this supplier. Devices come from
         <a href="{{ route('admin.add-device-type') }}" class="text-blue-600 underline">Add Device Types</a>.
+        SIM cards: add an other product with the word SIM in its name (for example "Mobitel SIM card"); only then can SIMs be ordered from and received from this supplier. The quantity here is only the usual order size: what can be received is limited by the purchase order.
         A product that an open purchase order or a waiting delivery still needs cannot be removed.
     </p>
     <template x-for="(l, i) in lines" :key="l.key">
@@ -45,7 +46,7 @@
                     </optgroup>
                 </select>
                 <input type="text" x-show="l.choice === '__new'" x-cloak x-model="l.newName" :required="l.choice === '__new'" maxlength="255"
-                       placeholder="e.g. Dialog SIM card" class="mt-1 w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs">
+                       placeholder="e.g. Mobitel SIM card (include the word SIM)" class="mt-1 w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs">
                 {{-- What is submitted: a device type id, or a product name. --}}
                 <template x-if="isDevice(l)"><input type="hidden" :name="`products[${i}][device_type_id]`" :value="typeId(l)"></template>
                 <template x-if="!isDevice(l)"><input type="hidden" :name="`products[${i}][product_name]`" :value="nameOf(l)"></template>

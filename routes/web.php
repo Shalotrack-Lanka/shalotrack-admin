@@ -500,6 +500,12 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{id}/deliveries/{deliveryId}', [\App\Http\Controllers\Admin\Supplier\SupplierDeliveryController::class, 'void'])
                 ->where('deliveryId', '[0-9]{1,18}')->middleware('throttle:20,1')->name('admin.suppliers.deliveries.void');
 
+            // What has been paid to the supplier, per purchase order (a wrong payment is voided, never deleted).
+            Route::post('/{id}/payments', [\App\Http\Controllers\Admin\Supplier\SupplierPaymentController::class, 'store'])
+                ->where('id', '[0-9]{1,18}')->middleware('throttle:30,1')->name('admin.suppliers.payments.store');
+            Route::delete('/{id}/payments/{paymentId}', [\App\Http\Controllers\Admin\Supplier\SupplierPaymentController::class, 'void'])
+                ->where(['id' => '[0-9]{1,18}', 'paymentId' => '[0-9]{1,18}'])->middleware('throttle:30,1')->name('admin.suppliers.payments.void');
+
             // Supplier Invoice Management
             Route::get('/supplier-management-invoice', [SupplierInvoiceController::class, 'index'])->name('admin.supplier-invoice');
             Route::post('/supplier-management-invoice', [SupplierInvoiceController::class, 'store'])->name('admin.supplier-invoice.store');

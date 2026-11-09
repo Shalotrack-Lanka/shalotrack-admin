@@ -7,7 +7,6 @@
 
     @vite(['resources/css/app.css','resources/js/app.js'])
 
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="{ sidebarOpen: false }">
 
@@ -69,51 +68,6 @@
                     </form>
                 </div>
             </div>
-
-            {{-- SIMs that arrived on a supplier delivery but are not registered yet --}}
-            @if($waitingSims->isNotEmpty())
-                <div class="bg-white border border-amber-200 rounded-xl shadow-sm overflow-hidden mb-6">
-                    <div class="px-5 py-3 border-b border-amber-100 bg-amber-50 flex items-center justify-between">
-                        <span class="font-bold text-amber-900 text-sm">Received SIMs waiting to be registered</span>
-                        <span class="text-[11px] font-bold text-amber-800 bg-white border border-amber-200 px-2.5 py-1 rounded-full">{{ $waitingSims->count() }} waiting</span>
-                    </div>
-                    <p class="px-5 pt-3 text-[11px] text-gray-500">
-                        These SIMs were scanned in on a supplier delivery. Click <b>Register</b> to fill in the form below with the ICCID and SIM number, then enter the IMSI and save.
-                    </p>
-                    <div class="p-5 overflow-x-auto">
-                        <table class="w-full text-left text-xs font-semibold text-gray-700">
-                            <thead class="bg-gray-50 border-b border-gray-200 text-[11px] text-gray-500 uppercase tracking-wide">
-                                <tr>
-                                    <th class="p-3">ICCID</th>
-                                    <th class="p-3">SIM Number</th>
-                                    <th class="p-3">Supplier</th>
-                                    <th class="p-3">Delivery</th>
-                                    <th class="p-3">Purchase order</th>
-                                    <th class="p-3">Received</th>
-                                    <th class="p-3"></th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                @foreach($waitingSims as $w)
-                                    <tr>
-                                        <td class="p-3 font-mono">{{ $w['iccid'] }}</td>
-                                        <td class="p-3 font-mono">{{ $w['sim_number'] ?? '-' }}</td>
-                                        <td class="p-3">{{ $w['supplier'] }}</td>
-                                        <td class="p-3">#{{ $w['delivery_id'] }}</td>
-                                        <td class="p-3 font-mono">{{ $w['order'] ?? '-' }}</td>
-                                        <td class="p-3 font-mono">{{ $w['received_on'] }}</td>
-                                        <td class="p-3 text-right">
-                                            <button type="button" class="text-blue-700 font-bold hover:underline"
-                                                data-iccid="{{ $w['iccid'] }}" data-number="{{ $w['sim_number'] }}" data-type="{{ $w['sim_type'] }}"
-                                                onclick="fillReceivedSim(this)">Register</button>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            @endif
 
                 <div id="add-sim-card" class="lg:col-span-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                     <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 font-bold text-gray-800 text-sm">Add New SIM </div>
@@ -352,7 +306,6 @@
     </div>
 </div>
 
-<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 <script>
     // Fills in the SIM number recorded when this SIM was received on a supplier delivery (scanned with its ICCID),
     // so it is not typed twice. The server checks the number again when the SIM is saved.
@@ -378,21 +331,6 @@
                 note.textContent = r.message || '';
             }
         } catch (e) { /* the lookup is only a convenience */ }
-    }
-
-    // "Register" on a received SIM: fill the form with what was scanned at delivery; only the IMSI is left to type.
-    function fillReceivedSim(btn) {
-        const form = document.querySelector('#add-sim-card form');
-        form.querySelector('input[name=iccid]').value = btn.dataset.iccid;
-        form.querySelector('input[name=sim_number]').value = btn.dataset.number || '';
-        if (btn.dataset.type) form.querySelector('select[name=sim_type]').value = btn.dataset.type;
-        const status = form.querySelector('select[name=sim_status]');
-        if (!status.value) status.value = 'Not Activated';
-        document.getElementById('iccid-lookup-note').textContent = 'Received on a supplier delivery. Enter the IMSI and save.';
-        document.getElementById('add-sim-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        const imsi = form.querySelector('input[name=imsi]');
-        imsi.value = '';
-        imsi.focus();
     }
 </script>
 </body>

@@ -151,7 +151,7 @@ trait PurchasingSchema
         });
 
         // The new tables and columns, from the real migration files.
-        foreach (['2026_11_09_000002_create_supplier_delivery_tables', '2026_11_09_000003_add_stock_link_to_supplier_deliveries', '2026_11_09_000004_link_purchase_orders_deliveries_and_sim_numbers'] as $m) {
+        foreach (['2026_11_09_000002_create_supplier_delivery_tables', '2026_11_09_000003_add_stock_link_to_supplier_deliveries', '2026_11_09_000004_link_purchase_orders_deliveries_and_sim_numbers', '2026_11_09_000006_create_supplier_payments_table'] as $m) {
             (require database_path("migrations/{$m}.php"))->up();
         }
     }

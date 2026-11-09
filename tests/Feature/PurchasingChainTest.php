@@ -103,7 +103,7 @@ class PurchasingChainTest extends TestCase
 
     private function receiveSims(Supplier $s, SupplierInvoice $order, array $pairs)
     {
-        return $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'purchase_order_id' => $order->id, 'scans' => $pairs]);
+        return $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'sim_type' => 'mobitel', 'purchase_order_id' => $order->id, 'scans' => $pairs]);
     }
 
     // ------------------------------------------------------------------------------------------ purchase orders
@@ -257,43 +257,56 @@ class PurchasingChainTest extends TestCase
         $this->assertSame(0, SupplierDelivery::count());
     }
 
-    public function test_goods_are_only_received_against_a_purchase_order(): void
-    {
-        $s = $this->supplier();
-        $t = $this->type();
-        $this->offerDevice($s, $t);
-        $this->offerSims($s);
-
-        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'DEVICE', 'device_type_id' => $t->id, 'scans' => [self::IMEI_A]])
-            ->assertStatus(422)->assertJsonValidationErrors('purchase_order_id');
-        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'scans' => [['iccid' => self::ICCID_1, 'sim_number' => '0771234567']]])
-            ->assertStatus(422)->assertJsonValidationErrors('purchase_order_id');
-
-        $this->assertSame(0, SupplierDelivery::count());
-    }
-
-    public function test_more_than_was_ordered_can_never_be_received(): void
+    public function test_a_delivery_against_an_order_is_linked_and_the_order_is_a_hard_limit(): void
     {
         $s = $this->supplier();
         $t = $this->type();
         $p = $this->offerDevice($s, $t);
         $order = $this->placeOrder($s, [$this->line($p, 2, 1200)]);
-        $send = fn (array $imeis) => $this->postJson(route('admin.suppliers.deliveries.store', $s->id), [
-            'kind' => 'DEVICE', 'device_type_id' => $t->id, 'purchase_order_id' => $order->id, 'scans' => $imeis,
+        $send = fn (array $scans) => $this->postJson(route('admin.suppliers.deliveries.store', $s->id), [
+            'kind' => 'DEVICE', 'device_type_id' => $t->id, 'purchase_order_id' => $order->id, 'scans' => $scans,
         ]);
 
-        // 3 scanned on an order for 2: nothing is saved.
+        // More than ordered in one go: the whole delivery is refused, nothing is saved.
         $send([self::IMEI_A, self::IMEI_B, self::IMEI_C])->assertStatus(422)->assertJsonValidationErrors('scans');
         $this->assertSame(0, SupplierDelivery::count());
 
-        // In two parts up to the ordered 2, then one more is refused.
-        $send([self::IMEI_A])->assertOk()->assertJsonPath('accepted', 1);
-        $send([self::IMEI_B])->assertOk()->assertJsonPath('accepted', 1);
+        $send([self::IMEI_A, self::IMEI_B])->assertOk()->assertJsonPath('accepted', 2);
+
+        // The order is now fully received: one more unit is refused.
         $send([self::IMEI_C])->assertStatus(422)->assertJsonValidationErrors('scans');
 
         $summary = app(PurchaseOrders::class)->summary($order->fresh());
         $this->assertSame(['ordered' => 2, 'received' => 2], $summary['device_types'][$t->id]);
-        $this->assertSame(2, SupplierDelivery::where('supplier_invoice_id', $order->id)->count());
+        $this->assertSame(1, SupplierDelivery::where('supplier_invoice_id', $order->id)->count());
+    }
+
+    public function test_goods_are_received_only_against_a_purchase_order(): void
+    {
+        $s = $this->supplier();
+        $t = $this->type();
+        $this->offerDevice($s, $t);
+
+        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'DEVICE', 'device_type_id' => $t->id, 'scans' => [self::IMEI_A]])
+            ->assertStatus(422)->assertJsonValidationErrors('purchase_order_id');
+        $this->assertSame(0, SupplierDelivery::count());
+    }
+
+    public function test_a_cancelled_delivery_gives_its_quantity_back_to_the_order(): void
+    {
+        $s = $this->supplier();
+        $t = $this->type();
+        $p = $this->offerDevice($s, $t);
+        $order = $this->placeOrder($s, [$this->line($p, 1, 1200)]);
+        $send = fn (string $imei) => $this->postJson(route('admin.suppliers.deliveries.store', $s->id), [
+            'kind' => 'DEVICE', 'device_type_id' => $t->id, 'purchase_order_id' => $order->id, 'scans' => [$imei],
+        ]);
+
+        $id = $send(self::IMEI_A)->assertOk()->json('delivery_id');
+        $send(self::IMEI_B)->assertStatus(422);
+
+        $this->delete(route('admin.suppliers.deliveries.void', [$s->id, $id]), ['reason' => 'wrong box']);
+        $send(self::IMEI_B)->assertOk()->assertJsonPath('accepted', 1);
     }
 
     public function test_more_sims_than_were_ordered_can_never_be_received(): void
@@ -302,8 +315,8 @@ class PurchasingChainTest extends TestCase
         $order = $this->simOrder($s, 1, 'Mobitel SIM');
 
         $this->receiveSims($s, $order, [
-            ['iccid' => self::ICCID_1, 'sim_number' => '0711234567'],
-            ['iccid' => self::ICCID_2, 'sim_number' => '0711234568'],
+            ['iccid' => self::ICCID_1, 'sim_number' => '0711234567', 'imsi' => '413021111111111'],
+            ['iccid' => self::ICCID_2, 'sim_number' => '0711234568', 'imsi' => '413022222222222'],
         ])->assertStatus(422)->assertJsonValidationErrors('scans');
         $this->assertSame(0, SupplierDeliveryUnit::count());
     }
@@ -320,7 +333,7 @@ class PurchasingChainTest extends TestCase
         $line = collect(app(PurchaseOrders::class)->openOrders($s->id)->firstWhere('id', $deviceOrder->id)['lines'])->firstWhere('kind', 'DEVICE');
         $this->assertSame([2, 0, 2, 'Shalotrack V5'], [$line['ordered'], $line['received'], $line['remaining'], $line['name']]);
 
-        $this->receiveSims($s, $order, [['iccid' => self::ICCID_1, 'sim_number' => '0771234567']])->assertOk()->assertJsonPath('accepted', 1);
+        $this->receiveSims($s, $order, [['iccid' => self::ICCID_1, 'sim_number' => '0771234567', 'imsi' => '413021111111111']])->assertOk()->assertJsonPath('accepted', 1);
 
         $this->assertSame([$deviceOrder->id], app(PurchaseOrders::class)->openOrders($s->id)->pluck('id')->all());
     }
@@ -366,94 +379,174 @@ class PurchasingChainTest extends TestCase
         $this->assertNull(app(PurchaseOrders::class)->lockReason($order->fresh()));
     }
 
-    // ------------------------------------------------------------------------------------------ SIM numbers
+    // ------------------------------------------------------------------------------------------ SIM deliveries
 
-    public function test_a_sim_delivery_records_each_iccid_with_its_sim_number(): void
+    private function simsOrder(Supplier $s, int $qty = 2): array
+    {
+        $p = $this->offerSims($s);
+
+        return [$p, $this->placeOrder($s, [$this->line($p, $qty, 150, 'SIM')])];
+    }
+
+    private function sendSims(Supplier $s, ?SupplierInvoice $order, array $scans, string $type = 'mobitel')
+    {
+        return $this->postJson(route('admin.suppliers.deliveries.store', $s->id), array_filter([
+            'kind' => 'SIM', 'sim_type' => $type, 'purchase_order_id' => $order?->id, 'scans' => $scans,
+        ], fn ($v) => $v !== null));
+    }
+
+    private function pair(string $iccid, string $number, string $imsi): array
+    {
+        return ['iccid' => $iccid, 'sim_number' => $number, 'imsi' => $imsi];
+    }
+
+    public function test_a_sim_delivery_puts_each_sim_in_the_sim_list_not_activated(): void
     {
         $s = $this->supplier();
-        $order = $this->simOrder($s, 2);
+        [, $order] = $this->simsOrder($s);
 
-        $this->receiveSims($s, $order, [
-            ['iccid' => self::ICCID_1, 'sim_number' => '0771234567'],
-            ['iccid' => self::ICCID_2, 'sim_number' => '077123456'],    // 9 digits
+        $this->sendSims($s, $order, [
+            $this->pair(self::ICCID_1, '0771234567', '413021111111111'),
+            $this->pair(self::ICCID_2, '077123456', '413022222222222'),    // 9-digit number: rejected
         ])->assertOk()->assertJsonPath('accepted', 1)->assertJsonPath('rejected.0.identifier', self::ICCID_2);
 
-        $this->assertSame('0771234567', SupplierDeliveryUnit::where('identifier', self::ICCID_1)->value('sim_number'));
+        $sim = Sim::where('iccid', self::ICCID_1)->firstOrFail();
+        $this->assertSame('0771234567', $sim->sim_number);
+        $this->assertSame('413021111111111', $sim->imsi);
+        $this->assertSame('mobitel', $sim->sim_type);
+        $this->assertSame('Not Activated', $sim->sim_status);
+        $this->assertSame(1, Sim::count());
+        $unit = SupplierDeliveryUnit::where('identifier', self::ICCID_1)->firstOrFail();
+        $this->assertSame('0771234567', $unit->sim_number);
+        $this->assertNotNull($unit->registered_at);
+        $this->assertSame((string) $sim->id, $unit->registered_ref);
+
+        // And the Add SIM page lists it with the supplier.
+        $this->get(route('admin.add-sim'))->assertOk()->assertSee($s->name)->assertSee('0771234567');
     }
 
-    public function test_a_sim_number_already_used_is_refused(): void
+    public function test_a_sim_delivery_is_held_to_the_order_and_needs_a_supplier_that_supplies_sims(): void
     {
         $s = $this->supplier();
-        $order = $this->simOrder($s, 2);
+        [, $order] = $this->simsOrder($s, 1);
+
+        $this->sendSims($s, $order, [
+            $this->pair(self::ICCID_1, '0771234567', '413021111111111'),
+            $this->pair(self::ICCID_2, '0771234568', '413022222222222'),
+        ])->assertStatus(422)->assertJsonValidationErrors('scans');
+        $this->assertSame(0, Sim::count());
+        $this->assertSame(0, SupplierDelivery::count());
+
+        $this->sendSims($s, null, [$this->pair(self::ICCID_1, '0771234567', '413021111111111')])
+            ->assertStatus(422)->assertJsonValidationErrors('purchase_order_id');
+
+        // A supplier with only devices cannot deliver SIMs.
+        $devices = $this->supplier('Devices only');
+        $t = $this->type();
+        $this->offerDevice($devices, $t);
+        $this->sendSims($devices, null, [$this->pair(self::ICCID_1, '0771234567', '413021111111111')])
+            ->assertStatus(422)->assertJsonValidationErrors('kind');
+    }
+
+    public function test_orders_expose_what_is_still_to_come_per_line_and_hide_when_all_received(): void
+    {
+        $s = $this->supplier();
+        [, $simOrder] = $this->simsOrder($s, 1);
+        $t = $this->type();
+        $p = $this->offerDevice($s, $t);
+        $devOrder = $this->placeOrder($s, [$this->line($p, 2, 1200)]);
+
+        $line = collect(app(PurchaseOrders::class)->openOrders($s->id)->firstWhere('id', $devOrder->id)['lines'])->firstWhere('kind', 'DEVICE');
+        $this->assertSame([2, 0, 2, 'Shalotrack V5'], [$line['ordered'], $line['received'], $line['remaining'], $line['name']]);
+
+        $this->sendSims($s, $simOrder, [$this->pair(self::ICCID_1, '0771234567', '413021111111111')], 'Mobitel')->assertOk()->assertJsonPath('accepted', 1);
+        $this->assertSame('mobitel', Sim::firstOrFail()->sim_type, 'the type is stored the way Add SIM stores it');
+        $this->assertSame([$devOrder->id], app(PurchaseOrders::class)->openOrders($s->id)->pluck('id')->all());
+    }
+
+    public function test_a_product_named_like_4_sims_of_mobitel_counts_as_a_sim_product(): void
+    {
+        $s = $this->supplier('Abisara');
+        $p = Product::create(['product_name' => '4 sims of mobitel sims']);
+        $s->products()->attach($p->id, ['price' => 100, 'qty' => 4]);
+        $order = $this->placeOrder($s, [$this->line($p, 4, 100, 'SIM')]);
+
+        $this->assertSame(4, app(PurchaseOrders::class)->summary($order)['sims_ordered']);
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771234567', '413021111111111')])->assertOk()->assertJsonPath('accepted', 1);
+    }
+
+    public function test_a_sim_needs_its_imsi_and_its_type(): void
+    {
+        $s = $this->supplier();
+        [, $order] = $this->simsOrder($s);
+
+        $this->sendSims($s, $order, [['iccid' => self::ICCID_1, 'sim_number' => '0771234567']])->assertStatus(422);
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771234567', '41302')])->assertOk()->assertJsonPath('accepted', 0)
+            ->assertJsonPath('rejected.0.reason', fn ($r) => str_contains($r, 'IMSI'));
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771234567', '413021111111111')], '   ')
+            ->assertStatus(422)->assertJsonValidationErrors('sim_type');
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771234567', '413021111111111')], 'Airtel')
+            ->assertStatus(422)->assertJsonValidationErrors('sim_type');
+        $this->assertSame(0, Sim::count());
+    }
+
+    public function test_a_sim_number_or_imsi_already_used_is_refused(): void
+    {
+        $s = $this->supplier();
+        [, $order] = $this->simsOrder($s, 4);
         Sim::create(['sim_number' => '0770000001', 'sim_type' => 'Dialog', 'imsi' => '413020000000001', 'iccid' => '8994019999999999999', 'sim_status' => 'Activated']);
 
-        $this->receiveSims($s, $order, [['iccid' => self::ICCID_1, 'sim_number' => '0770000001']])
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0770000001', '413021111111111')])
             ->assertOk()->assertJsonPath('accepted', 0)->assertJsonPath('rejected.0.reason', fn ($r) => str_contains($r, 'already registered'));
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771111111', '413020000000001')])
+            ->assertOk()->assertJsonPath('accepted', 0)->assertJsonPath('rejected.0.reason', fn ($r) => str_contains($r, 'IMSI'));
 
-        $this->receiveSims($s, $order, [['iccid' => self::ICCID_1, 'sim_number' => '0771111111']])->assertOk()->assertJsonPath('accepted', 1);
-        $this->receiveSims($s, $order, [['iccid' => self::ICCID_2, 'sim_number' => '0771111111']])->assertOk()->assertJsonPath('accepted', 0);
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771111111', '413021111111111')])->assertOk()->assertJsonPath('accepted', 1);
+        // The same SIM again, and the same number on another SIM, are both refused.
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771111111', '413021111111111')])->assertOk()->assertJsonPath('accepted', 0);
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_2, '0771111111', '413022222222222')])->assertOk()->assertJsonPath('accepted', 0);
     }
 
-    public function test_a_sim_delivery_must_send_pairs(): void
+    public function test_adding_a_delivered_sim_again_on_add_sim_is_refused(): void
     {
         $s = $this->supplier();
-        $order = $this->simOrder($s, 1);
-
-        $this->receiveSims($s, $order, [self::ICCID_1])->assertStatus(422);
-    }
-
-    public function test_registering_a_sim_with_a_different_number_than_received_is_refused(): void
-    {
-        $s = $this->supplier();
-        $this->receiveSims($s, $this->simOrder($s, 1), [['iccid' => self::ICCID_1, 'sim_number' => '0771234567']])->assertOk();
-
-        $this->post(route('admin.stock.sim.store'), [
-            'sim_type' => 'Dialog', 'sim_number' => '0779999999', 'imsi' => '413021234567890', 'iccid' => self::ICCID_1, 'sim_status' => 'Activated',
-        ])->assertSessionHasErrors('sim_number');
-        $this->assertSame(0, Sim::count());
+        [, $order] = $this->simsOrder($s);
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771234567', '413021111111111')])->assertOk();
 
         $this->post(route('admin.stock.sim.store'), [
             'sim_type' => 'Dialog', 'sim_number' => '0771234567', 'imsi' => '413021234567890', 'iccid' => self::ICCID_1, 'sim_status' => 'Activated',
-        ])->assertSessionHasNoErrors();
+        ])->assertSessionHasErrors('iccid');
         $this->assertSame(1, Sim::count());
-        $this->assertNotNull(SupplierDeliveryUnit::where('identifier', self::ICCID_1)->value('registered_at'));
     }
 
-    public function test_received_sims_wait_on_add_sim_until_they_are_registered(): void
-    {
-        $s = $this->supplier('Abisara');
-        $order = $this->simOrder($s, 2, 'Mobitel SIM');
-        $this->receiveSims($s, $order, [
-            ['iccid' => self::ICCID_1, 'sim_number' => '0711234567'],
-            ['iccid' => self::ICCID_2, 'sim_number' => '0711234568'],
-        ])->assertOk()->assertJsonPath('accepted', 2);
-
-        $this->get(route('admin.add-sim'))->assertOk()
-            ->assertSee('Received SIMs waiting to be registered')
-            ->assertSee(self::ICCID_1)->assertSee(self::ICCID_2)
-            ->assertSee('data-type="mobitel"', false)
-            ->assertViewHas('waitingSims', fn ($w) => $w->count() === 2 && $w->first()['order'] === $order->invoice_number);
-
-        $this->post(route('admin.stock.sim.store'), [
-            'sim_type' => 'mobitel', 'sim_number' => '0711234567', 'imsi' => '413011234567890', 'iccid' => self::ICCID_1, 'sim_status' => 'Not Activated',
-        ])->assertSessionHasNoErrors();
-
-        $this->get(route('admin.add-sim'))->assertOk()
-            ->assertViewHas('waitingSims', fn ($w) => $w->pluck('iccid')->all() === [self::ICCID_2]);
-
-        // The delivery list says how many of the SIMs are registered.
-        $this->get(route('admin.suppliers.deliveries', $s->id))->assertOk()->assertSee('1 of 2 registered');
-    }
-
-    public function test_setup_device_fills_in_the_sim_number_received_with_the_sim(): void
+    public function test_cancelling_a_sim_delivery_takes_the_sims_out_unless_they_are_in_use(): void
     {
         $s = $this->supplier();
-        $this->receiveSims($s, $this->simOrder($s, 1), [['iccid' => self::ICCID_1, 'sim_number' => '0771234567']])->assertOk();
+        [, $order] = $this->simsOrder($s);
+        $id = $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771234567', '413021111111111')])->json('delivery_id');
 
-        $this->postJson(route('admin.device.scan.check'), ['iccid' => self::ICCID_1])
-            ->assertOk()
-            ->assertJsonPath('iccid.reason', 'not_registered')
-            ->assertJsonPath('iccid.received_sim_number', '0771234567');
+        Sim::where('iccid', self::ICCID_1)->update(['sim_status' => 'Activated']);
+        $this->delete(route('admin.suppliers.deliveries.void', [$s->id, $id]), ['reason' => 'wrong box'])->assertSessionHasErrors('delivery_id');
+        $this->assertSame(1, Sim::count());
+
+        Sim::where('iccid', self::ICCID_1)->update(['sim_status' => 'Not Activated']);
+        $this->delete(route('admin.suppliers.deliveries.void', [$s->id, $id]), ['reason' => 'wrong box'])->assertSessionHasNoErrors();
+        $this->assertSame(0, Sim::count());
+        $this->assertSame(0, SupplierDeliveryUnit::count());
+    }
+
+    public function test_receive_page_is_order_first_and_offers_only_orders_with_goods_still_to_come(): void
+    {
+        $s = $this->supplier();
+        $this->get(route('admin.suppliers.deliveries', $s->id))->assertOk()->assertSee('Nothing is on order from')->assertDontSee('Select the purchase order');
+
+        [, $order] = $this->simsOrder($s, 1);
+        $this->get(route('admin.suppliers.deliveries', $s->id))->assertOk()
+            ->assertSee('Select the purchase order')
+            ->assertViewHas('openOrders', fn ($o) => $o->count() === 1 && $o->first()['lines'][0]['kind'] === 'SIM' && $o->first()['lines'][0]['remaining'] === 1);
+
+        $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771234567', '413021111111111')])->assertOk();
+        $this->get(route('admin.suppliers.deliveries', $s->id))->assertOk()->assertSee('Nothing is on order from');
     }
 
     // ------------------------------------------------------------------------------------------ sales prices
