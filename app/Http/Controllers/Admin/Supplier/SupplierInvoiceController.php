@@ -5,21 +5,25 @@ namespace App\Http\Controllers\Admin\Supplier;
 use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
-use App\Models\Product;
-use App\Models\Stock;
 use App\Models\SupplierInvoice;
-use App\Models\SupplierInvoiceItem;
+use App\Services\Supplier\PurchaseOrders;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 
+/**
+ * Purchase orders to suppliers (ADMIN only, enforced by the route group). The rules live in
+ * App\Services\Supplier\PurchaseOrders: only the supplier's own products, totals worked out on the server, an
+ * order never changes stock (stock goes up when the delivery is added on Manage Stock), editable until goods are
+ * received against it, cancelled rather than deleted.
+ */
 class SupplierInvoiceController extends Controller
 {
-    /**
-     * Purchase Order wizard + invoice history. supplier_id was already
-     * being passed in from the Supplier Management "Invoices" link before
-     * this — it was just never read. Now it filters the history list.
-     */
+    public function __construct(private PurchaseOrders $orders)
+    {
+    }
+
+    /** New purchase order + the order history (optionally for one supplier). */
     public function index(Request $request)
     {
         // A supplier id from the Supplier Management link; anything that is not a plain id means "all".
@@ -35,30 +39,64 @@ class SupplierInvoiceController extends Controller
             })
             ->latest('invoice_date')
             ->latest('id')
+            ->limit(200)
             ->get();
 
-        return view('admin.supplier.supplier_invoice', compact(
-            'suppliers', 'invoices', 'supplierId'
-        ));
+        return view('admin.supplier.supplier_invoice', [
+            'suppliers'  => $suppliers,
+            'invoices'   => $invoices,
+            'supplierId' => $supplierId,
+            'summaries'  => $invoices->mapWithKeys(fn ($i) => [$i->id => $this->orders->summary($i)]),
+            'editing'    => null,
+        ]);
+    }
+
+    /** The same form, filled with an order that can still be changed. */
+    public function edit(int $id)
+    {
+        $invoice = SupplierInvoice::with(['supplier', 'items.product'])->findOrFail($id);
+
+        if ($reason = $this->orders->lockReason($invoice)) {
+            return redirect()->route('admin.supplier-invoice', ['supplier_id' => $invoice->supplier_id])->with('error', $reason);
+        }
+
+        return view('admin.supplier.supplier_invoice', [
+            'suppliers'  => Supplier::whereKey($invoice->supplier_id)->get(),
+            'invoices'   => collect(),
+            'supplierId' => $invoice->supplier_id,
+            'summaries'  => collect(),
+            'editing'    => [
+                'id'     => $invoice->id,
+                'number' => $invoice->invoice_number,
+                'items'  => $invoice->items->map(fn ($i) => [
+                    'product_id' => (string) $i->product_id,
+                    'type'       => $i->type,
+                    'order_qty'  => (int) $i->order_qty,
+                    'unit_price' => (float) $i->unit_price,
+                    'discount'   => (float) $i->discount,
+                    'face_value' => (float) $i->face_value,
+                ])->values(),
+            ],
+        ]);
     }
 
     public function download($id)
-{
-    $invoice = SupplierInvoice::with([
-        'supplier',
-        'items.product'
-    ])->findOrFail($id);
+    {
+        $invoice = SupplierInvoice::with([
+            'supplier',
+            'items.product'
+        ])->findOrFail($id);
 
-    $pdf = Pdf::loadView('admin.supplier.invoice_pdf', compact('invoice'));
+        $pdf = Pdf::loadView('admin.supplier.invoice_pdf', compact('invoice'));
 
-    return $pdf->download(
-        $invoice->invoice_number . '.pdf'
-    );
-}
+        return $pdf->download(
+            $invoice->invoice_number . '.pdf'
+        );
+    }
 
     /**
-     * AJAX: contact details + linked products (with real price/discount
-     * from supplier_products) for the supplier just picked in the wizard
+     * AJAX: contact details + the products on this supplier's product list, with the agreed price. Only these
+     * products can be put on an order to this supplier.
      */
     public function getSupplierData($id)
     {
@@ -71,8 +109,10 @@ class SupplierInvoiceController extends Controller
                 'id'             => $product->id,
                 'product_name'   => $product->product_name,
                 'price'          => (float) $product->pivot->price,
-                'discount'       => (float) $product->pivot->discount,
+                // supplier_products has no discount column: a discount is agreed per order, on the order line.
+                'discount'       => 0.0,
                 'device_type_id' => $product->device_type_id,
+                'type'           => $product->device_type_id ? 'Device' : (preg_match('/\bsim\b/i', (string) $product->product_name) ? 'SIM' : 'Other'),
             ];
         });
 
@@ -89,125 +129,61 @@ class SupplierInvoiceController extends Controller
         ]);
     }
 
-    /**
-     * Save the Purchase Order / Invoice. Totals are recalculated here from
-     * qty/price/discount/face_value — never trusted from the client, since
-     * this is money and Alpine's grandTotal is only for the on-screen
-     * preview, not the source of truth.
-     */
+    /** Save a new purchase order. It records what was ordered; it never changes stock. */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-        // bail + integer: a text or oversized id must stop here, before it reaches PostgreSQL (a 500 otherwise).
-        // The maximums keep every number inside its database column (qty int4, money decimal(12,2), discount %).
-        'supplier_id' => ['bail', 'required', 'integer', 'min:1', \Illuminate\Validation\Rule::exists('suppliers', 'id')->where('status', 'Active')],
-        'items' => 'required|array|min:1|max:200',
-        'items.*.product_id' => 'bail|required|integer|min:1|exists:products,id',
-        'items.*.type' => 'required|string|max:50',
-        'items.*.order_qty' => 'required|integer|min:1|max:1000000',
-        'items.*.unit_price' => 'required|numeric|min:0|max:9999999',
-        'items.*.discount' => 'nullable|numeric|min:0|max:100',
-        'items.*.face_value' => 'nullable|numeric|min:0|max:9999999',
-    ]);
+        $validated = $request->validate(array_merge([
+            // bail + integer: a text or oversized id must stop here, before it reaches PostgreSQL (a 500 otherwise).
+            'supplier_id' => ['bail', 'required', 'integer', 'min:1', Rule::exists('suppliers', 'id')->where('status', 'Active')],
+        ], $this->lineRules()));
 
-    // Money columns are decimal(12,2). Each field has its own limit, but quantity x price can still be bigger
-    // than the column, which used to end in a database error. Work the totals out first and refuse politely.
-    $limit = 9999999999.99;
-    $runningTotal = 0;
-    foreach ($validated['items'] as $index => $item) {
-        $line = ((int) $item['order_qty'] * (float) $item['unit_price']);
-        $line = $line - ($line * ((float) ($item['discount'] ?? 0) / 100)) + (float) ($item['face_value'] ?? 0);
-        $runningTotal += $line;
-
-        if ($line > $limit) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                "items.{$index}.unit_price" => 'This line is too large. Reduce the quantity or the price.',
-            ]);
-        }
-    }
-    if ($runningTotal > $limit) {
-        throw \Illuminate\Validation\ValidationException::withMessages([
-            'items' => 'The order total is too large. Split it into smaller orders.',
-        ]);
-    }
-
-    $invoice = DB::transaction(function () use ($validated) {
-
-        $year = now()->year;
-
-        // PostgreSQL FIX:
-        // Don't use lockForUpdate() together with count()
-        $count = SupplierInvoice::whereYear('invoice_date', $year)->count();
-
-        $invoiceNumber =
-            'PO-' .
-            $year .
-            '-' .
-            str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-
-            $invoice = SupplierInvoice::create([
-                'invoice_number' => $invoiceNumber,
-                'supplier_id'    => $validated['supplier_id'],
-                'invoice_date'   => now()->toDateString(),
-                'grand_total'    => 0,
-            ]);
-
-            $grandTotal = 0;
-
-            foreach ($validated['items'] as $item) {
-
-                $product = Product::findOrFail($item['product_id']);
-
-                $qty         = (int) $item['order_qty'];
-                $unitPrice   = (float) $item['unit_price'];
-                $discountPct = (float) ($item['discount'] ?? 0);
-                $faceValue   = (float) ($item['face_value'] ?? 0);
-
-                $lineTotal      = $qty * $unitPrice;
-                $discountAmount = $lineTotal * ($discountPct / 100);
-                $netAmount      = $lineTotal - $discountAmount + $faceValue;
-
-                SupplierInvoiceItem::create([
-                    'supplier_invoice_id' => $invoice->id,
-                    'product_id'          => $product->id,
-                    'type'                => $item['type'],
-                    'order_qty'           => $qty,
-                    'unit_price'          => $unitPrice,
-                    'discount'            => $discountPct,
-                    'face_value'          => $faceValue,
-                    'net_amount'          => $netAmount,
-                ]);
-
-                $grandTotal += $netAmount;
-
-                /*
-                | Only products explicitly linked to a device_type touch
-                | stock. SIM packages and any unlinked product are recorded
-                | on the invoice only — exactly the behaviour that existed
-                | before this feature, just now also true for real product
-                | rows instead of everything.
-                */
-                if ($product->device_type_id) {
-
-                    $stock = Stock::lockForUpdate()
-                        ->firstOrNew(['device_type_id' => $product->device_type_id]);
-
-                    // The stocks table keeps one row per device type with only these columns. This code used to
-                    // also write supplier_id, stock_in and total_available, which a later migration removed, so
-                    // every purchase order containing a device failed with a database error.
-                    $stock->company_available_stock = ($stock->company_available_stock ?? 0) + $qty;
-                    $stock->device_category_type  ??= $product->product_name;
-                    $stock->save();
-                }
-            }
-
-            $invoice->update(['grand_total' => $grandTotal]);
-
-            return $invoice;
-        });
+        $invoice = $this->orders->create((int) $validated['supplier_id'], $validated['items'], $this->adminId($request));
 
         return redirect()
             ->route('admin.supplier-invoice', ['supplier_id' => $invoice->supplier_id])
-            ->with('success', "Purchase Order {$invoice->invoice_number} saved successfully.");
+            ->with('success', "Purchase Order {$invoice->invoice_number} saved successfully. Stock changes when the delivery is received and added to stock.");
+    }
+
+    public function update(Request $request, int $id)
+    {
+        $invoice = SupplierInvoice::findOrFail($id);
+        $validated = $request->validate($this->lineRules());
+
+        $this->orders->update($invoice, $validated['items'], $this->adminId($request));
+
+        return redirect()
+            ->route('admin.supplier-invoice', ['supplier_id' => $invoice->supplier_id])
+            ->with('success', "Purchase Order {$invoice->invoice_number} updated.");
+    }
+
+    public function cancel(Request $request, int $id)
+    {
+        $invoice = SupplierInvoice::findOrFail($id);
+        $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:200']]);
+
+        $this->orders->cancel($invoice, trim($data['reason']), $this->adminId($request));
+
+        return back()->with('success', "Purchase Order {$invoice->invoice_number} was cancelled.");
+    }
+
+    /** The maximums keep every number inside its database column (qty int4, money decimal(12,2), discount %). */
+    private function lineRules(): array
+    {
+        return [
+            'items'              => 'required|array|min:1|max:200',
+            'items.*.product_id' => 'bail|required|integer|min:1|exists:products,id',
+            'items.*.type'       => 'required|string|max:50',
+            'items.*.order_qty'  => 'required|integer|min:1|max:1000000',
+            'items.*.unit_price' => 'required|numeric|min:0|max:9999999',
+            'items.*.discount'   => 'nullable|numeric|min:0|max:100',
+            'items.*.face_value' => 'nullable|numeric|min:0|max:9999999',
+        ];
+    }
+
+    private function adminId(Request $request): ?string
+    {
+        $id = $request->user()?->getAuthIdentifier();
+
+        return $id !== null ? (string) $id : null;
     }
 }

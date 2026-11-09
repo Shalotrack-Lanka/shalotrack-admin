@@ -518,7 +518,7 @@
                     target.checking = false;
                     if (data.iccid && !data.iccid.ok) {
                         if (data.iccid.reason === 'not_registered') {
-                            this.openSimForm(iccid, target.imei);
+                            this.openSimForm(iccid, target.imei, data.iccid.received_sim_number || '');
                             return this.fail('SIM ' + iccid + ' is not registered yet — fill in the form below to add it, or cancel.');
                         }
                         return this.fail('SIM ' + iccid + ': ' + data.iccid.message);
@@ -530,13 +530,14 @@
                     this.say('SIM ' + data.iccid.sim_number + ' paired with ' + target.imei + '.', true);
                 },
 
-                openSimForm(iccid, imei) {
+                openSimForm(iccid, imei, receivedNumber) {
                     this.simForm = {
                         open: true,
                         saving: false,
                         iccid,
                         imei,
-                        sim_number: '',
+                        // Filled in from the supplier delivery when the SIM was received with its number.
+                        sim_number: receivedNumber || '',
                         imsi: '',
                         sim_type: '',
                         confirm: false,

@@ -40,6 +40,7 @@ class ManageStockController extends Controller
                 'units'          => $d->units_count,
                 'reference'      => $d->reference,
                 'date'           => $d->received_on?->format('Y-m-d'),
+                'order'          => $d->purchaseOrder?->invoice_number,
             ])->groupBy('supplier_id')->map->values()
             : collect();
 

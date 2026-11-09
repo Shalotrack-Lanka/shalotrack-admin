@@ -28,7 +28,7 @@
 
             {{-- All values the script needs are passed as plain data (no comments inside @js). --}}
             <main class="p-4 md:p-6 flex-1 space-y-6"
-                x-data="deliveryScan({ postUrl: @js(route('admin.suppliers.deliveries.store', $supplier->id)), max: @js($maxScans), onlyTypeId: @js($deviceTypes->count() === 1 ? $deviceTypes->first()->id : null) })"
+                x-data="deliveryScan({ postUrl: @js(route('admin.suppliers.deliveries.store', $supplier->id)), max: @js($maxScans), onlyTypeId: @js($deviceTypes->count() === 1 ? $deviceTypes->first()->id : null), orders: @js($openOrders) })"
                 x-init="init()">
 
                 <div class="flex items-center justify-between">
@@ -91,6 +91,17 @@
                             <label class="block mb-1">Note (optional)</label>
                             <input type="text" x-model="note" maxlength="500" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
                         </div>
+                        <div class="md:col-span-2">
+                            <label class="block mb-1">Against purchase order <span class="font-normal text-gray-400">(optional, recommended: shows what is still to come and locks the order)</span></label>
+                            <select x-model="orderId" :disabled="rows.length > 0" class="w-full rounded-lg border-gray-300 h-10 shadow-sm disabled:bg-gray-100">
+                                <option value="">-- Not against a purchase order --</option>
+                                <template x-for="o in matchingOrders" :key="o.id">
+                                    <option :value="String(o.id)" x-text="orderLabel(o)"></option>
+                                </template>
+                            </select>
+                            <p x-show="kind === 'DEVICE' && deviceTypeId && matchingOrders.length === 0" x-cloak class="text-[11px] text-gray-400 mt-1">No open purchase order from this supplier includes this product.</p>
+                            <p x-show="kind === 'SIM' && matchingOrders.length === 0" x-cloak class="text-[11px] text-gray-400 mt-1">No open purchase order from this supplier includes SIM cards.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -103,7 +114,8 @@
                             <input type="text" x-ref="scanInput" x-model="input" @keydown.enter.prevent="onScan()"
                                 :disabled="kind === 'DEVICE' && !deviceTypeId" autocomplete="off" inputmode="numeric"
                                 class="w-full rounded-lg border-gray-300 h-11 shadow-sm font-mono text-sm disabled:bg-gray-100"
-                                :placeholder="kind === 'DEVICE' ? (deviceTypeId ? 'Scan an IMEI...' : 'Choose the device type first') : 'Scan a SIM ICCID...'">
+                                :placeholder="kind === 'DEVICE' ? (deviceTypeId ? 'Scan an IMEI...' : 'Choose the device type first') : (pendingSim ? 'Now scan or type the 10-digit SIM number of ' + pendingSim + '...' : 'Scan a SIM ICCID...')">
+                            <p x-show="kind === 'SIM'" x-cloak class="text-[11px] font-normal text-gray-400 mt-1">For each SIM: scan the ICCID, then the 10-digit SIM number on the pack (the same pairing as Setup Device). A number can also be typed in the list below.</p>
                         </div>
                         <div x-show="flash.text" x-cloak class="p-3 border rounded-lg text-xs font-bold"
                             :class="flash.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'"
@@ -121,13 +133,18 @@
                         <table class="w-full text-left text-xs">
                             <tbody class="divide-y divide-gray-100 font-mono">
                                 <template x-for="(r, i) in rows" :key="r">
-                                    <tr>
+                                    <tr :class="kind === 'SIM' && !validNumber(numbers[r]) ? 'bg-amber-50' : ''">
                                         <td class="px-5 py-2 text-gray-400" x-text="i + 1"></td>
                                         <td class="px-2 py-2" x-text="r"></td>
+                                        <td class="px-2 py-2" x-show="kind === 'SIM'">
+                                            <input type="text" x-model="numbers[r]" maxlength="10" inputmode="numeric" placeholder="SIM number"
+                                                @input="numbers[r] = (numbers[r] || '').replace(/\D/g, '')"
+                                                class="w-32 rounded border-gray-300 h-8 text-xs font-mono">
+                                        </td>
                                         <td class="px-5 py-2 text-right"><button type="button" @click="remove(r)" class="text-red-600 font-sans font-bold hover:underline">Remove</button></td>
                                     </tr>
                                 </template>
-                                <tr x-show="!rows.length"><td colspan="3" class="px-5 py-6 text-center text-gray-400 font-sans">Nothing scanned yet.</td></tr>
+                                <tr x-show="!rows.length"><td colspan="4" class="px-5 py-6 text-center text-gray-400 font-sans">Nothing scanned yet.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -147,6 +164,7 @@
                         <span x-text="result ? result.accepted : 0"></span> recorded<span x-show="result && result.delivery_id" x-cloak> on delivery #<span x-text="result ? result.delivery_id : ''"></span></span>,
                         <span x-text="result ? result.rejected.length : 0"></span> not recorded.
                     </div>
+                    <div x-show="result && result.warning" x-cloak class="p-3 border rounded-lg text-xs font-bold bg-amber-50 border-amber-200 text-amber-800" x-text="result ? result.warning : ''"></div>
                     <div x-show="result && result.delivery_id" x-cloak class="text-xs font-bold">
                         <template x-if="kind === 'DEVICE'">
                             <a href="{{ route('admin.stock.manage') }}" class="text-blue-700 hover:underline mr-4">Add this delivery to stock</a>
@@ -179,6 +197,7 @@
                                 <th class="p-3">Type</th>
                                 <th class="p-3">Units</th>
                                 <th class="p-3">Reference</th>
+                                <th class="p-3">Purchase order</th>
                                 <th class="p-3">Status</th>
                                 <th class="p-3"></th>
                             </tr>
@@ -191,6 +210,7 @@
                                     <td class="p-3">{{ $d->kind === 'DEVICE' ? trim(($d->deviceType->device_category ?? '') . ' ' . ($d->deviceType->model ?? '')) : 'SIM cards' }}</td>
                                     <td class="p-3 font-bold">{{ $d->units_count }}</td>
                                     <td class="p-3">{{ $d->reference ?: '-' }}</td>
+                                    <td class="p-3 font-mono">{{ $d->purchaseOrder->invoice_number ?? '-' }}</td>
                                     <td class="p-3">
                                         @if($d->kind === 'SIM')
                                             <span class="text-gray-500">Recorded</span>
@@ -215,7 +235,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="7" class="p-5 text-center text-gray-400">No deliveries recorded yet.</td></tr>
+                                <tr><td colspan="8" class="p-5 text-center text-gray-400">No deliveries recorded yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -246,6 +266,9 @@
                 kind: 'DEVICE',
                 // A supplier with exactly one device product has nothing to choose: it is selected already.
                 deviceTypeId: cfg.onlyTypeId ? String(cfg.onlyTypeId) : '',
+                orders: cfg.orders || [],
+                orderId: '',
+                numbers: {},         // SIM delivery: ICCID -> 10-digit SIM number
                 reference: '',
                 note: '',
                 input: '',
@@ -255,10 +278,42 @@
                 result: null,
 
                 get canSave() {
-                    return !this.saving && this.rows.length > 0 && (this.kind === 'SIM' || !!this.deviceTypeId);
+                    if (this.saving || this.rows.length === 0) return false;
+                    if (this.kind === 'SIM') return this.rows.every(r => this.validNumber(this.numbers[r]));
+                    return !!this.deviceTypeId;
+                },
+
+                // The last ICCID still waiting for its SIM number.
+                get pendingSim() {
+                    if (this.kind !== 'SIM') return null;
+                    for (let i = this.rows.length - 1; i >= 0; i--) {
+                        if (!this.validNumber(this.numbers[this.rows[i]])) return this.rows[i];
+                    }
+                    return null;
+                },
+
+                validNumber(n) {
+                    return /^\d{10}$/.test(n || '');
+                },
+
+                // Purchase orders that include what is being received (this device type, or SIMs).
+                get matchingOrders() {
+                    return this.orders.filter(o => this.kind === 'SIM'
+                        ? o.sims_ordered > 0
+                        : (this.deviceTypeId && o.device_types[this.deviceTypeId] && o.device_types[this.deviceTypeId].ordered > 0));
+                },
+
+                orderLabel(o) {
+                    const q = this.kind === 'SIM'
+                        ? { ordered: o.sims_ordered, received: o.sims_received }
+                        : (o.device_types[this.deviceTypeId] || { ordered: 0, received: 0 });
+                    return o.number + ' (' + (o.date || '') + '): ' + q.received + ' of ' + q.ordered + ' received';
                 },
 
                 init() {
+                    // A purchase order picked for one product does not carry over to another.
+                    this.$watch('kind', () => { this.orderId = ''; });
+                    this.$watch('deviceTypeId', () => { this.orderId = ''; });
                     this.$nextTick(() => this.focusInput());
                 },
                 focusInput() {
@@ -295,8 +350,24 @@
                             this.say(v.slice(0, 24) + ': not a valid IMEI (15 digits, correct check digit). Rescan it.', false);
                             return this.beep(false);
                         }
+                    } else if (/^\d{10}$/.test(v)) {
+                        // A SIM number: it belongs to the last ICCID that does not have one yet.
+                        const target = this.pendingSim;
+                        if (!target) {
+                            this.say('Scan the SIM ICCID first, then its SIM number.', false);
+                            return this.beep(false);
+                        }
+                        const owner = Object.keys(this.numbers).find(k => this.numbers[k] === v && this.rows.includes(k));
+                        if (owner) {
+                            this.say('SIM number ' + v + ' is already on SIM ' + owner + '.', false);
+                            return this.beep(false);
+                        }
+                        this.numbers[target] = v;
+                        this.say('SIM number ' + v + ' added to ' + target + '.', true);
+                        this.beep(true);
+                        return this.focusInput();
                     } else if (!/^\d{19,20}$/.test(v)) {
-                        this.say(v.slice(0, 24) + ': not a valid SIM ICCID (19 or 20 digits). Rescan it.', false);
+                        this.say(v.slice(0, 24) + ': not a valid SIM ICCID (19-20 digits) or SIM number (10 digits). Rescan it.', false);
                         return this.beep(false);
                     }
                     if (this.rows.includes(v)) {
@@ -305,16 +376,18 @@
                     }
 
                     this.rows.push(v);
-                    this.say('Added ' + v + ' (' + this.rows.length + ' scanned).', true);
+                    this.say('Added ' + v + ' (' + this.rows.length + ' scanned).' + (this.kind === 'SIM' ? ' Now scan its SIM number.' : ''), true);
                     this.beep(true);
                     this.focusInput();
                 },
                 remove(v) {
                     this.rows = this.rows.filter(r => r !== v);
+                    delete this.numbers[v];
                     this.focusInput();
                 },
                 clearAll() {
                     this.rows = [];
+                    this.numbers = {};
                     this.say('', true);
                     this.focusInput();
                 },
@@ -333,9 +406,12 @@
                             body: JSON.stringify({
                                 kind: this.kind,
                                 device_type_id: this.kind === 'DEVICE' ? Number(this.deviceTypeId) : null,
+                                purchase_order_id: this.orderId ? Number(this.orderId) : null,
                                 reference: this.reference || null,
                                 note: this.note || null,
-                                scans: this.rows,
+                                scans: this.kind === 'SIM'
+                                    ? this.rows.map(r => ({ iccid: r, sim_number: this.numbers[r] || '' }))
+                                    : this.rows,
                             }),
                         });
 
@@ -352,6 +428,7 @@
 
                         this.result = data;
                         this.rows = [];
+                        this.numbers = {};
                         this.say('', true);
                         this.beep(data.accepted > 0);
                     } catch (e) {

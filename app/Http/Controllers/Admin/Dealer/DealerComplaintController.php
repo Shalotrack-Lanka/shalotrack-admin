@@ -272,7 +272,7 @@ class DealerComplaintController extends Controller
 
     // FIX: this previously returned a single hardcoded sample complaint for
     // EVERY dealer regardless of their actual history (see the removed
-    // "Danata UI eka test karanna" placeholder). The real data was already
+    // "test the UI for now" placeholder). The real data was already
     // one HTTP call away -- by-dealer/{id} is the exact same endpoint
     // index() already uses, it just wasn't being filtered down to
     // resolved/closed here. No new API endpoint needed.

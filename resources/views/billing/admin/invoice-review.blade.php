@@ -26,6 +26,12 @@
                 <tr><td colspan="4" class="text-right font-black">Total (LKR)</td><td class="text-right font-black text-lg text-blue-950">{{ $m($quote['total']) }}</td></tr>
             </tfoot>
         </table>
+        @if(! empty($priceNotes))
+            <div class="bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-xl p-3">
+                <b>Prices that differ from Device Prices</b> (allowed; check before issuing):
+                <ul class="list-disc ml-5 mt-1">@foreach($priceNotes as $n)<li>{{ $n }}</li>@endforeach</ul>
+            </div>
+        @endif
         @if($quote['total'] === 0)<div class="bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-xl p-3">Zero-value invoice. Reason: <b>{{ $zero_reason ?: 'MISSING — go back and enter a reason' }}</b></div>@endif
         @if($notes)<p class="text-sm text-slate-600"><b>Note:</b> {{ $notes }}</p>@endif
     </div>

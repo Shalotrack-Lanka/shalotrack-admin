@@ -35,7 +35,7 @@ class SimsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFail
         // Cast to string so Excel numbers do not turn into scientific notation
         $sim = DB::transaction(function () use ($row, $isActivationRequired, $deliveries) {
             // Supplier delivery check under lock (no-op while the feature is off); see DeliveryPolicy.
-            $provenance = $deliveries->verify('SIM', trim((string) $row['iccid']), null, 'iccid');
+            $provenance = $deliveries->verify('SIM', trim((string) $row['iccid']), null, 'iccid', trim((string) $row['sim_number']));
 
             $sim = Sim::create([
                 'sim_type'            => trim($row['sim_type']),
@@ -84,8 +84,12 @@ class SimsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFail
                     continue;
                 }
 
-                $p = app(SupplierDeliveryService::class)->preview('SIM', trim((string) $data['iccid']), null);
-                if (in_array($p['status'], [DeliveryPolicy::BLOCKED, DeliveryPolicy::REGISTERED], true)) {
+                $number = is_scalar($data['sim_number'] ?? null) ? trim((string) $data['sim_number']) : null;
+                $p = app(SupplierDeliveryService::class)->preview('SIM', trim((string) $data['iccid']), null, $number);
+                if ($p['status'] === DeliveryPolicy::MISMATCH) {
+                    // The SIM was received with a different SIM number.
+                    $validator->errors()->add("{$rowNumber}.sim_number", $p['message']);
+                } elseif (in_array($p['status'], [DeliveryPolicy::BLOCKED, DeliveryPolicy::REGISTERED], true)) {
                     $validator->errors()->add("{$rowNumber}.iccid", $p['message']);
                 }
             }

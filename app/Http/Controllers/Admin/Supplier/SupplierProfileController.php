@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use App\Models\StockTransferLedger;
 use App\Models\SupplierInvoice;
+use App\Services\Supplier\PurchaseOrders;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -26,16 +27,22 @@ class SupplierProfileController extends Controller
             ->get();
 
         $invoices = SupplierInvoice::where('supplier_id', $supplier->id)
+            ->with('items.product')
             ->latest('invoice_date')
+            ->latest('id')
             ->get();
 
-        // 💡 UPDATE: 'TOTAL UNITS RECEIVED' Card ekata supplier ge products wala QTY okkoma ekathu karanawa
         // Units actually received = what the stock-in ledger recorded. (The supplier's product qty is what is still
         // ON ORDER, so summing it showed 0 after everything had been received.)
         $totalStockReceived = (int) $stockHistory->sum('stock_in');
-        
-        $totalInvoiceValue  = $invoices->sum('grand_total');
-        $totalInvoices      = $invoices->count();
+
+        // A cancelled purchase order is kept for the record but is not money owed to the supplier.
+        $live = $invoices->reject(fn ($i) => $i->isCancelled());
+        $totalInvoiceValue  = $live->sum('grand_total');
+        $totalInvoices      = $live->count();
+
+        $orders = app(PurchaseOrders::class);
+        $orderSummaries = $invoices->mapWithKeys(fn ($i) => [$i->id => $orders->summary($i)]);
 
         $recentActivity = $stockHistory->take(5)->map(function ($entry) {
             return [
@@ -51,7 +58,8 @@ class SupplierProfileController extends Controller
             'totalStockReceived',
             'totalInvoiceValue',
             'totalInvoices',
-            'recentActivity'
+            'recentActivity',
+            'orderSummaries'
         ));
     }
 
@@ -91,7 +99,7 @@ class SupplierProfileController extends Controller
                 'max:255',
                 Rule::unique('suppliers', 'email')->ignore($supplier->id),
             ],
-            // 💡 UPDATE: Website eka onama ekak type karanna puluwan wenna 'url' eka ain kala
+            // Free text on purpose (not the 'url' rule): suppliers enter websites without http:// too.
             'website'      => 'nullable|string|max:255',
             'address'      => 'nullable|string|max:500',
             'country'      => 'nullable|string|max:100',

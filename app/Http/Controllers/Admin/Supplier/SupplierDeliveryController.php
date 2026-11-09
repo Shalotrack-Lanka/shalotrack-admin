@@ -7,6 +7,7 @@ use App\Models\Supplier;
 use App\Models\SupplierDelivery;
 use App\Services\Delivery\ScanBatch;
 use App\Services\Delivery\SupplierDeliveryService;
+use App\Services\Supplier\PurchaseOrders;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,14 +20,14 @@ use Illuminate\Validation\Rule;
  */
 class SupplierDeliveryController extends Controller
 {
-    public function create(int $id, SupplierDeliveryService $service)
+    public function create(int $id, SupplierDeliveryService $service, PurchaseOrders $orders)
     {
         $this->ensureEnabled();
 
         $supplier = Supplier::findOrFail($id);
 
         $deliveries = SupplierDelivery::where('supplier_id', $supplier->id)
-            ->with('deviceType')
+            ->with(['deviceType', 'purchaseOrder'])
             ->withCount('units')
             ->orderByDesc('id')
             ->limit(15)
@@ -38,6 +39,8 @@ class SupplierDeliveryController extends Controller
             'deviceTypes' => $service->deviceTypesFor($supplier->id),
             'deliveries'  => $deliveries,
             'maxScans'    => ScanBatch::MAX,
+            // ORDERED purchase orders from this supplier, with ordered / received counts, to receive against.
+            'openOrders'  => $orders->openOrders($supplier->id),
         ]);
     }
 
@@ -46,13 +49,22 @@ class SupplierDeliveryController extends Controller
         $this->ensureEnabled();
 
         $data = $request->validate([
-            'kind'           => ['required', Rule::in([SupplierDelivery::KIND_DEVICE, SupplierDelivery::KIND_SIM])],
-            'device_type_id' => ['bail', 'nullable', 'integer', 'min:1'],
-            'reference'      => ['nullable', 'string', 'max:100'],
-            'note'           => ['nullable', 'string', 'max:500'],
-            'scans'          => ['required', 'array', 'min:1', 'max:' . ScanBatch::MAX],
-            'scans.*'        => ['required', 'string', 'max:32'],
+            'kind'              => ['required', Rule::in([SupplierDelivery::KIND_DEVICE, SupplierDelivery::KIND_SIM])],
+            'device_type_id'    => ['bail', 'nullable', 'integer', 'min:1'],
+            'purchase_order_id' => ['bail', 'nullable', 'integer', 'min:1'],
+            'reference'         => ['nullable', 'string', 'max:100'],
+            'note'              => ['nullable', 'string', 'max:500'],
+            'scans'             => ['required', 'array', 'min:1', 'max:' . ScanBatch::MAX],
         ]);
+
+        // DEVICE: a list of IMEIs. SIM: a list of {iccid, sim_number} (the number printed on each SIM pack).
+        $request->validate($data['kind'] === SupplierDelivery::KIND_SIM
+            ? [
+                'scans.*'            => ['required', 'array:iccid,sim_number'],
+                'scans.*.iccid'      => ['required', 'string', 'max:32'],
+                'scans.*.sim_number' => ['required', 'string', 'max:16'],
+            ]
+            : ['scans.*' => ['required', 'string', 'max:32']]);
 
         $adminId = $request->user()?->getAuthIdentifier();
 
@@ -64,12 +76,14 @@ class SupplierDeliveryController extends Controller
             $data['reference'] ?? null,
             $data['note'] ?? null,
             $adminId !== null ? (string) $adminId : null,
+            isset($data['purchase_order_id']) ? (int) $data['purchase_order_id'] : null,
         );
 
         return response()->json([
             'delivery_id' => $result['delivery']?->id,
             'accepted'    => count($result['accepted']),
             'rejected'    => $result['rejected'],
+            'warning'     => $result['warning'] ?? null,
         ]);
     }
 

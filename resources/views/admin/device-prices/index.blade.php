@@ -113,6 +113,13 @@
                     <button type="submit" class="bg-blue-950 text-white text-xs font-bold px-4 py-2.5 rounded-lg">Save</button>
                 </form>
                 <p class="text-[11px] text-slate-500 mt-2">Margins are editable at any time and are saved with an effective date; the prices above are recalculated from them.</p>
+                @if($row['suppliers']->isNotEmpty() || $row['lastOrdered'])
+                    <p class="text-[11px] text-slate-600 mt-1">
+                        <b>Supplier prices</b> (for the landing cost, which also covers freight, duty and clearing):
+                        @foreach($row['suppliers'] as $sp){{ $sp->name }} Rs. {{ number_format((float) $sp->price, 2) }}@if(! $loop->last), @endif @endforeach
+                        @if($row['lastOrdered'])&middot; last ordered at Rs. {{ number_format((float) $row['lastOrdered']->unit_price, 2) }} ({{ $row['lastOrdered']->invoice_number }})@endif
+                    </p>
+                @endif
             </div>
         </div>
     @empty

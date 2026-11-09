@@ -22,7 +22,7 @@
     $totalPendingCount = 0;
 
     if ($dealerId) {
-        // Pending devices thiyena customers lawa gannawa
+        // Get the customers who have pending devices
         $pendingCustomers = \App\Models\DealerCustomerAd::where('dealer_id', $dealerId)
             ->where('no_of_devices', '>', 0)
             ->orderBy('created_at', 'desc')
@@ -97,7 +97,7 @@
                 </div>
             </div>
 
-            <!-- TRACKING DROPDOWN (Aluthin add karapu eka) -->
+            <!-- TRACKING DROPDOWN (newly added) -->
             <div x-data="{open: {{ request()->routeIs('dealer.device-commands') || request()->routeIs('dealer.gps-tracking') ? 'true' : 'false' }} }" class="mt-1">
                 <button
                     @click="open=!open"

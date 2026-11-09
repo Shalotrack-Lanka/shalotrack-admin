@@ -111,6 +111,48 @@ class BillingPortalTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'billing.document_downloaded')->count());
     }
 
+    public function test_invoice_prices_come_from_device_prices_and_a_different_price_is_flagged(): void
+    {
+        if (! Schema::hasTable('device_types')) {
+            Schema::create('device_types', function (Blueprint $t) {
+                $t->id();
+                $t->string('device_category');
+                $t->string('model');
+                $t->timestamps();
+            });
+        }
+        Schema::create('device_prices', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('device_type_id')->unique();
+            $t->decimal('landing_cost', 14, 2);
+            $t->decimal('company_margin', 14, 2);
+            $t->decimal('distributor_margin', 14, 2);
+            $t->decimal('retailer_margin', 14, 2);
+            $t->date('effective_from');
+            $t->string('updated_by', 64)->nullable();
+            $t->timestamps();
+        });
+        $type = \App\Models\DeviceType::create(['device_category' => 'Shalotrack', 'model' => 'V5']);
+        \App\Models\DevicePrice::create(['device_type_id' => $type->id, 'landing_cost' => '1000.00', 'company_margin' => '200.00',
+            'distributor_margin' => '300.00', 'retailer_margin' => '500.00', 'effective_from' => now()->toDateString()]);
+
+        $toDist = $this->makeLedger($this->distA, 'Shalotrack V5', 2);
+        $toDealer = $this->makeLedger($this->dealerA1, 'Shalotrack V5', 1);
+
+        // Distributor pays the distributor cost (1,200.00), a dealer the retailer price (1,500.00).
+        $this->get(route('admin.billing.invoices.new', ['dealer' => $this->distA]))->assertOk()
+            ->assertSee('Approved distributor cost: 1,200.00')
+            ->assertViewHas('approved', fn ($a) => $a[$toDist->id] === 120000);
+        $this->get(route('admin.billing.invoices.new', ['dealer' => $this->dealerA1]))->assertOk()
+            ->assertSee('Approved retailer price: 1,500.00');
+
+        // The approved price issues without a note; another price is allowed but flagged before issuing.
+        $this->post(route('admin.billing.invoices.review'), ['dealer_id' => $this->distA, 'include' => [$toDist->id], 'prices' => [$toDist->id => '1200.00']])
+            ->assertOk()->assertViewHas('priceNotes', []);
+        $this->post(route('admin.billing.invoices.review'), ['dealer_id' => $this->dealerA1, 'include' => [$toDealer->id], 'prices' => [$toDealer->id => '1400']])
+            ->assertOk()->assertSee('Prices that differ from Device Prices')->assertSee('the approved retailer price is 1,500.00', false);
+    }
+
     public function test_review_refuses_wrong_buyer_bad_price_and_nothing_ticked(): void
     {
         $mine = $this->makeLedger($this->dealerA1);

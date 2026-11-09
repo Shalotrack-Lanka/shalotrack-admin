@@ -504,6 +504,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/supplier-management-invoice', [SupplierInvoiceController::class, 'store'])->name('admin.supplier-invoice.store');
             Route::get('/{id}/purchase-data', [SupplierInvoiceController::class, 'getSupplierData'])->name('admin.suppliers.purchase-data');
             Route::get('/invoice/{id}/download', [SupplierInvoiceController::class, 'download'])->name('admin.supplier-invoice.download');
+            // Edit / cancel a purchase order: only while nothing has been received against it (checked in the service).
+            Route::get('/invoice/{id}/edit', [SupplierInvoiceController::class, 'edit'])->name('admin.supplier-invoice.edit');
+            Route::put('/invoice/{id}', [SupplierInvoiceController::class, 'update'])->middleware('throttle:30,1')->name('admin.supplier-invoice.update');
+            Route::patch('/invoice/{id}/cancel', [SupplierInvoiceController::class, 'cancel'])->middleware('throttle:30,1')->name('admin.supplier-invoice.cancel');
             Route::get('/get-supplier-data/{id}', [SupplierInvoiceController::class, 'getSupplierData']);
         });
     });

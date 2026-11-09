@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CreditNote;
 use App\Models\Dealer;
 use App\Models\Invoice;
+use App\Services\Billing\ApprovedPrices;
 use App\Services\Billing\Billing;
 use App\Services\Billing\BillingPdf;
 use App\Services\Billing\BillingSettings;
@@ -17,7 +18,7 @@ use Illuminate\Support\Str;
 /** Admin: build and issue invoices from transfers, credit notes, document pages and PDFs. */
 class InvoiceController extends Controller
 {
-    public function __construct(private Billing $billing, private BillingSettings $settings)
+    public function __construct(private Billing $billing, private BillingSettings $settings, private ApprovedPrices $approved)
     {
     }
 
@@ -85,6 +86,9 @@ class InvoiceController extends Controller
             'buyers'    => $buyers,
             'buyer'     => $buyer,
             'transfers' => $transfers,
+            // Approved price per transfer from the Device Prices page (cents or null): pre-fills the price.
+            'approved'  => $buyer ? $this->approved->forTransfers($buyer, $transfers) : [],
+            'priceLabel' => $buyer ? ApprovedPrices::labelFor($buyer) : null,
             'tax'       => $this->settings->taxEnabled() ? ['rate' => $this->settings->get('tax_rate'), 'label' => $this->settings->get('tax_label')] : null,
             'terms'     => $this->settings->termsDays(),
             'ready'     => $this->companyReady(),
@@ -116,7 +120,20 @@ class InvoiceController extends Controller
             return back()->withInput()->withErrors(['prices' => $e->getMessage()]);
         }
 
+        // Lines priced differently from the Device Prices page: shown before issuing (allowed, the admin decides).
+        $approved = $this->approved->forTransfers($buyer, collect($quote['lines'])->map(fn ($l) => (object) ['id' => $l['ledger_id'], 'device_category' => $l['category']]));
+        $priceNotes = [];
+        foreach ($quote['lines'] as $l) {
+            $a = $approved[$l['ledger_id']] ?? null;
+            if ($a === null) {
+                $priceNotes[] = $l['reference'] . ' (' . $l['category'] . '): no approved price on the Device Prices page.';
+            } elseif ($a !== $l['unit_price']) {
+                $priceNotes[] = sprintf('%s (%s): %s per device, the approved %s is %s.', $l['reference'], $l['category'], Money::format($l['unit_price']), ApprovedPrices::labelFor($buyer), Money::format($a));
+            }
+        }
+
         return view('billing.admin.invoice-review', [
+            'priceNotes' => $priceNotes,
             'buyer'  => $buyer,
             'party'  => $this->billing->partyFor($buyer),
             'quote'  => $quote,

@@ -95,7 +95,7 @@
                             <select name="delivery_id" x-model="selectedDelivery" @change="pickDelivery" :required="deliveriesFor.length > 0" :disabled="deliveriesFor.length === 0" class="w-full border-emerald-300 rounded-xl p-3 text-sm bg-emerald-50">
                                 <option value="">--Choose the scanned delivery--</option>
                                 <template x-for="d in deliveriesFor" :key="d.id">
-                                    <option :value="d.id" x-text="'Delivery #' + d.id + ': ' + d.units + ' scanned units' + (d.reference ? ' (' + d.reference + ')' : '') + ' on ' + d.date"></option>
+                                    <option :value="d.id" x-text="'Delivery #' + d.id + ': ' + d.units + ' scanned units' + (d.reference ? ' (' + d.reference + ')' : '') + (d.order ? ' against ' + d.order : '') + ' on ' + d.date"></option>
                                 </template>
                             </select>
                             <p class="mt-2 text-xs font-bold text-emerald-700">The quantity is the number of scanned units, so the stock always matches what was scanned.</p>
