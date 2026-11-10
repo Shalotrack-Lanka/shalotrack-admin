@@ -265,7 +265,6 @@ document.addEventListener('alpine:init', () => {
     const deliveryOnly = @json($deliveryOnly);
 
     Alpine.data('addStockManager', () => ({
-        deliveriesOn,
         deliveryOnly,
         selectedSupplier: '',
         selectedDevice: '',
