@@ -141,11 +141,12 @@
                                                             <div class="md:col-span-2"><label class="block mb-1">Address</label><textarea name="address" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm">{{ $supplier->address }}</textarea></div>
                                                             
                                                             {{-- PRODUCTS IN EDIT FORM (each line keeps its device link) --}}
+                                                            @php $progress = app(\App\Services\Supplier\PurchaseOrders::class)->progressByProduct((int) $supplier->id); @endphp
                                                             @include('admin.supplier._product_lines', [
                                                                 'initial' => $supplier->products->map(fn ($p) => [
                                                                     'choice' => $p->device_type_id ? 'dt:' . $p->device_type_id : 'name:' . $p->product_name,
                                                                     'price'  => $p->pivot->price,
-                                                                    'qty'    => $p->pivot->qty ?? 0,
+                                                                    'progress' => $progress[(int) $p->id] ?? null,
                                                                 ])->values()->all(),
                                                             ])
 

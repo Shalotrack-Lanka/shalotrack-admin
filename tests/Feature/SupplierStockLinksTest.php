@@ -115,7 +115,7 @@ class SupplierStockLinksTest extends TestCase
         $this->assertSame(1, Product::where('device_type_id', $t->id)->count(), 'one product per device type');
         $this->assertSame(2, $s->products()->count(), 'the typed device merged into the picked one');
         $device = $s->products()->where('device_type_id', $t->id)->firstOrFail();
-        $this->assertSame(12, (int) $device->pivot->qty);
+        $this->assertSame(0, (int) $device->pivot->qty, 'a typed quantity is no longer stored');
         $this->assertNull($s->products()->where('product_name', 'Dialog SIM card')->value('device_type_id'));
     }
 
@@ -188,7 +188,7 @@ class SupplierStockLinksTest extends TestCase
         $this->stockIn($s, $t, 3)->assertSessionHasNoErrors();
 
         $line = $s->products()->where('device_type_id', $t->id)->firstOrFail();
-        $this->assertSame(12, (int) $line->pivot->qty, 'the usual order quantity is not used up by stock-in');
+        $this->assertSame(0, (int) $line->pivot->qty, 'stock-in does not touch the supplier product row');
         $this->assertSame(15, (int) Stock::where('device_type_id', $t->id)->value('company_available_stock'));
     }
 

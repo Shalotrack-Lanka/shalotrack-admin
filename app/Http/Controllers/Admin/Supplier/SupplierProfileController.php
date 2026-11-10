@@ -45,6 +45,7 @@ class SupplierProfileController extends Controller
 
         $orders = app(PurchaseOrders::class);
         $orderSummaries = $invoices->mapWithKeys(fn ($i) => [$i->id => $orders->summary($i)]);
+        $progress = $orders->progressByProduct((int) $supplier->id);
 
         // What has been paid: per order, and what is still owed to this supplier overall.
         $paymentsReady = SupplierPayments::ready();
@@ -72,6 +73,7 @@ class SupplierProfileController extends Controller
             'totalInvoices',
             'recentActivity',
             'orderSummaries',
+            'progress',
             'paymentsReady',
             'orderMoney',
             'owedCents',

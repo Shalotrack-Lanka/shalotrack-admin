@@ -146,8 +146,7 @@ class SupplierManagementController extends Controller
                 'device_type_id'  => $p->device_type_id,
                 'product_name'    => $p->product_name,
                 'price'           => $p->pivot->price,
-                'qty'             => $p->pivot->qty,
-            ])->values(),
+                            ])->values(),
         ]);
     }
 
@@ -165,7 +164,6 @@ class SupplierManagementController extends Controller
             'device_type_id' => 'bail|nullable|integer|min:1|exists:device_types,id',
             'product_name'   => 'required_without:device_type_id|nullable|string|max:255',
             'price'          => 'required|numeric|min:0|max:99999999',
-            'qty'            => 'required|integer|min:0|max:1000000',
         ]);
 
         $product = app(SupplierCatalogue::class)->resolveProduct(
@@ -176,7 +174,7 @@ class SupplierManagementController extends Controller
         $supplier->products()->syncWithoutDetaching([
             $product->id => [
                 'price' => $validated['price'],
-                'qty'   => $validated['qty'],
+                'qty'   => 0,   // no typed quantity any more: ordered / received come from purchase orders and deliveries
             ],
         ]);
 
@@ -240,7 +238,6 @@ class SupplierManagementController extends Controller
             'products.*.device_type_id' => 'bail|nullable|integer|min:1|exists:device_types,id',
             'products.*.product_name'   => 'nullable|string|max:255',
             'products.*.price'          => 'nullable|numeric|min:0|max:99999999',
-            'products.*.qty'            => 'nullable|integer|min:0|max:1000000',
         ], [
             'phone_number.regex' => 'Phone number must contain only digits, spaces, hyphens, parentheses, or a leading +.',
             'email_id.unique'    => 'This email address is already registered to another supplier.',
@@ -256,6 +253,7 @@ class SupplierManagementController extends Controller
     {
         $catalogue = app(SupplierCatalogue::class);
         $syncData = [];
+        $existing = $supplier->products()->get()->mapWithKeys(fn ($p) => [(int) $p->id => (int) ($p->pivot->qty ?? 0)])->all();
 
         foreach ($products ?? [] as $prod) {
             $raw = $prod['device_type_id'] ?? null;
@@ -272,10 +270,10 @@ class SupplierManagementController extends Controller
                 continue;
             }
 
-            $qty = (int) ($prod['qty'] ?? 0) + (int) ($syncData[$product->id]['qty'] ?? 0);
+            // The quantity is no longer typed: an existing line keeps what it had, a new one starts at 0.
             $syncData[$product->id] = [
                 'price' => $prod['price'] ?? 0,
-                'qty'   => $qty,
+                'qty'   => (int) ($existing[$product->id] ?? 0),
             ];
         }
 

@@ -174,6 +174,134 @@ class PurchaseOrders
         return $invoice;
     }
 
+    /** null = a received-against order's quantity can still be adjusted; otherwise why not. */
+    public function adjustBlockReason(SupplierInvoice $invoice): ?string
+    {
+        if (! self::ready()) {
+            return 'Adjusting purchase orders needs the latest database update.';
+        }
+        if ($invoice->status === self::CANCELLED) {
+            return 'This purchase order is cancelled.';
+        }
+        if (app(SupplierPayments::class)->hasLivePayments($invoice->id)) {
+            return 'Payments have been recorded against this purchase order. Void the payments first.';
+        }
+
+        return null;
+    }
+
+    /**
+     * The one exception to "locked after the first scan": change the quantity of ONE line, with a reason.
+     * It can never go below what has already been received for that product (device type, or SIMs), the price,
+     * discount and face value never change, and the new line total and order total are worked out here.
+     */
+    public function adjustQuantity(SupplierInvoice $invoice, int $itemId, int $newQty, string $reason, ?string $adminId): SupplierInvoice
+    {
+        if ($newQty < 1 || $newQty > 1000000) {
+            throw ValidationException::withMessages(['order_qty' => 'Quantity must be between 1 and 1,000,000.']);
+        }
+
+        $before = $after = null;
+        DB::transaction(function () use ($invoice, $itemId, $newQty, $adminId, &$before, &$after) {
+            $locked = SupplierInvoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if ($reasonBlocked = $this->adjustBlockReason($locked)) {
+                throw ValidationException::withMessages(['invoice' => $reasonBlocked]);
+            }
+
+            $items = SupplierInvoiceItem::where('supplier_invoice_id', $locked->id)->with('product')->orderBy('id')->lockForUpdate()->get();
+            $item = $items->firstWhere('id', $itemId);
+            if (! $item) {
+                throw ValidationException::withMessages(['item_id' => 'That line is not on this purchase order.']);
+            }
+
+            // What this line shares a "pool" with (same device type, or all SIM lines) and how much of it has arrived.
+            $summary = $this->summary($locked);
+            $typeId = $item->product?->device_type_id;
+            $isSim = ! $typeId && self::isSimLine($item);
+            $received = $typeId ? ($summary['device_types'][(int) $typeId]['received'] ?? 0) : ($isSim ? $summary['sims_received'] : 0);
+            $pool = $items->filter(fn ($i) => $typeId
+                ? (int) $i->product?->device_type_id === (int) $typeId
+                : ($isSim && ! $i->product?->device_type_id && self::isSimLine($i)));
+            $poolAfter = $pool->sum(fn ($i) => $i->id === $item->id ? $newQty : (int) $i->order_qty);
+
+            if ($poolAfter < $received) {
+                throw ValidationException::withMessages(['order_qty' => "{$received} unit(s) have already been received for this product, so the order cannot go below that."]);
+            }
+
+            $before = ['qty' => (int) $item->order_qty, 'net' => (string) $item->net_amount, 'total' => (string) $locked->grand_total];
+
+            $unit = self::cents($item->unit_price);
+            $face = self::cents($item->face_value);
+            $discountBp = (int) round(((float) $item->discount) * 100);
+            $gross = $newQty * $unit;
+            $net = $gross - intdiv($gross * $discountBp + 5000, 10000) + $face;
+            if ($net > self::LIMIT_CENTS) {
+                throw ValidationException::withMessages(['order_qty' => 'This line is too large. Reduce the quantity.']);
+            }
+
+            $item->forceFill(['order_qty' => $newQty, 'net_amount' => self::decimal($net)])->save();
+
+            $total = SupplierInvoiceItem::where('supplier_invoice_id', $locked->id)->pluck('net_amount')
+                ->sum(fn ($n) => self::cents($n));
+            if ($total > self::LIMIT_CENTS) {
+                throw ValidationException::withMessages(['order_qty' => 'The order total is too large.']);
+            }
+            $locked->forceFill(['grand_total' => self::decimal($total), 'updated_by' => $adminId])->save();
+
+            $after = ['qty' => $newQty, 'net' => self::decimal($net), 'total' => self::decimal($total), 'received' => $received];
+        });
+
+        $invoice->refresh();
+        Audit::record('supplier_po.quantity_adjusted', 'supplier_invoice', $invoice->id, $invoice->invoice_number, [
+            'qty'   => ['from' => (string) $before['qty'], 'to' => (string) $after['qty']],
+            'total' => ['from' => $before['total'], 'to' => $after['total']],
+        ], ['item_id' => $itemId, 'reason' => $reason, 'received_so_far' => $after['received']]);
+
+        return $invoice;
+    }
+
+    /**
+     * Per product on a supplier's list: how many were ordered, received and are still to come, over all of the
+     * supplier's purchase orders that are not cancelled. Read-only: it is what the Supplier screens show instead of a
+     * typed quantity.
+     *
+     * @return array<int,array{ordered:int, received:int, remaining:int}> keyed by product id
+     */
+    public function progressByProduct(int $supplierId): array
+    {
+        if (! self::ready()) {
+            return [];
+        }
+
+        $products = DB::table('supplier_products')->join('products', 'products.id', '=', 'supplier_products.product_id')
+            ->where('supplier_products.supplier_id', $supplierId)->get(['products.id', 'products.device_type_id', 'products.product_name']);
+
+        $out = [];
+        foreach ($products as $p) {
+            $out[(int) $p->id] = ['ordered' => 0, 'received' => 0, 'remaining' => 0];
+        }
+
+        $orders = SupplierInvoice::where('supplier_id', $supplierId)->where('status', self::ORDERED)->with('items.product')->get();
+        foreach ($orders as $order) {
+            foreach ($this->summary($order)['lines'] as $line) {
+                $ids = $products->filter(fn ($p) => $line['kind'] === SupplierDelivery::KIND_DEVICE
+                    ? (int) $p->device_type_id === (int) $line['device_type_id']
+                    : (! $p->device_type_id && SupplierCatalogue::isSimProduct(new Product(['product_name' => $p->product_name]))))
+                    ->pluck('id');
+                // A line is shared by every product of that kind; give it to the first so it is never counted twice.
+                $id = $ids->first();
+                if ($id === null) {
+                    continue;
+                }
+                $out[(int) $id]['ordered'] += $line['ordered'];
+                $out[(int) $id]['received'] += $line['received'];
+                $out[(int) $id]['remaining'] += $line['remaining'];
+            }
+        }
+
+        return $out;
+    }
+
     /** Cancel an order (kept, marked CANCELLED with the reason). Only before anything is received against it. */
     public function cancel(SupplierInvoice $invoice, string $reason, ?string $adminId): void
     {

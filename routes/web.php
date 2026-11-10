@@ -514,6 +514,7 @@ Route::middleware(['auth'])->group(function () {
             // Edit / cancel a purchase order: only while nothing has been received against it (checked in the service).
             Route::get('/invoice/{id}/edit', [SupplierInvoiceController::class, 'edit'])->name('admin.supplier-invoice.edit');
             Route::put('/invoice/{id}', [SupplierInvoiceController::class, 'update'])->middleware('throttle:30,1')->name('admin.supplier-invoice.update');
+            Route::patch('/invoice/{id}/adjust', [SupplierInvoiceController::class, 'adjust'])->middleware('throttle:30,1')->name('admin.supplier-invoice.adjust');
             Route::patch('/invoice/{id}/cancel', [SupplierInvoiceController::class, 'cancel'])->middleware('throttle:30,1')->name('admin.supplier-invoice.cancel');
             Route::get('/get-supplier-data/{id}', [SupplierInvoiceController::class, 'getSupplierData']);
         });
