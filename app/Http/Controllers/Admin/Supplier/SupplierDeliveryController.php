@@ -69,13 +69,12 @@ class SupplierDeliveryController extends Controller
             'scans'             => ['required', 'array', 'min:1', 'max:' . ScanBatch::MAX],
         ]);
 
-        // DEVICE: a list of IMEIs. SIM: a list of {iccid, sim_number, imsi}: the SIM becomes a row in the SIM list.
+        // DEVICE: a list of IMEIs. SIM: a list of {iccid, sim_number}: the SIM becomes a row in the SIM list.
         $request->validate($data['kind'] === SupplierDelivery::KIND_SIM
             ? [
-                'scans.*'            => ['required', 'array:iccid,sim_number,imsi'],
+                'scans.*'            => ['required', 'array:iccid,sim_number'],
                 'scans.*.iccid'      => ['required', 'string', 'max:32'],
                 'scans.*.sim_number' => ['required', 'string', 'max:16'],
-                'scans.*.imsi'       => ['required', 'string', 'max:20'],
             ]
             : ['scans.*' => ['required', 'string', 'max:32']]);
 
