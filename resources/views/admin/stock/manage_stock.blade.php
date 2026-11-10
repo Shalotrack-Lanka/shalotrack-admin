@@ -95,15 +95,15 @@
                             <select name="device_type_id" x-model="selectedDevice" @change="updateQuantity" required class="w-full border-slate-300 rounded-xl p-3 text-sm bg-slate-50">
                                 <option value="">--Select Device--</option>
                                 <template x-for="prod in productsList" :key="prod.id">
-                                    <option :value="prod.id" x-text="prod.name"></option>
+                                    <option :value="prod.id" :disabled="deliveryOnly && !prod.waiting" x-text="prod.name + (deliveryOnly && !prod.waiting ? ' - nothing received yet' : '')"></option>
                                 </template>
                             </select>
                             @if($deliveryOnly)
-                                <p x-show="selectedSupplier && productsList.length === 0" x-cloak class="mt-2 text-xs font-bold text-amber-700">
+                                <p x-show="selectedSupplier && productsList.length > 0 && !productsList.some(p => p.waiting)" x-cloak class="mt-2 text-xs font-bold text-amber-700">
                                     Nothing from this supplier is waiting to be added. Stock is added from what the supplier actually delivered: receive the delivery first (Supplier Management &rarr; Receive delivery, against its purchase order), then add it here.
                                 </p>
                             @endif
-                            <p @if($deliveryOnly) x-show="false" @else x-show="selectedSupplier && productsList.length === 0" @endif x-cloak class="mt-2 text-xs font-bold text-amber-700">
+                            <p x-show="selectedSupplier && productsList.length === 0" x-cloak class="mt-2 text-xs font-bold text-amber-700">
                                 This supplier has no devices on its product list. Open Supplier Management, edit this supplier and add the device types it supplies, then come back. (A device stays on the list after stock is added.)
                             </p>
                         </div>
@@ -266,6 +266,7 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.data('addStockManager', () => ({
         deliveriesOn,
+        deliveryOnly,
         selectedSupplier: '',
         selectedDevice: '',
         selectedDelivery: '',
@@ -282,12 +283,15 @@ document.addEventListener('alpine:init', () => {
             this.selectedDelivery = '';
             this.stockQty = 0;
             this.productsList = [];
-            if (!deliveryOnly && this.selectedSupplier && allSuppliersData[this.selectedSupplier]) {
-                this.productsList = allSuppliersData[this.selectedSupplier].slice();
+            // The supplier's own device list is always shown, so it is clear what they supply. With delivery
+            // scanning on, a device can only be picked once a delivery of it has been received and is waiting.
+            const waitingFor = (typeId) => (openDeliveries[this.selectedSupplier] || []).some(d => d.device_type_id == typeId);
+            if (this.selectedSupplier && allSuppliersData[this.selectedSupplier]) {
+                this.productsList = allSuppliersData[this.selectedSupplier].map(p => ({ ...p, waiting: waitingFor(p.id) }));
             }
             for (const d of (openDeliveries[this.selectedSupplier] || [])) {
                 if (!this.productsList.some(p => p.id == d.device_type_id)) {
-                    this.productsList.push({ id: d.device_type_id, name: d.name });
+                    this.productsList.push({ id: d.device_type_id, name: d.name, waiting: true });
                 }
             }
         },
