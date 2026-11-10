@@ -64,4 +64,57 @@ final class ScanBatch
 
         return ['valid' => $valid, 'rejected' => $rejected];
     }
+    /**
+     * A SIM delivery: every ICCID with the 10-digit SIM number printed on its pack (scanned or typed).
+     *
+     * @param  array<int,mixed> $raw  [{iccid, sim_number}, ...]
+     *
+     * @return array{valid: list<array{iccid: string, sim_number: string}>, rejected: list<array{identifier: string, reason: string}>}
+     */
+    public static function classifySims(array $raw): array
+    {
+        if (count($raw) > self::MAX) {
+            throw new \InvalidArgumentException('A delivery can hold at most ' . self::MAX . ' scans at a time.');
+        }
+
+        $valid = [];
+        $rejected = [];
+        $seenIccid = [];
+        $seenNumber = [];
+
+        foreach ($raw as $row) {
+            if (! is_array($row)) {
+                $rejected[] = ['identifier' => '(unreadable)', 'reason' => 'Not a valid scan.'];
+                continue;
+            }
+            $iccid = preg_replace('/\s+/', '', (string) ($row['iccid'] ?? ''));
+            $number = preg_replace('/\s+/', '', (string) ($row['sim_number'] ?? ''));
+            if ($iccid === '' && $number === '') {
+                continue;
+            }
+            $shown = mb_substr($iccid !== '' ? $iccid : $number, 0, 24);
+
+            if (! Imei::isValidIccid($iccid)) {
+                $rejected[] = ['identifier' => $shown, 'reason' => 'Not a valid SIM ICCID (19 or 20 digits): rescan it.'];
+                continue;
+            }
+            if (! preg_match('/^\d{10}$/', $number)) {
+                $rejected[] = ['identifier' => $iccid, 'reason' => 'The SIM number must be exactly 10 digits.'];
+                continue;
+            }
+            if (isset($seenIccid[$iccid])) {
+                $rejected[] = ['identifier' => $iccid, 'reason' => 'Scanned twice in this delivery.'];
+                continue;
+            }
+            if (isset($seenNumber[$number])) {
+                $rejected[] = ['identifier' => $iccid, 'reason' => "SIM number {$number} is on another SIM in this delivery."];
+                continue;
+            }
+            $seenIccid[$iccid] = true;
+            $seenNumber[$number] = true;
+            $valid[] = ['iccid' => $iccid, 'sim_number' => $number];
+        }
+
+        return ['valid' => $valid, 'rejected' => $rejected];
+    }
 }

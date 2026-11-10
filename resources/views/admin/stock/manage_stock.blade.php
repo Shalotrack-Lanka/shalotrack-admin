@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShaloTrack Admin - Manage Raw Stock</title>
     @vite(['resources/css/app.css','resources/js/app.js'])
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="{ sidebarOpen: false }">
 
@@ -38,15 +37,30 @@
                 </div>
             @endif
 
+            @if($deliveryOnly)
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600">
+                    Stock is added only from received deliveries, so it can never be more than the supplier delivered
+                    (the Excel stock import is closed). Order the goods (Supplier Management &rarr; Invoices), receive them
+                    (Supplier Management &rarr; Receive delivery), then add the delivery to stock below.
+                </div>
+            @else
             {{-- BULK IMPORT STOCK --}}
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden w-full">
                 <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                     <span class="font-bold text-gray-800 text-sm">Bulk Import Stock-In (Excel)</span>
+                    @unless($deliveriesOn)
                     <a href="{{ route('admin.stock.import-template') }}" class="text-xs font-bold text-blue-600 hover:underline">
                         Download Template
                     </a>
+                    @endunless
                 </div>
                 <div class="p-5 text-xs font-semibold text-gray-700">
+                    @if($deliveriesOn)
+                        <p class="text-gray-500 font-normal">
+                            Stock is added only from scanned supplier deliveries (Supplier Management &rarr; Receive delivery, then Add Raw Devices below),
+                            so a file with typed quantities cannot be imported: it could add more devices than the supplier delivered.
+                        </p>
+                    @else
                     <form action="{{ route('admin.stock.import') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-3">
                         @csrf
                         <input type="file" name="excel_file" accept=".xlsx,.csv,.xls" required class="text-xs border border-gray-300 rounded-lg p-2 flex-1">
@@ -54,8 +68,10 @@
                             Upload &amp; Import
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
+            @endif
 
             {{-- ADD RAW DEVICES --}}
             <div x-data="addStockManager()" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
@@ -79,19 +95,43 @@
                             <select name="device_type_id" x-model="selectedDevice" @change="updateQuantity" required class="w-full border-slate-300 rounded-xl p-3 text-sm bg-slate-50">
                                 <option value="">--Select Device--</option>
                                 <template x-for="prod in productsList" :key="prod.id">
-                                    <option :value="prod.id" x-text="prod.name"></option>
+                                    <option :value="prod.id" :disabled="deliveryOnly && !prod.waiting" x-text="prod.name + (deliveryOnly && !prod.waiting ? ' - nothing received yet' : '')"></option>
                                 </template>
                             </select>
+                            @if($deliveryOnly)
+                                <p x-show="selectedSupplier && productsList.length > 0 && !productsList.some(p => p.waiting)" x-cloak class="mt-2 text-xs font-bold text-amber-700">
+                                    Nothing from this supplier is waiting to be added. Stock is added from what the supplier actually delivered: receive the delivery first (Supplier Management &rarr; Receive delivery, against its purchase order), then add it here.
+                                </p>
+                            @endif
                             <p x-show="selectedSupplier && productsList.length === 0" x-cloak class="mt-2 text-xs font-bold text-amber-700">
-                                This supplier has no stock-tracked devices listed. Open Suppliers, edit this supplier and add the device type (with its quantity), then come back. A device type leaves the supplier's list once its stock is added.
+                                This supplier has no devices on its product list. Open Supplier Management, edit this supplier and add the device types it supplies, then come back. (A device stays on the list after stock is added.)
                             </p>
                         </div>
                         <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-2">Stock In (Qty)</label>
-                            <input type="number" name="stock_in" x-model.number="stockQty" min="1" required class="w-full border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700">
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Stock In (Qty){{ $deliveryOnly ? ' - scanned units' : '' }}</label>
+                            @if($deliveryOnly)
+                                <input type="number" x-model.number="stockQty" readonly placeholder="From the delivery" class="w-full border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700 bg-slate-100">
+                            @else
+                                <input type="number" name="stock_in" x-model.number="stockQty" min="1" required :readonly="!!selectedDelivery" :class="selectedDelivery ? 'bg-slate-100' : ''" class="w-full border-slate-300 rounded-xl p-3 text-sm font-bold text-slate-700">
+                            @endif
                         </div>
+                        <div x-show="deliveriesFor.length > 0" x-cloak class="md:col-span-4">
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Scanned delivery waiting for this supplier and device</label>
+                            <select name="delivery_id" x-model="selectedDelivery" @change="pickDelivery" :required="deliveriesFor.length > 0" :disabled="deliveriesFor.length === 0" class="w-full border-emerald-300 rounded-xl p-3 text-sm bg-emerald-50">
+                                <option value="">--Choose the scanned delivery--</option>
+                                <template x-for="d in deliveriesFor" :key="d.id">
+                                    <option :value="d.id" x-text="'Delivery #' + d.id + ': ' + d.units + ' scanned units' + (d.reference ? ' (' + d.reference + ')' : '') + (d.order ? ' against ' + d.order : '') + ' on ' + d.date"></option>
+                                </template>
+                            </select>
+                            <p class="mt-2 text-xs font-bold text-emerald-700">The quantity is the number of scanned units, so the stock always matches what was scanned.</p>
+                        </div>
+                        @if($deliveryOnly)
+                            <p x-show="selectedSupplier && selectedDevice && deliveriesFor.length === 0" x-cloak class="md:col-span-4 text-xs font-bold text-amber-700">
+                                Nothing to add: this supplier has no received delivery of this device waiting. Receive it first (Supplier Management &rarr; Receive delivery, against a purchase order).
+                            </p>
+                        @endif
                         <div class="flex gap-2">
-                            <button type="submit" class="w-full bg-[#0d9488] hover:bg-[#0f766e] text-white font-bold py-3 px-4 rounded-xl transition shadow-md text-sm cursor-pointer">
+                            <button type="submit" @if($deliveryOnly) :disabled="!selectedDelivery" @endif class="disabled:opacity-40 disabled:cursor-not-allowed w-full bg-[#0d9488] hover:bg-[#0f766e] text-white font-bold py-3 px-4 rounded-xl transition shadow-md text-sm cursor-pointer">
                                 Add Stock
                             </button>
                         </div>
@@ -214,35 +254,60 @@ document.addEventListener('alpine:init', () => {
                     return [
                         'id' => $prod->device_type_id,
                         'name' => $prod->product_name,
-                        'qty' => $prod->pivot->qty ?? 1
                     ];
                 })
             ];
         })
     );
 
+    const openDeliveries = @json($openDeliveries);
+    // With delivery scanning on, only what was received can be stocked in: the device list is the waiting deliveries.
+    const deliveryOnly = @json($deliveryOnly);
+
     Alpine.data('addStockManager', () => ({
+        deliveryOnly,
         selectedSupplier: '',
         selectedDevice: '',
+        selectedDelivery: '',
         stockQty: 0,
         productsList: [],
 
+        get deliveriesFor() {
+            if (!this.selectedSupplier || !this.selectedDevice) return [];
+            return (openDeliveries[this.selectedSupplier] || []).filter(d => d.device_type_id == this.selectedDevice);
+        },
+
         fetchSupplierData() {
             this.selectedDevice = '';
+            this.selectedDelivery = '';
             this.stockQty = 0;
             this.productsList = [];
+            // The supplier's own device list is always shown, so it is clear what they supply. With delivery
+            // scanning on, a device can only be picked once a delivery of it has been received and is waiting.
+            const waitingFor = (typeId) => (openDeliveries[this.selectedSupplier] || []).some(d => d.device_type_id == typeId);
             if (this.selectedSupplier && allSuppliersData[this.selectedSupplier]) {
-                this.productsList = allSuppliersData[this.selectedSupplier];
+                this.productsList = allSuppliersData[this.selectedSupplier].map(p => ({ ...p, waiting: waitingFor(p.id) }));
+            }
+            for (const d of (openDeliveries[this.selectedSupplier] || [])) {
+                if (!this.productsList.some(p => p.id == d.device_type_id)) {
+                    this.productsList.push({ id: d.device_type_id, name: d.name, waiting: true });
+                }
             }
         },
 
         updateQuantity() {
-            let prod = this.productsList.find(p => p.id == this.selectedDevice);
-            if (prod) {
-                this.stockQty = prod.qty || 1;
-            } else {
-                this.stockQty = 0;
+            this.selectedDelivery = '';
+            // A typed stock-in starts empty: the number must be counted, never taken from the supplier's list.
+            this.stockQty = '';
+            if (this.deliveriesFor.length === 1) {
+                this.selectedDelivery = this.deliveriesFor[0].id;
+                this.pickDelivery();
             }
+        },
+
+        pickDelivery() {
+            const d = this.deliveriesFor.find(x => x.id == this.selectedDelivery);
+            if (d) this.stockQty = d.units;
         }
     }));
 });
