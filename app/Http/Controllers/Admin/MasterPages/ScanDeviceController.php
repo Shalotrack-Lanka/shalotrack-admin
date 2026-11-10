@@ -197,7 +197,6 @@ class ScanDeviceController extends Controller
         $data = $request->validate([
             'iccid'             => ['required', 'digits_between:19,20', 'unique:sims,iccid'],
             'sim_number'        => ['required', 'digits:10', 'unique:sims,sim_number'],
-            'imsi'              => ['required', 'digits:15', 'unique:sims,imsi'],
             'sim_type'          => ['required', 'string', 'max:255'],
             'confirm_activated' => ['accepted'],
         ], [
@@ -205,8 +204,6 @@ class ScanDeviceController extends Controller
             'iccid.unique'              => 'This ICCID is already registered.',
             'sim_number.digits'         => 'SIM number must be exactly 10 digits.',
             'sim_number.unique'         => 'This SIM number is already registered.',
-            'imsi.digits'               => 'IMSI must be exactly 15 digits.',
-            'imsi.unique'               => 'This IMSI is already registered.',
             'confirm_activated.accepted' => 'Confirm that the carrier has activated this SIM.',
         ]);
 
@@ -220,7 +217,6 @@ class ScanDeviceController extends Controller
                 $sim = Sim::create([
                     'sim_number'          => $data['sim_number'],
                     'sim_type'            => trim($data['sim_type']),
-                    'imsi'                => $data['imsi'],
                     'iccid'               => $data['iccid'],
                     'activation_required' => false,
                     'sim_status'          => 'Activated',
@@ -236,7 +232,7 @@ class ScanDeviceController extends Controller
 
             return response()->json([
                 'message' => 'This SIM could not be saved.',
-                'errors'  => ['iccid' => ['This SIM (or its number/IMSI) was just registered by someone else.']],
+                'errors'  => ['iccid' => ['This SIM (or its number) was just registered by someone else.']],
             ], 422);
         }
 

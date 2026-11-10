@@ -54,8 +54,8 @@
                 </div>
                 <div class="p-5 text-xs font-semibold text-gray-700">
                     <p class="text-gray-400 font-normal mb-3">
-                        Columns: <span class="font-mono">sim_type, sim_number, imsi, iccid, sim_status, activation_required</span>.
-                        sim_number, imsi, and iccid must each be unique. activation_required accepts yes/no (optional, defaults to no).
+                        Columns: <span class="font-mono">sim_type, sim_number, iccid, sim_status, activation_required</span>.
+                        sim_number and iccid must each be unique. activation_required accepts yes/no (optional, defaults to no).
                     </p>
                     <form action="{{ route('admin.stock.sim.import') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-3">
                         @csrf
@@ -114,11 +114,6 @@
                             </div>
 
                             <div>
-                                <label class="block mb-1">IMSI - International Mobile Subscriber Identity</label>
-                                <input type="text" name="imsi" maxlength="15" pattern="\d{15}" inputmode="numeric" title="IMSI must be exactly 15 digits" class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
-                            </div>
-
-                            <div>
                                 <label class="block mb-1">ICCID - Integrated Circuit Card Identifier</label>
                                 <input type="text" name="iccid" maxlength="20" pattern="\d{19,20}" inputmode="numeric" title="ICCID must be 19 or 20 digits" class="w-full rounded-lg border-gray-300 h-10 shadow-sm"
                                     data-lookup-url="{{ route('admin.device.scan.check') }}" onchange="lookupReceivedSim(this)">
@@ -174,7 +169,6 @@
                                     <tr>
                                         <th class="p-3">SIM Number</th>
                                         <th class="p-3">SIM Type</th>
-                                        <th class="p-3">IMSI</th>
                                         <th class="p-3">ICCID</th>
                                         @if($showSupplier)<th class="p-3">Supplier</th>@endif
                                         <th class="p-3">SIM Status</th>
@@ -186,7 +180,6 @@
                                         <tr class="hover:bg-gray-50 transition">
                                             <td class="p-3">{{ $sim->sim_number }}</td>
                                             <td class="p-3">{{ $sim->sim_type }}</td>
-                                            <td class="p-3">{{ $sim->imsi }}</td>
                                             <td class="p-3">{{ $sim->iccid }}</td>
                                             @if($showSupplier)<td class="p-3">{{ $simSuppliers[$sim->iccid] ?? '-' }}</td>@endif
                                             <td class="p-3">
@@ -211,7 +204,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $showSupplier ? 7 : 6 }}" class="p-6 text-center text-gray-400">No Pending SIMs Found.</td>
+                                            <td colspan="{{ $showSupplier ? 6 : 5 }}" class="p-6 text-center text-gray-400">No Pending SIMs Found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -256,7 +249,6 @@
                                     <tr>
                                         <th class="p-3">SIM Number</th>
                                         <th class="p-3">SIM Type</th>
-                                        <th class="p-3">IMSI</th>
                                         <th class="p-3">ICCID</th>
                                         @if($showSupplier)<th class="p-3">Supplier</th>@endif
                                         <th class="p-3">SIM Status</th>
@@ -268,7 +260,6 @@
                                         <tr class="hover:bg-gray-50 transition">
                                             <td class="p-3">{{ $sim->sim_number }}</td>
                                             <td class="p-3">{{ $sim->sim_type }}</td>
-                                            <td class="p-3">{{ $sim->imsi }}</td>
                                             <td class="p-3">{{ $sim->iccid }}</td>
                                             @if($showSupplier)<td class="p-3">{{ $simSuppliers[$sim->iccid] ?? '-' }}</td>@endif
                                             <td class="p-3">
@@ -293,7 +284,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $showSupplier ? 7 : 6 }}" class="p-6 text-center text-gray-400">No Activated SIMs Yet.</td>
+                                            <td colspan="{{ $showSupplier ? 6 : 5 }}" class="p-6 text-center text-gray-400">No Activated SIMs Yet.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

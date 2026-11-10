@@ -497,7 +497,7 @@ class PurchasingChainTest extends TestCase
     {
         $s = $this->supplier();
         [, $order] = $this->simsOrder($s, 4);
-        Sim::create(['sim_number' => '0770000001', 'sim_type' => 'Dialog', 'imsi' => '413020000000001', 'iccid' => '8994019999999999999', 'sim_status' => 'Activated']);
+        Sim::create(['sim_number' => '0770000001', 'sim_type' => 'Dialog', 'iccid' => '8994019999999999999', 'sim_status' => 'Activated']);
 
         $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0770000001')])
             ->assertOk()->assertJsonPath('accepted', 0)->assertJsonPath('rejected.0.reason', fn ($r) => str_contains($r, 'already registered'));
@@ -508,9 +508,9 @@ class PurchasingChainTest extends TestCase
         // The same SIM again, and the same number on another SIM, are both refused.
         $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771111111')])->assertOk()->assertJsonPath('accepted', 0);
         $this->sendSims($s, $order, [$this->pair(self::ICCID_2, '0771111111')])->assertOk()->assertJsonPath('accepted', 0);
-        // Two delivered SIMs without an IMSI can live side by side (the unique IMSI index allows many NULLs).
+        // Several SIMs without an IMSI can live side by side (the unique IMSI index allows many NULLs); 3 = the manual one + 2 delivered.
         $this->sendSims($s, $order, [$this->pair(self::ICCID_2, '0771111112')])->assertOk()->assertJsonPath('accepted', 1);
-        $this->assertSame(2, Sim::whereNull('imsi')->count());
+        $this->assertSame(3, Sim::whereNull('imsi')->count());
     }
 
     public function test_adding_a_delivered_sim_again_on_add_sim_is_refused(): void
@@ -520,7 +520,7 @@ class PurchasingChainTest extends TestCase
         $this->sendSims($s, $order, [$this->pair(self::ICCID_1, '0771234567')])->assertOk();
 
         $this->post(route('admin.stock.sim.store'), [
-            'sim_type' => 'Dialog', 'sim_number' => '0771234567', 'imsi' => '413021234567890', 'iccid' => self::ICCID_1, 'sim_status' => 'Activated',
+            'sim_type' => 'Dialog', 'sim_number' => '0771234567', 'iccid' => self::ICCID_1, 'sim_status' => 'Activated',
         ])->assertSessionHasErrors('iccid');
         $this->assertSame(1, Sim::count());
     }

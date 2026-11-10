@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
  * enforces: one unit of company stock is consumed per device (row-locked),
  * the SIM must be an Activated one, and the SIM leaves the available pool.
  *
- * On top of that it snapshots the SIM's ICCID/IMSI onto the device row before
+ * On top of that it snapshots the SIM's ICCID onto the device row before
  * the SIM master row is deleted, so the physical SIM's identity isn't lost.
  *
  * Everything runs in ONE transaction: either the device is fully registered
@@ -92,7 +92,6 @@ class DeviceRegistrationService
                 'imei_number'     => $imei,
                 'sim_number'      => $sim?->sim_number,
                 'iccid'           => $sim?->iccid,
-                'imsi'            => $sim?->imsi,
                 'registered_by'   => $adminId,
                 'intake_source'   => $source,
                 'status'          => DeviceStatus::NotActivated->value,

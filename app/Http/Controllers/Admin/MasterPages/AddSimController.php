@@ -33,14 +33,11 @@ class AddSimController extends Controller
         $validated = $request->validate([
             'sim_type'   => 'required|string|max:255',
             'sim_number' => 'required|digits:10|unique:sims,sim_number',
-            'imsi'       => 'required|digits:15|unique:sims,imsi',
             'iccid'      => 'required|digits_between:19,20|unique:sims,iccid',
             'sim_status' => 'required|string|in:Activated,Not Activated',
         ], [
             'sim_number.digits' => 'SIM number must be exactly 10 digits.',
             'sim_number.unique' => 'This SIM number is already registered.',
-            'imsi.digits'       => 'IMSI must be exactly 15 digits.',
-            'imsi.unique'       => 'This IMSI is already registered.',
             'iccid.digits_between' => 'ICCID must be 19 or 20 digits.',
             'iccid.unique'      => 'This ICCID is already registered.',
         ]);
@@ -55,7 +52,6 @@ class AddSimController extends Controller
             $sim = Sim::create([
                 'sim_number'           => $validated['sim_number'],
                 'sim_type'             => $validated['sim_type'],
-                'imsi'                 => $validated['imsi'],
                 'iccid'                => $validated['iccid'],
                 'activation_required'  => $request->boolean('activation_required'),
                 'sim_status'           => $validated['sim_status'],
@@ -104,7 +100,7 @@ class AddSimController extends Controller
 
     /**
      * Serves a blank .xlsx with the exact columns SimsImport expects,
-     * plus one worked example row. sim_number/imsi/iccid columns are
+     * plus one worked example row. sim_number/iccid columns are
      * forced to Text format so they don't get corrupted into scientific
      * notation the way the device IMEI template originally did.
      */
@@ -117,8 +113,8 @@ class AddSimController extends Controller
     }
 
     /**
-     * Bulk version of store() — same uniqueness rules on sim_number,
-     * imsi, and iccid. A duplicate or malformed row is skipped and
+     * Bulk version of store() — same uniqueness rules on sim_number
+     * and iccid. A duplicate or malformed row is skipped and
      * reported, not fatal to the rest of the file.
      */
     public function importSims(Request $request)

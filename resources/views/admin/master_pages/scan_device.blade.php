@@ -119,13 +119,6 @@
                                     <p class="text-red-600 mt-1" x-text="simForm.errors.sim_number"></p>
                                 </div>
                                 <div>
-                                    <label class="block mb-1">IMSI (15 digits)</label>
-                                    <input type="text" x-model="simForm.imsi" maxlength="15" inputmode="numeric" autocomplete="off"
-                                        @input="simForm.imsi = simForm.imsi.replace(/\D/g, '')"
-                                        class="w-full rounded-lg border-gray-300 h-10 shadow-sm font-mono">
-                                    <p class="text-red-600 mt-1" x-text="simForm.errors.imsi"></p>
-                                </div>
-                                <div>
                                     <label class="block mb-1">SIM Type</label>
                                     <input type="text" x-model="simForm.sim_type" list="simTypeList" maxlength="255" autocomplete="off"
                                         class="w-full rounded-lg border-gray-300 h-10 shadow-sm">
@@ -306,7 +299,6 @@
                     iccid: '',
                     imei: '',
                     sim_number: '',
-                    imsi: '',
                     sim_type: '',
                     confirm: false,
                     errors: {},
@@ -537,8 +529,7 @@
                         imei,
                         // Filled in from the supplier delivery when the SIM was received with its number.
                         sim_number: receivedNumber || '',
-                        imsi: '',
-                        sim_type: '',
+                            sim_type: '',
                         confirm: false,
                         errors: {},
                         errorText: ''
@@ -564,7 +555,6 @@
                         } = await this.post(this.simUrl, {
                             iccid: f.iccid,
                             sim_number: f.sim_number,
-                            imsi: f.imsi,
                             sim_type: f.sim_type,
                             confirm_activated: f.confirm,
                         });

@@ -101,7 +101,7 @@ class NoSimDeviceTest extends TestCase
     private function spareSim(string $number, string $status = 'Activated'): Sim
     {
         return Sim::forceCreate([
-            'sim_number' => $number, 'sim_type' => 'Dialog', 'imsi' => '4120' . $number, 'iccid' => '8994' . $number, 'sim_status' => $status,
+            'sim_number' => $number, 'sim_type' => 'Dialog', 'iccid' => '8994' . $number, 'sim_status' => $status,
         ]);
     }
 
@@ -121,7 +121,7 @@ class NoSimDeviceTest extends TestCase
         $d->refresh();
         $this->assertSame('0771111111', $d->sim_number);
         $this->assertSame('89940771111111', $d->iccid);
-        $this->assertSame('41200771111111', $d->imsi);
+        $this->assertNull($d->imsi);
         $this->assertSame(0, Sim::count(), 'the SIM leaves the spare pool, like at registration');
     }
 

@@ -125,7 +125,7 @@ class AddDeviceController extends Controller
 
             $stock->decrement('company_available_stock');
 
-            // Lock the SIM row first so its ICCID/IMSI can be copied onto the
+            // Lock the SIM row first so its ICCID can be copied onto the
             // device before the SIM leaves the pool. Without this snapshot the
             // physical SIM's identity was destroyed with the SIM row (only the
             // scan-intake path used to keep it).
@@ -151,7 +151,6 @@ class AddDeviceController extends Controller
 
                 'iccid' => $sim?->iccid,
 
-                'imsi' => $sim?->imsi,
 
                 'status' => DeviceStatus::NotActivated->value,
 
@@ -165,7 +164,7 @@ class AddDeviceController extends Controller
 
             // The SIM is now attached to a physical device, so it no longer
             // belongs in the pool of Activated SIMs available for setup. Its
-            // identity lives on the device row (iccid/imsi above).
+            // identity lives on the device row (iccid above).
             $sim?->delete();
 
             $deliveries->stamp($provenance['unit'], (string) $device->shdevice_id);
