@@ -65,7 +65,7 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
 
             $simNumber = !empty($row['sim_number']) ? trim((string)$row['sim_number']) : null;
 
-            // Lock the SIM first so its ICCID/IMSI can be copied onto the device
+            // Lock the SIM first so its ICCID can be copied onto the device
             // before the SIM leaves the pool (otherwise its identity is lost).
             $sim = null;
             if ($simNumber) {
@@ -81,7 +81,6 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
                 'imei_number'     => trim((string)$row['imei_number']),
                 'sim_number'      => $simNumber,
                 'iccid'           => $sim?->iccid,
-                'imsi'            => $sim?->imsi,
                 'status'          => DeviceStatus::NotActivated->value,
                 'dealer_id'       => null,
                 'registered_by'   => auth()->user()?->admin_id,
@@ -89,7 +88,7 @@ class DevicesImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
             ]);
 
             // Remove the given SIM from the activated list
-            // (its identity now lives on the device row: iccid/imsi above)
+            // (its identity now lives on the device row: iccid above)
             $sim?->delete();
 
             $deliveries->stamp($provenance['unit'], (string) $newDevice->shdevice_id);

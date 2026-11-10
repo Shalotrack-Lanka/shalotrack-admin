@@ -15,7 +15,7 @@ use Tests\PgsqlTestCase;
  *
  * A SIM card enters the SIM pool here. Later it is picked for a device and leaves the pool.
  * Rules in simple words:
- *   - sim_number is exactly 10 digits, imsi exactly 15, iccid 19 or 20. None of the three may already exist.
+ *   - sim_number is exactly 10 digits, iccid 19 or 20. Neither may already exist.
  *   - A SIM is either Activated (can be put in a device) or Not Activated (waiting for the carrier).
  *   - An admin can flip the status. Nothing else about a SIM can be changed from this page.
  *   - The two PDF lists show only SIMs of their own status.
@@ -61,7 +61,7 @@ class SimIntakeTest extends PgsqlTestCase
 
         $sim = Sim::where('iccid', $form['iccid'])->sole();
         $this->assertSame($form['sim_number'], $sim->sim_number);
-        $this->assertSame($form['imsi'], $sim->imsi);
+        $this->assertNull($sim->imsi, 'IMSI is no longer collected');
         $this->assertSame('Dialog', $sim->sim_type);
         $this->assertSame('Activated', $sim->sim_status);
         $this->assertFalse($sim->activation_required, 'when the box is not ticked it must be saved as false');
@@ -99,11 +99,6 @@ class SimIntakeTest extends PgsqlTestCase
             'number has a letter'     => [['sim_number' => '070123456A'], 'sim_number'],
             'number has a space'      => [['sim_number' => '070 123456'], 'sim_number'],
             'number already used'     => [['sim_number' => '{taken_number}'], 'sim_number'],
-            'imsi missing'            => [['imsi' => '__missing__'], 'imsi'],
-            'imsi 14 digits'          => [['imsi' => '41299000000001'], 'imsi'],
-            'imsi 16 digits'          => [['imsi' => '4129900000000001'], 'imsi'],
-            'imsi has a letter'       => [['imsi' => '41299000000000A'], 'imsi'],
-            'imsi already used'       => [['imsi' => '{taken_imsi}'], 'imsi'],
             'iccid missing'           => [['iccid' => '__missing__'], 'iccid'],
             'iccid 18 digits'         => [['iccid' => '899490000000000001'], 'iccid'],
             'iccid 21 digits'         => [['iccid' => '899490000000000000001'], 'iccid'],
@@ -119,7 +114,7 @@ class SimIntakeTest extends PgsqlTestCase
         $taken = $this->makeSim();
         $before = Sim::count();
 
-        $tokens = ['{taken_number}' => $taken->sim_number, '{taken_imsi}' => $taken->imsi, '{taken_iccid}' => $taken->iccid, '__LONG__' => str_repeat('d', 256)];
+        $tokens = ['{taken_number}' => $taken->sim_number, '{taken_iccid}' => $taken->iccid, '__LONG__' => str_repeat('d', 256)];
         $overrides = array_map(fn ($v) => is_string($v) ? strtr($v, $tokens) : $v, $overrides);
         $form = array_filter($this->goodForm($overrides), fn ($v) => $v !== '__missing__');
 
@@ -141,7 +136,7 @@ class SimIntakeTest extends PgsqlTestCase
         $this->addSim($form)->assertSessionHasNoErrors();
         $before = Sim::count();
 
-        $this->addSim($form)->assertSessionHasErrors(['sim_number', 'imsi', 'iccid']);
+        $this->addSim($form)->assertSessionHasErrors(['sim_number', 'iccid']);
 
         $this->assertSame($before, Sim::count());
     }
@@ -166,13 +161,12 @@ class SimIntakeTest extends PgsqlTestCase
         $sim = $this->makeSim('Not Activated', ['sim_type' => 'Hutch', 'activation_required' => true]);
 
         $this->actingAs($this->admin())->patch(route('admin.stock.sim.update-status', $sim->id), [
-            'sim_status' => 'Activated', 'sim_number' => '0700000000', 'imsi' => '999999999999999', 'iccid' => '1', 'sim_type' => 'Hacked',
+            'sim_status' => 'Activated', 'sim_number' => '0700000000', 'iccid' => '1', 'sim_type' => 'Hacked',
         ])->assertSessionHas('success');
 
         $fresh = $sim->fresh();
         $this->assertSame('Activated', $fresh->sim_status);
         $this->assertSame($sim->sim_number, $fresh->sim_number);
-        $this->assertSame($sim->imsi, $fresh->imsi);
         $this->assertSame($sim->iccid, $fresh->iccid);
         $this->assertSame('Hutch', $fresh->sim_type);
         $this->assertTrue($fresh->activation_required);

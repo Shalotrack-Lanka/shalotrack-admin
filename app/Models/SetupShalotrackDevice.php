@@ -15,7 +15,6 @@ class SetupShalotrackDevice extends Model
         'imei_number',
         'sim_number',
         'iccid',
-        'imsi',
         'registered_by',
         'intake_source',
         'status',

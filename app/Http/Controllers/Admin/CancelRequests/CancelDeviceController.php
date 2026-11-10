@@ -110,7 +110,7 @@ class CancelDeviceController extends Controller
      * Put a spare Activated SIM into a device that was registered without one.
      * A tracker without a SIM cannot report, and Stock Transfer and the customer bind form both
      * require a SIM, so this is the way to make such a device usable. Same rule as registering
-     * with a SIM: the SIM leaves the spare pool and its ICCID/IMSI are copied onto the device.
+     * with a SIM: the SIM leaves the spare pool and its ICCID are copied onto the device.
      */
     public function attachSim(Request $request, SetupShalotrackDevice $device)
     {
@@ -148,7 +148,6 @@ class CancelDeviceController extends Controller
 
                 $device->sim_number = $sim->sim_number;
                 $device->iccid      = $sim->iccid;
-                $device->imsi       = $sim->imsi;
                 $device->save();
 
                 // The SIM is now inside a physical device: same as registration, it leaves the pool.

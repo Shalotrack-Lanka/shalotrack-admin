@@ -32,7 +32,7 @@ class IntakeImportsTest extends PgsqlTestCase
     use DatabaseTransactions, CreatesTestAdmins, BuildsIntakeData;
 
     private const DEVICE_HEADINGS = ['imei_number', 'sim_number', 'device_category', 'model'];
-    private const SIM_HEADINGS    = ['sim_type', 'sim_number', 'imsi', 'iccid', 'sim_status', 'activation_required'];
+    private const SIM_HEADINGS    = ['sim_type', 'sim_number', 'iccid', 'sim_status', 'activation_required'];
     private const TYPE_HEADINGS   = ['device_category', 'model', 'protocol', 'features'];
 
     private ?Admin $admin = null;
@@ -114,7 +114,6 @@ class IntakeImportsTest extends PgsqlTestCase
         $this->assertNull($deviceA->dealer_id);
         $this->assertSame($simA->sim_number, $deviceA->sim_number);
         $this->assertSame($simA->iccid, $deviceA->iccid, 'the SIM identity is copied onto the device');
-        $this->assertSame($simA->imsi, $deviceA->imsi);
         $this->assertNull(SetupShalotrackDevice::where('imei_number', $c)->sole()->sim_number);
 
         $this->assertNull(Sim::find($simA->id), 'used SIMs leave the pool');
@@ -268,7 +267,7 @@ class IntakeImportsTest extends PgsqlTestCase
 
     private function simRow(array $identity, string $status = 'Activated', string $activation = 'no', string $type = 'Dialog'): array
     {
-        return [$type, $identity['sim_number'], $identity['imsi'], $identity['iccid'], $status, $activation];
+        return [$type, $identity['sim_number'], $identity['iccid'], $status, $activation];
     }
 
     public function test_a_sim_file_adds_every_good_row_with_the_right_values(): void
@@ -310,24 +309,22 @@ class IntakeImportsTest extends PgsqlTestCase
             3  => $this->simRow(array_merge($ok(), ['sim_number' => '070123456'])),                // 9 digits
             4  => $this->simRow(array_merge($ok(), ['sim_number' => '07012345678'])),              // 11 digits
             5  => $this->simRow(array_merge($ok(), ['sim_number' => $taken->sim_number])),         // already in the system
-            6  => $this->simRow(array_merge($ok(), ['imsi' => '41299000000001'])),                 // 14 digits
-            7  => $this->simRow(array_merge($ok(), ['imsi' => $taken->imsi])),
-            8  => $this->simRow(array_merge($ok(), ['iccid' => '899490000000000001'])),            // 18 digits
-            9  => $this->simRow(array_merge($ok(), ['iccid' => '899490000000000000001'])),         // 21 digits
-            10 => $this->simRow(array_merge($ok(), ['iccid' => $taken->iccid])),
-            11 => $this->simRow($ok(), 'Cancelled'),                                                // unknown status
-            12 => $this->simRow($ok(), 'activated'),                                                // wrong case
-            13 => $this->simRow($ok(), 'Activated', 'no', ''),                                      // type missing
-            14 => $this->simRow($ok(), 'Activated', 'no', str_repeat('d', 256)),                    // type too long
-            15 => $this->simRow($repeat),
-            16 => $this->simRow($repeat),                                                           // same SIM again in the same file
-            17 => $this->simRow(array_merge($ok(), ['sim_number' => '070ABCDEFG'])),                // letters
+            6 => $this->simRow(array_merge($ok(), ['iccid' => '899490000000000001'])),            // 18 digits
+            7 => $this->simRow(array_merge($ok(), ['iccid' => '899490000000000000001'])),         // 21 digits
+            8 => $this->simRow(array_merge($ok(), ['iccid' => $taken->iccid])),
+            9 => $this->simRow($ok(), 'Cancelled'),                                                // unknown status
+            10=> $this->simRow($ok(), 'activated'),                                                // wrong case
+            11=> $this->simRow($ok(), 'Activated', 'no', ''),                                      // type missing
+            12=> $this->simRow($ok(), 'Activated', 'no', str_repeat('d', 256)),                    // type too long
+            13=> $this->simRow($repeat),
+            14=> $this->simRow($repeat),                                                           // same SIM again in the same file
+            15=> $this->simRow(array_merge($ok(), ['sim_number' => '070ABCDEFG'])),                // letters
         ];
 
         $this->upload('admin.stock.sim.import', $this->xlsxUpload(self::SIM_HEADINGS, array_values($rows)))
-            ->assertSessionHas('import_success_count', 2);   // rows 2 and 15
+            ->assertSessionHas('import_success_count', 2);   // rows 2 and 13
 
-        $this->assertSame(array_merge(range(3, 14), [16, 17]), $this->failedRows());
+        $this->assertSame(array_merge(range(3, 12), [14, 15]), $this->failedRows());
         $this->assertSame($before + 2, Sim::count());
         $this->assertStringContainsString('SIM', $this->failureText(5), 'a clear reason is shown');
     }
@@ -338,7 +335,7 @@ class IntakeImportsTest extends PgsqlTestCase
         $before = Sim::count();
 
         $this->upload('admin.stock.sim.import', $this->xlsxUpload(self::SIM_HEADINGS, [
-            ['Dialog', (int) $id['sim_number'], $id['imsi'], $id['iccid'], 'Activated', 'no'],
+            ['Dialog', (int) $id['sim_number'], $id['iccid'], 'Activated', 'no'],
         ]))->assertSessionHas('import_success_count', 0);
 
         $this->assertSame([2], $this->failedRows());

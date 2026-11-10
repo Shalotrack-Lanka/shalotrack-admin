@@ -18,7 +18,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
  * Shared helpers for the device / SIM intake suites (manual add, barcode scan, Excel imports).
  *
  * Every row made here is rolled back by DatabaseTransactions. Numbers are made up and cannot clash with real
- * data: IMEIs start 9990, SIM numbers 070, IMSIs 41299, ICCIDs 89949.
+ * data: IMEIs start 9990, SIM numbers 070, ICCIDs 89949.
  *
  * A test class that uses this trait must not declare properties called intakeSeq, syncMode or syncCalls.
  */
@@ -92,14 +92,13 @@ trait BuildsIntakeData
         return substr($imei, 0, 14) . (((int) $imei[14] + 1) % 10);
     }
 
-    /** @return array{sim_number:string, imsi:string, iccid:string} three made-up SIM identifiers, never used before */
+    /** @return array{sim_number:string, iccid:string} two made-up SIM identifiers, never used before */
     protected function simIdentity(): array
     {
         $n = $this->nextIntakeNumber();
 
         return [
             'sim_number' => '070' . str_pad((string) $n, 7, '0', STR_PAD_LEFT),          // 10 digits
-            'imsi'       => '41299' . str_pad((string) $n, 10, '0', STR_PAD_LEFT),        // 15 digits
             'iccid'      => '89949' . str_pad((string) $n, 14, '0', STR_PAD_LEFT),        // 19 digits
         ];
     }

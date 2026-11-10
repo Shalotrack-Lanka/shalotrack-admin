@@ -67,7 +67,7 @@ class ScanDeviceIntakeTest extends TestCase
             $t->id();
             $t->string('sim_number', 10)->unique();
             $t->string('sim_type');
-            $t->string('imsi', 15)->unique();
+            $t->string('imsi', 15)->nullable()->unique();
             $t->string('iccid', 20)->unique();
             $t->boolean('activation_required')->default(false);
             $t->string('sim_status')->default('Not Activated');
@@ -119,7 +119,7 @@ class ScanDeviceIntakeTest extends TestCase
     {
         return Sim::create([
             'sim_number' => $number, 'sim_type' => 'Dialog',
-            'imsi' => '4130' . substr($iccid, -11), 'iccid' => $iccid, 'sim_status' => $status,
+            'iccid' => $iccid, 'sim_status' => $status,
         ]);
     }
 
@@ -201,7 +201,7 @@ class ScanDeviceIntakeTest extends TestCase
         $with = SetupShalotrackDevice::where('imei_number', self::IMEI_A)->first();
         $this->assertSame('0771234567', $with->sim_number);
         $this->assertSame(self::ICCID_1, $with->iccid);
-        $this->assertSame($sim->imsi, $with->imsi);
+        $this->assertNull($with->imsi, 'IMSI is no longer collected');
         $this->assertSame('scan', $with->intake_source);
         $this->assertSame($admin->admin_id, $with->registered_by);
         $this->assertSame('Not Activated', $with->status);
@@ -307,7 +307,7 @@ class ScanDeviceIntakeTest extends TestCase
     private function simPayload(array $over = []): array
     {
         return array_merge([
-            'iccid' => self::ICCID_1, 'sim_number' => '0700000101', 'imsi' => '413020000000101',
+            'iccid' => self::ICCID_1, 'sim_number' => '0700000101',
             'sim_type' => 'Dialog', 'confirm_activated' => true,
         ], $over);
     }
@@ -322,7 +322,7 @@ class ScanDeviceIntakeTest extends TestCase
 
         $sim = Sim::where('iccid', self::ICCID_1)->first();
         $this->assertSame('Activated', $sim->sim_status);
-        $this->assertSame('413020000000101', $sim->imsi);
+        $this->assertNull($sim->imsi);
 
         $this->postJson(route('admin.device.scan.check'), ['iccid' => self::ICCID_1])
             ->assertJsonPath('iccid.ok', true);
@@ -352,8 +352,6 @@ class ScanDeviceIntakeTest extends TestCase
 
         $this->postJson(route('admin.device.scan.sim'), $this->simPayload(['sim_number' => '12345']))
             ->assertStatus(422)->assertJsonValidationErrors('sim_number');
-        $this->postJson(route('admin.device.scan.sim'), $this->simPayload(['imsi' => '123']))
-            ->assertStatus(422)->assertJsonValidationErrors('imsi');
         $this->postJson(route('admin.device.scan.sim'), $this->simPayload(['iccid' => '123']))
             ->assertStatus(422)->assertJsonValidationErrors('iccid');
         $this->postJson(route('admin.device.scan.sim'), $this->simPayload(['sim_type' => '']))

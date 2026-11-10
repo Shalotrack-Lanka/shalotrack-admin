@@ -114,7 +114,7 @@ trait PurchasingSchema
             $t->id();
             $t->string('sim_number', 10)->unique();
             $t->string('sim_type');
-            $t->string('imsi', 15)->unique();
+            $t->string('imsi', 15)->nullable()->unique();
             $t->string('iccid', 20)->unique();
             $t->boolean('activation_required')->default(false);
             $t->string('sim_status')->default('Not Activated');

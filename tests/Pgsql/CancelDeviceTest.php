@@ -78,7 +78,7 @@ class CancelDeviceTest extends PgsqlTestCase
         ], $extra));
     }
 
-    /** A spare SIM in the pool. Real SIM sizes: number 10 characters, IMSI 15, ICCID up to 20. */
+    /** A spare SIM in the pool. Real SIM sizes: number 10 characters, ICCID up to 20. */
     private function spareSim(string $status = 'Activated', ?string $iccid = null): Sim
     {
         $k = ++$this->n;
@@ -86,7 +86,6 @@ class CancelDeviceTest extends PgsqlTestCase
         return Sim::create([
             'sim_number' => '07' . $this->digits(5) . str_pad((string) $k, 3, '0', STR_PAD_LEFT),
             'sim_type'   => 'Dialog',
-            'imsi'       => '41200' . $this->digits(7) . str_pad((string) $k, 3, '0', STR_PAD_LEFT),
             'iccid'      => $iccid ?? '8994' . $this->digits(8) . str_pad((string) $k, 3, '0', STR_PAD_LEFT),
             'sim_status' => $status,
         ]);
@@ -404,7 +403,6 @@ class CancelDeviceTest extends PgsqlTestCase
         $fresh = $device->fresh();
         $this->assertSame($sim->sim_number, $fresh->sim_number);
         $this->assertSame($sim->iccid, $fresh->iccid);
-        $this->assertSame($sim->imsi, $fresh->imsi);
         $this->assertNull(Sim::where('sim_number', $sim->sim_number)->first(), 'the SIM leaves the spare pool');
 
         Http::assertSent(fn (HttpRequest $r) => str_contains($r->url(), self::SYNC_URL)

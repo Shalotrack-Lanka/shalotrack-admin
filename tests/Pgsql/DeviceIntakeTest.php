@@ -22,7 +22,7 @@ use Tests\PgsqlTestCase;
  *
  * Why it matters (simple words): bad data that gets in here is hard to fix later. The rules the portal promises:
  *   - One unit of company stock is used per device, and a device is never saved when there is no stock left.
- *   - The SIM must be an Activated SIM from the pool. It leaves the pool and its ICCID and IMSI are copied onto the device.
+ *   - The SIM must be an Activated SIM from the pool. It leaves the pool and its ICCID is copied onto the device.
  *   - It is all or nothing for each device: if any rule fails, stock, SIM and device are exactly as before.
  *   - An IMEI can only be registered once. A scanned IMEI must have a correct check digit (catches misreads).
  *   - A bad row in a scanned batch never stops the good rows.
@@ -115,7 +115,6 @@ class DeviceIntakeTest extends PgsqlTestCase
         $this->assertNull($device->dealer_id, 'a new device starts in company stock');
         $this->assertSame($sim->sim_number, $device->sim_number);
         $this->assertSame($sim->iccid, $device->iccid, 'the SIM identity is copied onto the device');
-        $this->assertSame($sim->imsi, $device->imsi);
 
         $this->assertNull(Sim::find($sim->id), 'the SIM has left the pool');
         $this->assertSame(2, $stock->fresh()->company_available_stock, 'exactly one unit of stock is used');
@@ -604,7 +603,6 @@ class DeviceIntakeTest extends PgsqlTestCase
         $this->assertSame('Activated', $sim->sim_status);
         $this->assertFalse($sim->activation_required);
         $this->assertSame('Mobitel', $sim->sim_type, 'spaces around the type are removed');
-        $this->assertSame($form['imsi'], $sim->imsi);
 
         $this->assertTrue($this->check(['iccid' => $form['iccid']])->json('iccid.ok'), 'the scan check now accepts it');
     }
@@ -626,7 +624,7 @@ class DeviceIntakeTest extends PgsqlTestCase
         $taken = $this->makeSim();
         $before = Sim::count();
 
-        $tokens = ['{taken_number}' => $taken->sim_number, '{taken_imsi}' => $taken->imsi, '{taken_iccid}' => $taken->iccid];
+        $tokens = ['{taken_number}' => $taken->sim_number, '{taken_iccid}' => $taken->iccid];
         $overrides = array_map(fn ($v) => is_string($v) ? strtr($v, $tokens) : $v, $overrides);
         $form = array_filter($this->simForm($overrides), fn ($v) => $v !== '__missing__');
 
@@ -650,10 +648,6 @@ class DeviceIntakeTest extends PgsqlTestCase
             'number 9 digits'          => [['sim_number' => '070123456']],
             'number 11 digits'         => [['sim_number' => '07012345678']],
             'number already registered' => [['sim_number' => '{taken_number}']],
-            'imsi missing'             => [['imsi' => '__missing__']],
-            'imsi 14 digits'           => [['imsi' => '41299000000001']],
-            'imsi 16 digits'           => [['imsi' => '4129900000000001A']],
-            'imsi already registered'  => [['imsi' => '{taken_imsi}']],
             'type missing'             => [['sim_type' => '__missing__']],
             'type blank'               => [['sim_type' => '   ']],
         ];
