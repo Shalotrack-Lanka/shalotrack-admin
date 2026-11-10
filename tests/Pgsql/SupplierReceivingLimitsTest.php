@@ -19,7 +19,7 @@ use Tests\PgsqlTestCase;
  * Rules in simple words:
  *   - Goods arrive AGAINST A PURCHASE ORDER, and the order is the limit: received can never pass ordered. A delivery
  *     that is too big is refused whole (nothing saved). A cancelled delivery gives its quantity back to the order.
- *   - A SIM delivery (ICCID + 10-digit SIM number + 15-digit IMSI + SIM type) puts every SIM into the SIM list as
+ *   - A SIM delivery (ICCID + 10-digit SIM number + SIM type) puts every SIM into the SIM list as
  *     "Not Activated". Only a supplier that supplies SIM cards (a product with SIM in its name) can deliver them.
  *   - Stock on Manage Stock comes only from a received delivery: typing a quantity and the Excel import are closed,
  *     and the stock added is exactly the number of scanned units.
@@ -103,7 +103,7 @@ class SupplierReceivingLimitsTest extends PgsqlTestCase
 
         $this->postJson(route('admin.suppliers.deliveries.store', $supplier->id), [
             'kind' => 'SIM', 'sim_type' => 'Mobitel', 'purchase_order_id' => $order->id,
-            'scans' => [['iccid' => $identity['iccid'], 'sim_number' => $identity['sim_number'], 'imsi' => $identity['imsi']]],
+            'scans' => [['iccid' => $identity['iccid'], 'sim_number' => $identity['sim_number']]],
         ])->assertOk()->assertJsonPath('accepted', 1);
 
         $row = Sim::where('iccid', $identity['iccid'])->firstOrFail();
@@ -112,7 +112,7 @@ class SupplierReceivingLimitsTest extends PgsqlTestCase
 
         $devicesOnly = $this->makeSupplier();
         $this->postJson(route('admin.suppliers.deliveries.store', $devicesOnly->id), [
-            'kind' => 'SIM', 'sim_type' => 'Mobitel', 'scans' => [['iccid' => $identity['iccid'], 'sim_number' => $identity['sim_number'], 'imsi' => $identity['imsi']]],
+            'kind' => 'SIM', 'sim_type' => 'Mobitel', 'scans' => [['iccid' => $identity['iccid'], 'sim_number' => $identity['sim_number']]],
         ])->assertStatus(422)->assertJsonValidationErrors('kind');
     }
 

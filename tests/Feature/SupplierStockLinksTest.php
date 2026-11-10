@@ -368,7 +368,7 @@ class SupplierStockLinksTest extends TestCase
         $sim = Product::create(['product_name' => 'Dialog SIM card']);
         $s->products()->attach($sim->id, ['price' => 150, 'qty' => 0]);
         $po = $this->order($s, $sim, 1, 'SIM');
-        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'purchase_order_id' => $po->id, 'sim_type' => 'dialog', 'scans' => [['iccid' => $iccid, 'sim_number' => '0771234567', 'imsi' => '413021234567890']]])->assertOk();
+        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), ['kind' => 'SIM', 'purchase_order_id' => $po->id, 'sim_type' => 'dialog', 'scans' => [['iccid' => $iccid, 'sim_number' => '0771234567']]])->assertOk();
 
         $this->get(route('admin.add-sim'))->assertOk()->assertSee('Dialog Supplies');
     }

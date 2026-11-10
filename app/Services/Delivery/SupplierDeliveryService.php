@@ -42,7 +42,7 @@ class SupplierDeliveryService
     }
 
     /**
-     * Record a delivery. DEVICE: $scans is a list of IMEIs. SIM: $scans is a list of {iccid, sim_number, imsi}.
+     * Record a delivery. DEVICE: $scans is a list of IMEIs. SIM: $scans is a list of {iccid, sim_number}.
      *
      * Goods arrive AGAINST A PURCHASE ORDER (required once purchase orders are live, config
      * supplier_deliveries.require_purchase_order): it must be this supplier's, still ORDERED, and contain this
@@ -110,18 +110,15 @@ class SupplierDeliveryService
 
         try {
             if ($kind === SupplierDelivery::KIND_SIM) {
-                $batch = ScanBatch::classifySims($scans, true);
+                $batch = ScanBatch::classifySims($scans);
                 $numbers = [];
-                $imsis = [];
                 foreach ($batch['valid'] as $pair) {
                     $numbers[$pair['iccid']] = $pair['sim_number'];
-                    $imsis[$pair['iccid']] = $pair['imsi'];
                 }
                 $batch['valid'] = array_keys($numbers);
             } else {
                 $batch = ScanBatch::classify($kind, $scans);
                 $numbers = [];
-                $imsis = [];
             }
         } catch (\InvalidArgumentException $e) {
             throw ValidationException::withMessages(['scans' => $e->getMessage()]);
@@ -135,7 +132,7 @@ class SupplierDeliveryService
         }
 
         try {
-            $delivery = DB::transaction(function () use ($kind, $supplier, $deviceTypeId, $reference, $note, $adminId, $purchaseOrderId, $simType, $imsis, &$toSave, &$rejected, &$numbers, &$warning) {
+            $delivery = DB::transaction(function () use ($kind, $supplier, $deviceTypeId, $reference, $note, $adminId, $purchaseOrderId, $simType, &$toSave, &$rejected, &$numbers, &$warning) {
                 $order = $purchaseOrderId !== null ? $this->claimOrder($purchaseOrderId, $supplier->id, $kind, $deviceTypeId) : null;
 
                 // Already received before (any supplier): the identifier is unique, so say which delivery.
@@ -165,18 +162,12 @@ class SupplierDeliveryService
                     $takenOnDelivery = SupplierDeliveryUnit::whereIn('sim_number', $wanted)->pluck('identifier', 'sim_number')->all();
                     $takenInSims = \App\Models\Sim::whereIn('sim_number', $wanted)->pluck('iccid', 'sim_number')->all();
                     $iccidsInSims = \App\Models\Sim::whereIn('iccid', $toSave)->pluck('iccid')->map(fn ($v) => (string) $v)->all();
-                    $imsiInSims = \App\Models\Sim::whereIn('imsi', array_values($imsis))->pluck('iccid', 'imsi')->all();
                     foreach ($toSave as $iccid) {
                         if (isset($blocked[$iccid])) {
                             continue;
                         }
                         if (in_array($iccid, $iccidsInSims, true)) {
                             $rejected[] = ['identifier' => $iccid, 'reason' => 'Already in the SIM list.'];
-                            $blocked[$iccid] = true;
-                            continue;
-                        }
-                        if (isset($imsiInSims[$imsis[$iccid]])) {
-                            $rejected[] = ['identifier' => $iccid, 'reason' => "IMSI {$imsis[$iccid]} is already registered to another SIM."];
                             $blocked[$iccid] = true;
                             continue;
                         }
@@ -231,7 +222,7 @@ class SupplierDeliveryService
                         $sim = \App\Models\Sim::create([
                             'sim_number'          => $numbers[$iccid],
                             'sim_type'            => $simType,
-                            'imsi'                => $imsis[$iccid],
+                            'imsi'                => null, // the operator does not give IMSIs; it can be filled in later
                             'iccid'               => $iccid,
                             'activation_required' => false,
                             'sim_status'          => 'Not Activated',
