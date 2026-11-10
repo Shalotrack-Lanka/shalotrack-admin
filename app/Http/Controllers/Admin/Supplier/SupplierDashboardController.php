@@ -48,6 +48,7 @@ class SupplierDashboardController extends Controller
             'totalProducts'  => $products->count(),
             'purchaseOrders' => $purchaseOrders,
             'summaries'      => $summaries,
+            'progress'       => $orders->progressByProduct((int) $supplier->id),
             'unitsScanned'   => $scanned,
             'unitsStocked'   => $stockedIn,
             'openOrders'     => $openOrders,

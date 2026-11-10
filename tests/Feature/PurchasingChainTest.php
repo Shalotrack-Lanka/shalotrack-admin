@@ -184,6 +184,81 @@ class PurchasingChainTest extends TestCase
         $this->patch(route('admin.supplier-invoice.cancel', $order->id), ['reason' => 'changed mind'])->assertSessionHasErrors('invoice');
     }
 
+    public function test_after_the_first_scan_the_quantity_changes_only_with_a_reason_and_never_below_what_arrived(): void
+    {
+        $s = $this->supplier();
+        $t = $this->type();
+        $p = $this->offerDevice($s, $t);
+        $order = $this->placeOrder($s, [$this->line($p, 4, 100)]);
+        $item = $order->items()->firstOrFail();
+
+        // Nothing received: the adjust route is not needed, but it still works the same way.
+        foreach ([self::IMEI_A, self::IMEI_B] as $imei) {
+            $this->postJson(route('admin.suppliers.deliveries.store', $s->id), [
+                'kind' => 'DEVICE', 'device_type_id' => $t->id, 'purchase_order_id' => $order->id, 'scans' => [$imei],
+            ])->assertOk()->assertJsonPath('accepted', 1);
+        }
+        $url = route('admin.supplier-invoice.adjust', $order->id);
+
+        // A reason is compulsory.
+        $this->patch($url, ['item_id' => $item->id, 'order_qty' => 3])->assertSessionHasErrors('reason');
+        $this->patch($url, ['item_id' => $item->id, 'order_qty' => 3, 'reason' => 'ab'])->assertSessionHasErrors('reason');
+        // Never below the 2 already received.
+        $this->patch($url, ['item_id' => $item->id, 'order_qty' => 1, 'reason' => 'ordered too many'])->assertSessionHasErrors('order_qty');
+        $this->assertSame(4, (int) $item->fresh()->order_qty);
+        // A line of another order is refused.
+        $this->patch($url, ['item_id' => 999999, 'order_qty' => 3, 'reason' => 'ordered too many'])->assertSessionHasErrors('item_id');
+
+        // 2 or more is fine: the line and the order total follow, the price does not change.
+        $this->patch($url, ['item_id' => $item->id, 'order_qty' => 3, 'reason' => 'supplier short by one'])->assertSessionHasNoErrors();
+        $this->assertSame(3, (int) $item->fresh()->order_qty);
+        $this->assertSame('300.00', (string) $item->fresh()->net_amount);
+        $this->assertSame('100.00', (string) $item->fresh()->unit_price);
+        $this->assertSame('300.00', (string) $order->fresh()->grand_total);
+
+        // The full edit stays locked, and the list offers only the audited adjustment.
+        $this->put(route('admin.supplier-invoice.update', $order->id), ['items' => [$this->line($p, 99, 1)]])->assertSessionHasErrors('invoice');
+        $this->get(route('admin.supplier-invoice', ['supplier_id' => $s->id]))->assertOk()->assertSee('Adjust qty')->assertDontSee('>Edit</a>', false);
+    }
+
+    public function test_a_cancelled_order_cannot_be_adjusted(): void
+    {
+        $s = $this->supplier();
+        $p = $this->offerDevice($s, $this->type());
+        $order = $this->placeOrder($s, [$this->line($p, 2, 50)]);
+        $item = $order->items()->firstOrFail();
+        $this->patch(route('admin.supplier-invoice.cancel', $order->id), ['reason' => 'mistake'])->assertSessionHasNoErrors();
+
+        $this->patch(route('admin.supplier-invoice.adjust', $order->id), ['item_id' => $item->id, 'order_qty' => 5, 'reason' => 'trying anyway'])
+            ->assertSessionHasErrors('invoice');
+        $this->assertSame(2, (int) $item->fresh()->order_qty);
+    }
+
+    public function test_the_supplier_product_row_shows_ordered_received_remaining_and_cannot_be_typed_over(): void
+    {
+        $s = $this->supplier();
+        $t = $this->type();
+        $p = $this->offerDevice($s, $t);
+        $order = $this->placeOrder($s, [$this->line($p, 4, 100)]);
+        $this->postJson(route('admin.suppliers.deliveries.store', $s->id), [
+            'kind' => 'DEVICE', 'device_type_id' => $t->id, 'purchase_order_id' => $order->id, 'scans' => [self::IMEI_A, self::IMEI_B],
+        ])->assertOk();
+
+        $this->get(route('admin.suppliers'))->assertOk()->assertSee('Ordered / received / remaining');
+        $this->get(route('admin.supplier.profile.show', $s->id))->assertOk()->assertSee('Remaining');
+
+        $progress = app(\App\Services\Supplier\PurchaseOrders::class)->progressByProduct($s->id);
+        $this->assertSame(['ordered' => 4, 'received' => 2, 'remaining' => 2], $progress[$p->id]);
+
+        // A typed quantity in the form is ignored: the stored value stays what it was.
+        $before = (int) $s->products()->where('products.id', $p->id)->firstOrFail()->pivot->qty;
+        $this->put(route('admin.suppliers.update', $s->id), [
+            'supplier_name' => $s->name,
+            'products' => [['device_type_id' => $t->id, 'price' => 100, 'qty' => 999]],
+        ])->assertSessionHasNoErrors();
+        $this->assertSame($before, (int) $s->products()->where('products.id', $p->id)->firstOrFail()->pivot->qty);
+    }
+
     public function test_an_order_is_cancelled_with_a_reason_not_deleted(): void
     {
         $s = $this->supplier();

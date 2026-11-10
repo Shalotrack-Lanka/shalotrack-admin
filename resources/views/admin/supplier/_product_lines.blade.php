@@ -4,7 +4,7 @@
     scanned in and stocked in) or another product such as a SIM package (sent as products[i][product_name]).
     Devices come only from Add Device Types: a device can no longer be typed as free text and end up unlinked.
 
-    $initial: [['choice' => 'dt:5' | 'name:Dialog SIM', 'price' => .., 'qty' => ..], ...]
+    $initial: [['choice' => 'dt:5' | 'name:Dialog SIM', 'price' => .., 'progress' => ['ordered'=>..,'received'=>..,'remaining'=>..]|null], ...]
 --}}
 @php
     $lineSeed = collect($initial ?? [])->values()->map(fn ($l, $i) => $l + ['key' => $i + 1, 'newName' => ''])->all();
@@ -14,7 +14,7 @@
          lines: @js($lineSeed),
          next: 1000,
          init() { if (this.lines.length === 0) this.add(); },
-         add() { this.lines.push({ key: this.next++, choice: '', newName: '', price: '', qty: '' }); },
+         add() { this.lines.push({ key: this.next++, choice: '', newName: '', price: '', progress: null }); },
          remove(i) { this.lines.splice(i, 1); },
          isDevice(l) { return (l.choice || '').startsWith('dt:'); },
          typeId(l) { return this.isDevice(l) ? l.choice.slice(3) : ''; },
@@ -24,7 +24,7 @@
     <p class="text-[11px] text-gray-500 mb-3">
         Only devices on this list can be ordered, scanned in on a delivery and added to stock from this supplier. Devices come from
         <a href="{{ route('admin.add-device-type') }}" class="text-blue-600 underline">Add Device Types</a>.
-        SIM cards: add an other product with the word SIM in its name (for example "Mobitel SIM card"); only then can SIMs be ordered from and received from this supplier. The quantity here is only the usual order size: what can be received is limited by the purchase order.
+        SIM cards: add an other product with the word SIM in its name (for example "Mobitel SIM card"); only then can SIMs be ordered from and received from this supplier. Quantities are not typed here: they come from the purchase orders and what was scanned in on deliveries, and are shown read-only.
         A product that an open purchase order or a waiting delivery still needs cannot be removed.
     </p>
     <template x-for="(l, i) in lines" :key="l.key">
@@ -55,14 +55,11 @@
                 <label class="block mb-1 text-[10px]">Agreed unit price</label>
                 <input type="number" step="0.01" min="0" x-model="l.price" :name="`products[${i}][price]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0.00">
             </div>
-            <div class="w-1/4 md:w-24">
-                <label class="block mb-1 text-[10px]" title="Fills in the quantity on a new purchase order. Stock is never taken from this number.">Usual order qty</label>
-                <input type="number" step="1" min="0" x-model="l.qty" :name="`products[${i}][qty]`" class="w-full rounded-lg border-gray-300 h-9 shadow-sm text-xs" placeholder="0">
-            </div>
-            <div class="w-1/4 md:w-32">
-                <label class="block mb-1 text-[10px] text-gray-500">Order value</label>
-                <div class="h-9 px-3 flex items-center bg-gray-200 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 overflow-hidden">
-                    Rs. <span x-text="( (l.price || 0) * (l.qty || 0) ).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})" class="ml-1"></span>
+            <div class="w-1/2 md:w-56">
+                <label class="block mb-1 text-[10px] text-gray-500" title="Worked out from the purchase orders and scanned deliveries. It cannot be typed over.">Ordered / received / remaining</label>
+                <div class="h-9 px-3 flex items-center bg-gray-200 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 overflow-hidden whitespace-nowrap">
+                    <template x-if="l.progress"><span><span x-text="l.progress.ordered"></span> / <span x-text="l.progress.received"></span> / <span x-text="l.progress.remaining"></span></span></template>
+                    <template x-if="!l.progress"><span class="font-normal text-gray-500">Shown after the first order</span></template>
                 </div>
             </div>
             <button type="button" @click="remove(i)" class="bg-red-50 text-red-600 h-9 px-3 rounded-lg border border-red-200 w-auto font-bold hover:bg-red-100">X</button>

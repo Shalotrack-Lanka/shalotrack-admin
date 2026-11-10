@@ -279,7 +279,9 @@
                             <tr>
                                 <th class="p-2">Product</th>
                                 <th class="p-2">Price</th>
-                                <th class="p-2" title="Fills in the quantity on a new purchase order">Usual order qty</th>
+                                <th class="p-2" title="Worked out from purchase orders and scanned deliveries">Ordered</th>
+                                <th class="p-2">Received</th>
+                                <th class="p-2">Remaining</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -287,11 +289,14 @@
                                 <tr>
                                     <td class="p-2 font-medium text-gray-800">{{ $product->product_name }}</td>
                                     <td class="p-2">Rs. {{ number_format($product->pivot->price, 2) }}</td>
-                                    <td class="p-2 font-bold">{{ $product->pivot->qty ?? 0 }}</td> {{-- 💡 UPDATE: Show Qty --}}
+                                    @php $pg = $progress[(int) $product->id] ?? ['ordered' => 0, 'received' => 0, 'remaining' => 0]; @endphp
+                                    <td class="p-2 font-bold">{{ $pg['ordered'] }}</td>
+                                    <td class="p-2 font-bold">{{ $pg['received'] }}</td>
+                                    <td class="p-2 font-bold">{{ $pg['remaining'] }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="p-4 text-center text-gray-400">
+                                    <td colspan="5" class="p-4 text-center text-gray-400">
                                         No products linked yet.
                                         <a href="{{ route('admin.suppliers', ['supplier_id' => $supplier->id]) }}"
                                            class="text-blue-600 hover:underline ml-1">Add via Supplier Management</a>

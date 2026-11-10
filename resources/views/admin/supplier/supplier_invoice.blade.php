@@ -247,6 +247,21 @@
                                         <input type="hidden" name="reason" value="">
                                         <button type="submit" class="text-red-600 hover:underline">Cancel</button>
                                     </form>
+                                @elseif(! $inv->isCancelled() && $sum && ! app(\App\Services\Supplier\PurchaseOrders::class)->adjustBlockReason($inv))
+                                    <details class="inline-block text-left align-top">
+                                        <summary class="cursor-pointer text-slate-700 hover:underline" title="Locked after the first scan. Use this only to correct a mistake; it cannot go below what was received.">Adjust qty</summary>
+                                        <form method="POST" action="{{ route('admin.supplier-invoice.adjust', $inv->id) }}" class="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2 w-64 font-normal">
+                                            @csrf @method('PATCH')
+                                            <select name="item_id" required class="w-full rounded border-slate-300 text-xs h-8">
+                                                @foreach($inv->items as $line)
+                                                    <option value="{{ $line->id }}">{{ $line->product?->product_name ?? 'Line' }} (now {{ $line->order_qty }})</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="number" name="order_qty" min="1" max="1000000" required placeholder="New quantity" class="w-full rounded border-slate-300 text-xs h-8">
+                                            <input type="text" name="reason" required minlength="5" maxlength="200" placeholder="Reason (kept in the audit log)" class="w-full rounded border-slate-300 text-xs h-8">
+                                            <button type="submit" class="bg-slate-800 text-white rounded px-3 h-8 text-xs">Save</button>
+                                        </form>
+                                    </details>
                                 @endif
                             </td>
                         </tr>
@@ -332,7 +347,6 @@ document.addEventListener('alpine:init', () => {
             if (prod) {
                 item.unit_price = prod.price || 0;
                 item.type = prod.type || item.type;
-                if (Number(prod.qty) > 0) item.order_qty = Number(prod.qty);   // the supplier's usual order quantity
             }
         },
 

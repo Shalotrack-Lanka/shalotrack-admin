@@ -109,7 +109,7 @@ class SupplierInvoiceController extends Controller
                 'id'             => $product->id,
                 'product_name'   => $product->product_name,
                 'price'          => (float) $product->pivot->price,
-                'qty'            => (int) ($product->pivot->qty ?? 0),     // the usual order quantity
+                'qty'            => 0,     // no typed "usual quantity" any more: the order quantity is chosen on the order
                 // supplier_products.discount exists but no screen fills it in (and the relation never loaded it, so it
                 // always came through as 0). A discount is agreed per order, on the order line.
                 'discount'       => 0.0,
@@ -166,6 +166,21 @@ class SupplierInvoiceController extends Controller
         $this->orders->cancel($invoice, trim($data['reason']), $this->adminId($request));
 
         return back()->with('success', "Purchase Order {$invoice->invoice_number} was cancelled.");
+    }
+
+    /** The one exception to the lock after the first scan: one line's quantity, with a reason, never below what arrived. */
+    public function adjust(Request $request, int $id)
+    {
+        $invoice = SupplierInvoice::findOrFail($id);
+        $data = $request->validate([
+            'item_id'   => ['required', 'integer', 'min:1'],
+            'order_qty' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'reason'    => ['required', 'string', 'min:5', 'max:200'],
+        ]);
+
+        $this->orders->adjustQuantity($invoice, (int) $data['item_id'], (int) $data['order_qty'], trim($data['reason']), $this->adminId($request));
+
+        return back()->with('success', "Purchase Order {$invoice->invoice_number} quantity adjusted. The change is in the audit log.");
     }
 
     /** The maximums keep every number inside its database column (qty int4, money decimal(12,2), discount %). */

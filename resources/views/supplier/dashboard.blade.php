@@ -142,7 +142,9 @@
                                 <th class="px-8 py-5">Product</th>
                                 <th class="px-8 py-5">Description</th>
                                 <th class="px-8 py-5">Agreed Price</th>
-                                <th class="px-8 py-5">Usual Order Qty</th>
+                                <th class="px-8 py-5">Ordered</th>
+                                <th class="px-8 py-5">Received</th>
+                                <th class="px-8 py-5">Remaining</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200 text-slate-700 bg-white">
@@ -151,11 +153,14 @@
                                     <td class="px-8 py-5 font-bold text-blue-950">{{ $product->product_name }}</td>
                                     <td class="px-8 py-5 text-slate-600">{{ $product->description ?? '-' }}</td>
                                     <td class="px-8 py-5 font-bold text-blue-950">Rs. {{ number_format($product->pivot->price, 2) }}</td>
-                                    <td class="px-8 py-5 text-slate-600">{{ (int) ($product->pivot->qty ?? 0) }}</td>
+                                    @php $pg = $progress[(int) $product->id] ?? ['ordered' => 0, 'received' => 0, 'remaining' => 0]; @endphp
+                                    <td class="px-8 py-5 text-slate-600">{{ $pg['ordered'] }}</td>
+                                    <td class="px-8 py-5 text-slate-600">{{ $pg['received'] }}</td>
+                                    <td class="px-8 py-5 text-slate-600">{{ $pg['remaining'] }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-8 py-10 text-center text-slate-400">
+                                    <td colspan="6" class="px-8 py-10 text-center text-slate-400">
                                         <span class="font-medium text-slate-500">No products added to your catalog yet.</span>
                                     </td>
                                 </tr>
