@@ -74,6 +74,10 @@ RUN composer dump-autoload --optimize
 # Built frontend assets from stage 2
 COPY --from=assets /app/public/build ./public/build
 
+# Scheduler loop (started by /start.sh only when RUN_SCHEDULER=1). Strip CRs in case the file was
+# saved with Windows line endings, which would make `sh` fail on it.
+RUN sed -i 's/\r$//' /var/www/html/docker/scheduler.sh && chmod +x /var/www/html/docker/scheduler.sh
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
@@ -107,6 +111,7 @@ RUN echo '#!/bin/sh' > /start.sh && \
     echo 'php artisan route:cache' >> /start.sh && \
     echo 'php artisan view:cache' >> /start.sh && \
     echo 'if [ "$RUN_MIGRATIONS" = "1" ]; then php artisan migrate --force; fi' >> /start.sh && \
+    echo 'if [ "$RUN_SCHEDULER" = "1" ]; then sh /var/www/html/docker/scheduler.sh & fi' >> /start.sh && \
     echo 'php-fpm -D' >> /start.sh && \
     echo 'nginx -g "daemon off;"' >> /start.sh && \
     chmod +x /start.sh
