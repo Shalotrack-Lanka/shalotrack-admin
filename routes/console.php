@@ -40,3 +40,8 @@ Schedule::command('customers:scrub-deleted')->hourlyAt(17);
 // gateway status without this, but history/availability are only recorded by this command, so
 // they stay empty (and the dashboard says so) until the scheduler actually runs in production.
 Schedule::command('gateway:check')->everyMinute();
+
+// Sends changed devices to the API and retries failures (see App\Services\DeviceSync). The hourly --scan
+// re-checks every device against what the API last accepted, so nothing stays out of step for long.
+Schedule::command('devices:sync-outbox')->everyMinute()->withoutOverlapping(10);
+Schedule::command('devices:sync-outbox --scan')->hourlyAt(41)->withoutOverlapping(30);

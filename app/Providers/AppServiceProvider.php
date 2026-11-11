@@ -42,6 +42,10 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Route::pattern('imei', '[0-9]{15}');
         \Illuminate\Support\Facades\Route::pattern('month', '[0-9]{4}-[0-9]{2}');
 
+        // Device changes (and binding a device to a vehicle) are queued for the API; see App\Services\DeviceSync.
+        \App\Models\SetupShalotrackDevice::observe(\App\Observers\SetupShalotrackDeviceObserver::class);
+        \App\Models\ActivatedDevice::observe(\App\Observers\ActivatedDeviceObserver::class);
+
         // Sign-in trail for the audit log: signed in, signed out, locked out (failed attempts are
         // recorded by LoginRequest). Registered here, not in app/Listeners, so it cannot register twice.
         \Illuminate\Support\Facades\Event::subscribe(\App\Services\AuthAudit::class);

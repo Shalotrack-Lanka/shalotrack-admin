@@ -4,8 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\SetupShalotrackDevice;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class DevicesBackfill extends Command
 {
@@ -51,40 +49,6 @@ class DevicesBackfill extends Command
 
     private function pushDeviceToApi(SetupShalotrackDevice $device): bool
     {
-        try {
-            $response = Http::timeout(10)
-                ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                ->acceptJson()
-                ->post(config('services.shalotrack_api.base_url') . '/api/internal/setup-devices-sync', [
-                    'id'             => $device->shdevice_id,
-                    'deviceCategory' => $device->device_category,
-                    'imeiNumber'     => $device->imei_number,
-                    'simNumber'      => $device->sim_number,
-                    'status'         => $device->status,
-                    'cancelReason'   => $device->cancel_reason,
-                    'canceledDate'   => $device->canceled_date,
-                    'dealerId'       => $device->dealer_id,
-                    'deviceTypeId'   => $device->device_type_id,
-                    'createdAt'      => $device->created_at,
-                    'updatedAt'      => $device->updated_at,
-                ]);
-
-            if (!$response->successful()) {
-                Log::error('Backfill: device push to API failed', [
-                    'imei'   => $device->imei_number,
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
-                return false;
-            }
-
-            return true;
-        } catch (\Throwable $e) {
-            Log::error('Backfill: device push to API threw an exception', [
-                'imei'  => $device->imei_number,
-                'error' => $e->getMessage(),
-            ]);
-            return false;
-        }
+        return \App\Services\DeviceSync::send($device);
     }
 }
