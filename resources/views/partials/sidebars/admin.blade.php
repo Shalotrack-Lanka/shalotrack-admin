@@ -230,6 +230,9 @@
                 <a href="{{ route('admin.vehicles.device-commands') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.vehicles.device-commands') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
                     Device Commands
                 </a>
+                <a href="{{ route('admin.vehicles.gateway-devices') }}" class="block py-2 px-4 rounded-lg transition-colors {{ request()->routeIs('admin.vehicles.gateway-devices') ? 'bg-blue-900 text-white font-semibold' : 'text-gray-300 hover:bg-blue-900 hover:text-white' }}">
+                    Gateway Devices
+                </a>
 
             </div>
 

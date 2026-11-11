@@ -67,6 +67,7 @@ use App\Http\Controllers\Admin\Stock\ManageStockController;
 use App\Http\Controllers\Admin\Vehicles\VehicleDetailsController;
 use App\Http\Controllers\Admin\Vehicles\GpsTrackingController;
 use App\Http\Controllers\Admin\Vehicles\DeviceCommandController;
+use App\Http\Controllers\Admin\Vehicles\GatewayDevicesController;
 
 
 
@@ -384,6 +385,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/device-commands/send', [DeviceCommandController::class, 'sendCommand'])->name('device-commands.send');
         Route::get('/device-commands/status/{imei}', [DeviceCommandController::class, 'deviceStatus'])->name('device-commands.status');
         Route::get('/device-commands/history/{vehicleId}', [DeviceCommandController::class, 'commandHistory'])->name('device-commands.history');
+
+        // Gateway Devices (connected, free-trial hours left, trial ended, stopped). Read-only.
+        Route::get('/gateway-devices', [GatewayDevicesController::class, 'index'])->name('gateway-devices');
     });
 
 

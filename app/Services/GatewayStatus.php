@@ -113,6 +113,35 @@ class GatewayStatus
         return ['ok' => false, 'devices' => collect()];
     }
 
+    /**
+     * The gateway's per-device access report (connected, free-trial hours left, trial ended, stopped).
+     * Read-only. 'status' is the HTTP status so the page can tell "gateway not updated yet" (404)
+     * from "unreachable" (0).
+     *
+     * @return array{ok: bool, status: int, report: ?array}
+     */
+    public static function accessReport(): array
+    {
+        try {
+            $response = Http::timeout(6)
+                ->withHeaders(['X-Command-Api-Key' => self::apiKey()])
+                ->get(self::baseUrl() . '/access');
+
+            if ($response->successful() && is_array($response->json())) {
+                return ['ok' => true, 'status' => $response->status(), 'report' => $response->json()];
+            }
+            if ($response->status() === 401) {
+                Log::warning('Gateway /access rejected the portal key (HTTP 401): GATEWAY_COMMAND_API_KEY does not match the gateway.');
+            }
+
+            return ['ok' => false, 'status' => $response->status(), 'report' => null];
+        } catch (\Throwable $e) {
+            Log::warning('Gateway /access unreachable: ' . $e->getMessage());
+        }
+
+        return ['ok' => false, 'status' => 0, 'report' => null];
+    }
+
     /** Plain TCP connect, nothing sent. Public so the probe can be tested against a local socket. */
     public static function tcpReachable(string $host, int $port, float $timeout = 2.0): bool
     {
