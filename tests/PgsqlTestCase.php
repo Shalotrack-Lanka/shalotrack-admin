@@ -16,6 +16,10 @@ abstract class PgsqlTestCase extends TestCase
 {
     protected function setUp(): void
     {
+        // The tests talk to a hosted database, so a long run is normal. Some pages (the GPS PDF export) call
+        // set_time_limit(300) themselves, which would start a 5-minute clock for the whole run. Reset it for every test.
+        set_time_limit(0);
+
         // Must run BEFORE parent::setUp(): these traits wipe tables while the app boots.
         $traits = class_uses_recursive(static::class);
         if (isset($traits[RefreshDatabase::class]) || isset($traits[DatabaseMigrations::class])) {
