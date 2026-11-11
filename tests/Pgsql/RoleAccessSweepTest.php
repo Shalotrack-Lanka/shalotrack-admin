@@ -134,7 +134,7 @@ class RoleAccessSweepTest extends PgsqlTestCase
     /** A real-looking URL for a route that has {ids}: tries a few values until the router matches the same route. */
     private function urlFor(Route $route, string $method): ?string
     {
-        foreach (['1', (string) Str::uuid(), '2026-09', 'x'] as $value) {
+        foreach (['1', (string) Str::uuid(), '2026-09', '990000000000001', 'x'] as $value) {   // 15 digits = an IMEI
             $url = '/' . ltrim(preg_replace('/\{[^}]+\}/', $value, $route->uri()), '/');
             try {
                 $hit = RouteFacade::getRoutes()->match(Request::create($url, $method));

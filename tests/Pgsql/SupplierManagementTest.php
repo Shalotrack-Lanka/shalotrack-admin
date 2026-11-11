@@ -159,7 +159,7 @@ class SupplierManagementTest extends PgsqlTestCase
         $this->assertNotNull($device);
         $this->assertSame(trim($type->device_category . ' ' . $type->model), $device->product_name);
         $this->assertEquals(1500.50, $device->pivot->price);
-        $this->assertSame(10, (int) $device->pivot->qty);
+        $this->assertSame(0, (int) $device->pivot->qty, 'a typed quantity is ignored: quantities come from purchase orders and deliveries');
 
         $free = $supplier->products->firstWhere('product_name', 'Autotest SIM package');
         $this->assertNotNull($free, 'a free-text product line must work too');
@@ -201,9 +201,6 @@ class SupplierManagementTest extends PgsqlTestCase
             'product price is text'      => [['products' => [['product_name' => 'X', 'price' => 'cheap', 'qty' => 1]]], 'products.0.price'],
             'product price is negative'  => [['products' => [['product_name' => 'X', 'price' => '-1', 'qty' => 1]]], 'products.0.price'],
             'product price too big'      => [['products' => [['product_name' => 'X', 'price' => '999999999999', 'qty' => 1]]], 'products.0.price'],
-            'product qty is negative'    => [['products' => [['product_name' => 'X', 'price' => 1, 'qty' => -1]]], 'products.0.qty'],
-            'product qty has decimals'   => [['products' => [['product_name' => 'X', 'price' => 1, 'qty' => 1.5]]], 'products.0.qty'],
-            'product qty too big'        => [['products' => [['product_name' => 'X', 'price' => 1, 'qty' => 99999999999]]], 'products.0.qty'],
             'product name over 255'      => [['products' => [['product_name' => '__L256__', 'price' => 1, 'qty' => 1]]], 'products.0.product_name'],
         ];
     }
@@ -302,8 +299,7 @@ class SupplierManagementTest extends PgsqlTestCase
             ->assertOk()
             ->assertJsonPath('name', $supplier->name)
             ->assertJsonPath('status', 'Active')
-            ->assertJsonPath('products.0.device_type_id', $type->id)
-            ->assertJsonPath('products.0.qty', 7);
+            ->assertJsonPath('products.0.device_type_id', $type->id);
     }
 
     // ================================================================== attach / detach a single product
@@ -320,7 +316,7 @@ class SupplierManagementTest extends PgsqlTestCase
         $products = $supplier->fresh()->products;
         $this->assertCount(1, $products, 'the same device type is one product, not two');
         $this->assertEquals(120, $products[0]->pivot->price);
-        $this->assertSame(9, (int) $products[0]->pivot->qty);
+        $this->assertSame(0, (int) $products[0]->pivot->qty, 'a typed quantity is ignored');
         $this->assertSame(1, Product::where('device_type_id', $type->id)->count());
     }
 
@@ -349,10 +345,6 @@ class SupplierManagementTest extends PgsqlTestCase
             'price is text'         => [['price' => 'cheap'], 'price'],
             'price is negative'     => [['price' => '-5'], 'price'],
             'price too big'         => [['price' => '999999999999'], 'price'],
-            'qty missing'           => [['qty' => '__missing__'], 'qty'],
-            'qty has decimals'      => [['qty' => '1.5'], 'qty'],
-            'qty is negative'       => [['qty' => '-1'], 'qty'],
-            'qty too big'           => [['qty' => '99999999999'], 'qty'],
             'name over 255'         => [['product_name' => '__L256__'], 'product_name'],
         ];
     }
@@ -419,8 +411,12 @@ class SupplierManagementTest extends PgsqlTestCase
     public function test_the_admin_profile_of_a_supplier_adds_up_units_and_invoices(): void
     {
         $supplier = $this->makeSupplier();
-        $this->offer($supplier, $this->makePlainProduct(), 10, 5);
-        $this->offer($supplier, $this->makePlainProduct(), 10, 7);
+        // "Units received" comes from the stock-in ledger (what was really received), not from the open order.
+        $stock = $this->stockFor($this->makeDeviceType(), 12);
+        foreach ([5, 7] as $qty) {
+            \App\Models\StockTransferLedger::create(['stock_id' => $stock->id, 'device_category_type' => 'Autotest Device', 'supplier_id' => $supplier->id, 'supplier' => $supplier->name, 'stock_in' => $qty, 'stocked_in_date' => now()->toDateString()]);
+        }
+        $this->offer($supplier, $this->makePlainProduct(), 10, 99); // an open order must not count as received
         foreach ([1000.50, 250.25] as $i => $total) {
             SupplierInvoice::create(['invoice_number' => 'PO-AUTOTEST-' . $this->nextIntakeNumber(), 'supplier_id' => $supplier->id, 'invoice_date' => now()->toDateString(), 'grand_total' => $total]);
         }

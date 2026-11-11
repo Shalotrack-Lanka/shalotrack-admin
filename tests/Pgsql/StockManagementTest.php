@@ -6,7 +6,6 @@ use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Stock;
 use App\Models\StockTransferLedger;
-use App\Models\Supplier;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -51,20 +50,21 @@ class StockManagementTest extends PgsqlTestCase
         return $this->admin ??= $this->makeAdmin('ADMIN');
     }
 
-    /** A stock-in by hand. The device is put on the supplier's product list first (stock-in requires it). */
     private function stockIn(int $typeId, int $supplierId, $qty)
     {
-        $supplier = Supplier::find($supplierId);
-        $type = \App\Models\DeviceType::find($typeId);
-        if ($supplier && $type) {
-            $this->supplies($supplier, $type);
-        }
-
         return $this->actingAs($this->admin())->post(route('admin.stock.store'), [
             'device_type_id' => $typeId,
             'supplier_id'    => $supplierId,
             'stock_in'       => $qty,
         ]);
+    }
+
+    /** A supplier may only stock in a device it supplies (its product list), so make it supply the device. */
+    private function supplies(\App\Models\Supplier $supplier, \App\Models\DeviceType $type): void
+    {
+        if (! $supplier->products()->where('products.device_type_id', $type->id)->exists()) {
+            $this->offer($supplier, $this->makeDeviceProduct($type), 100, 5);
+        }
     }
 
     private function ledgerLine(?int $stockId = null, array $overrides = []): StockTransferLedger
@@ -153,6 +153,7 @@ class StockManagementTest extends PgsqlTestCase
         $type = $this->makeDeviceType();
         $this->stockFor($type, 10);
         $supplier = $this->makeSupplier(['name' => 'Autotest Ledger Supplier']);
+        $this->supplies($supplier, $type);
 
         $this->stockIn($type->id, $supplier->id, 25)->assertSessionHasNoErrors()->assertSessionHas('success');
 
@@ -168,6 +169,7 @@ class StockManagementTest extends PgsqlTestCase
     {
         $type = $this->makeDeviceType();
         $supplier = $this->makeSupplier();
+        $this->supplies($supplier, $type);
         $this->assertSame(0, Stock::where('device_type_id', $type->id)->count());
 
         $this->stockIn($type->id, $supplier->id, 3);
@@ -177,37 +179,59 @@ class StockManagementTest extends PgsqlTestCase
         $this->assertSame(7, $this->companyStock($type));
     }
 
-    public function test_stock_in_keeps_the_device_on_the_suppliers_list(): void
+    public function test_the_supplier_keeps_its_products_after_a_stock_in(): void
     {
         $type = $this->makeDeviceType();
         $supplier = $this->makeSupplier();
+        $other = $this->makeSupplier();
         $received = $this->makeDeviceProduct($type);
         $stays = $this->makePlainProduct();
-        $this->offer($supplier, $received, 100, 5);
+        $this->offer($supplier, $received, 100, 2);
         $this->offer($supplier, $stays);
+        $this->offer($other, $received, 100, 2);
 
-        $this->stockIn($type->id, $supplier->id, 5)->assertSessionHasNoErrors();
+        $this->stockIn($type->id, $supplier->id, 2)->assertSessionHasNoErrors();
 
+        // The list says what the supplier SUPPLIES (not what is on order), so nothing is removed from it.
         $this->assertEqualsCanonicalizing([$received->id, $stays->id], $supplier->products()->pluck('products.id')->all());
-        $this->assertSame(5, (int) $supplier->products()->where('products.id', $received->id)->first()->pivot->qty, 'the usual order qty is not used up');
+        $this->assertSame(2, (int) $supplier->products()->where('products.id', $received->id)->first()->pivot->qty, 'the offer quantity is not touched');
+        $this->assertSame([$received->id], $other->products()->pluck('products.id')->all(), 'another supplier keeps its offer');
     }
 
-    public function test_stock_in_from_a_supplier_that_does_not_supply_the_device_is_refused(): void
+    public function test_a_second_stock_in_from_the_same_supplier_still_works(): void
+    {
+        $type = $this->makeDeviceType();
+        $supplier = $this->makeSupplier();
+        $this->offer($supplier, $this->makeDeviceProduct($type), 100, 3);
+
+        $this->stockIn($type->id, $supplier->id, 3)->assertSessionHasNoErrors();
+        $this->stockIn($type->id, $supplier->id, 4)->assertSessionHasNoErrors();
+
+        $this->assertSame(7, $this->companyStock($type));
+        $this->assertSame(2, StockTransferLedger::where('supplier_id', $supplier->id)->count());
+    }
+
+    public function test_a_supplier_cannot_stock_in_a_device_it_does_not_supply(): void
     {
         $type = $this->makeDeviceType();
         $this->stockFor($type, 10);
         $supplier = $this->makeSupplier();
+        $this->offer($supplier, $this->makePlainProduct(), 100, 5); // supplies something else, not this device
+        $ledger = StockTransferLedger::count();
 
-        $this->actingAs($this->admin())->post(route('admin.stock.store'), ['device_type_id' => $type->id, 'supplier_id' => $supplier->id, 'stock_in' => 5])
+        $this->actingAs($this->admin())->from(route('admin.stock.manage'))
+            ->post(route('admin.stock.store'), ['device_type_id' => $type->id, 'supplier_id' => $supplier->id, 'stock_in' => 5])
             ->assertSessionHasErrors('device_type_id');
 
         $this->assertSame(10, $this->companyStock($type));
+        $this->assertSame($ledger, StockTransferLedger::count());
     }
 
     public function test_the_biggest_allowed_quantity_is_accepted(): void
     {
         $type = $this->makeDeviceType();
         $supplier = $this->makeSupplier();
+        $this->supplies($supplier, $type);
 
         $this->stockIn($type->id, $supplier->id, 1000000)->assertSessionHasNoErrors();
 
@@ -266,7 +290,7 @@ class StockManagementTest extends PgsqlTestCase
 
     // ================================================================== supplier products for the stock-in form
 
-    public function test_the_supplier_products_answer_uses_the_device_type_id_when_there_is_one(): void
+    public function test_the_supplier_products_answer_uses_the_device_type_id_and_skips_plain_products(): void
     {
         $supplier = $this->makeSupplier();
         $type = $this->makeDeviceType();
@@ -280,7 +304,7 @@ class StockManagementTest extends PgsqlTestCase
 
         $byName = collect($json)->keyBy('name');
         $this->assertSame($type->id, $byName[$device->product_name]['id']);
-        $this->assertSame($plain->id, $byName['Autotest Plain Line']['id']);
+        $this->assertArrayNotHasKey('Autotest Plain Line', $byName->all(), 'a product with no device type is not stock-tracked');
         $this->assertSame(4, $byName[$device->product_name]['qty']);
     }
 
@@ -460,7 +484,6 @@ class StockManagementTest extends PgsqlTestCase
         $good = $this->makeDeviceType();
         $this->stockFor($good, 10);
         $supplier = $this->makeSupplier();
-        $this->supplies($supplier, $good);
         $ledger = StockTransferLedger::count();
 
         $response = $this->runImport($this->importFile([
