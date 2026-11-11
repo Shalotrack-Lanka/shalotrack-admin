@@ -109,6 +109,10 @@
                 } elseif ($staleDevicesCount > 0) {
                 $alerts[] = ['level' => 'warning', 'text' => $staleDevicesCount . ' tracked ' . Str::plural('vehicle', $staleDevicesCount) . ' — no GPS point in 24h+.'];
                 }
+                $deviceSyncStuck = \App\Services\DeviceSync::stuckCount();
+                if ($deviceSyncStuck > 0) {
+                $alerts[] = ['level' => 'warning', 'text' => $deviceSyncStuck . ' ' . Str::plural('device', $deviceSyncStuck) . ' could not be sent to the app server after several tries. They keep retrying automatically; if this stays, check that the API is reachable.'];
+                }
                 @endphp
 
                 @if(count($alerts) > 0)
