@@ -47,8 +47,8 @@ class ManageStockController extends Controller
 
         // True = stock can only be added from a received delivery (no typed quantity, no import file).
         $deliveryOnly = SupplierDeliveryService::isEnabled() && ! config('supplier_deliveries.allow_typed_stock');
-
-        return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers', 'openDeliveries', 'deliveryOnly'));
+        $deliveriesOn = SupplierDeliveryService::isEnabled();
+        return view('admin.stock.manage_stock', compact('stocks', 'stockMap', 'ledgerEntries', 'deviceTypes', 'suppliers', 'openDeliveries', 'deliveryOnly', 'deliveriesOn'));
     }
 
     public function store(Request $request, SupplierDeliveryService $deliveries)
