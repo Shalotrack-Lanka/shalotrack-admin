@@ -32,7 +32,11 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {{-- Map Container --}}
             <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[500px] relative">
-                <div id="dealer-map" style="width: 100%; height: 520px; min-height: 520px; z-index: 10;"></div>
+                <div id="dealer-map" style="width: 100%; height: 520px; min-height: 520px; z-index: 10;">
+                    @if($locationData['latitude'] === null || $locationData['longitude'] === null)
+                        <div class="flex h-full items-center justify-center text-slate-400 text-sm">No location to show on the map yet.</div>
+                    @endif
+                </div>
             </div>
 
             {{-- Vehicle Details & Live Status --}}
@@ -71,10 +75,12 @@
                                 {{ $resolvedAddress }}
                             </p>
                         </div>
+                        @if($locationData['latitude'] !== null && $locationData['longitude'] !== null)
                         <div class="flex justify-between pt-1 border-t border-slate-100">
                             <span class="font-bold text-slate-500">Coordinates:</span>
                             <span class="font-mono text-slate-700 font-semibold">{{ number_format($locationData['latitude'], 5) }}, {{ number_format($locationData['longitude'], 5) }}</span>
                         </div>
+                        @endif
                         @if($locationData['timestamp'])
                             <div class="flex justify-between">
                                 <span class="font-bold text-slate-500">Last Updated:</span>
@@ -96,7 +102,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
     function initDealerMap() {
-        @if($selectedVehicle)
+        @if($selectedVehicle && $locationData['latitude'] !== null && $locationData['longitude'] !== null)
             const mapElement = document.getElementById('dealer-map');
             if (!mapElement) return;
 
