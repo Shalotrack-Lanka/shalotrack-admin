@@ -8,6 +8,7 @@ use App\Models\CustomerAd;
 use App\Services\CustomerLinkService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerSetupController extends Controller
@@ -16,7 +17,7 @@ class CustomerSetupController extends Controller
     {
         // customers:sync now also syncs vehicles — one command keeps both
         // Customer-ad and vehicle_ad tables current at the same time.
-        Artisan::call('customers:sync');
+        $this->syncFromApi();
 
         $activeCustomers   = $this->getActive();
         $inactiveCustomers = $this->getInactive();
@@ -26,7 +27,7 @@ class CustomerSetupController extends Controller
 
     public function refresh()
     {
-        Artisan::call('customers:sync');
+        $this->syncFromApi();
 
         $activeCustomers   = $this->getActive();
         $inactiveCustomers = $this->getInactive();
@@ -85,6 +86,19 @@ class CustomerSetupController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Pull fresh customers and vehicles. If the app server cannot be reached the command throws; the page must
+     * still open with the customers already saved here (like the Vehicle Details page) instead of showing a 500 error.
+     */
+    private function syncFromApi(): void
+    {
+        try {
+            Artisan::call('customers:sync');
+        } catch (\Throwable $e) {
+            Log::warning('Customer setup: sync skipped, showing the saved list: ' . $e->getMessage());
+        }
+    }
 
     private function getActive()
     {
