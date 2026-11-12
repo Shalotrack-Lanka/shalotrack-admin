@@ -19,7 +19,9 @@ use Illuminate\Support\Facades\Route;
 // commands, which THIS app calls INTO the API). Protected by the
 // same shared secret both systems already agree on -- see
 // VerifyAdminSyncKey and AdminSyncKeyMiddleware on the API side.
-Route::middleware(['auth.adminsync'])->group(function () {
+// The limit runs BEFORE the key check, so someone guessing the shared key is slowed down too:
+// 120 per minute per IP is far above what the one real caller (the C# API) ever sends.
+Route::middleware(['throttle:120,1', 'auth.adminsync'])->group(function () {
     Route::get('/internal/dealer-lookup', [\App\Http\Controllers\Api\DealerLookupController::class, 'lookup']);
 });
 

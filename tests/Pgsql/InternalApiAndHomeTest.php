@@ -113,6 +113,44 @@ class InternalApiAndHomeTest extends PgsqlTestCase
         $this->assertSame($a, $b);
     }
 
+    private function lookupFrom(string $ip, ?string $key = self::KEY)
+    {
+        return $this->withServerVariables(['REMOTE_ADDR' => $ip])->withHeaders($key === null ? [] : ['X-Admin-Sync-Key' => $key])
+            ->getJson('/api/internal/dealer-lookup?email=nobody@example.test');
+    }
+
+    public function test_the_lookup_allows_120_calls_a_minute_from_one_address_then_says_slow_down(): void
+    {
+        foreach (range(1, 120) as $i) {
+            $this->lookupFrom('10.20.30.40')->assertOk();
+        }
+
+        $blocked = $this->lookupFrom('10.20.30.40');
+
+        $blocked->assertStatus(429);
+        $this->assertNotEmpty($blocked->headers->get('Retry-After'));
+    }
+
+    public function test_guessing_the_key_is_slowed_down_too_and_a_right_key_is_blocked_during_the_pause(): void
+    {
+        foreach (range(1, 120) as $i) {
+            $this->lookupFrom('10.20.30.41', 'wrong-guess-' . $i)->assertStatus(401);
+        }
+
+        $this->lookupFrom('10.20.30.41', 'wrong-guess-again')->assertStatus(429);
+        $this->lookupFrom('10.20.30.41')->assertStatus(429);
+    }
+
+    public function test_one_addresss_pause_does_not_block_another_address(): void
+    {
+        foreach (range(1, 121) as $i) {
+            $this->lookupFrom('10.20.30.42');
+        }
+
+        $this->lookupFrom('10.20.30.42')->assertStatus(429);
+        $this->lookupFrom('10.20.30.43')->assertOk();
+    }
+
     public function test_the_lookup_only_reads_so_a_post_put_or_delete_is_refused(): void
     {
         $headers = ['X-Admin-Sync-Key' => self::KEY];
