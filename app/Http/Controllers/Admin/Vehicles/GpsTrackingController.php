@@ -216,13 +216,24 @@ class GpsTrackingController extends Controller
                 'pageSize'      => $pageSize,
             ]);
 
-            $response = Http::timeout(20)
-                ->retry(2, 1000, throw: false)
-                ->withHeaders([
-                    'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
-                ])
-                ->acceptJson()
-                ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
+            try {
+                $response = Http::timeout(20)
+                    ->retry(2, 1000, throw: false)
+                    ->withHeaders([
+                        'X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key'),
+                    ])
+                    ->acceptJson()
+                    ->get(config('services.shalotrack_api.base_url') . '/api/internal/gps-tracking-sync', $query);
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                // The app server cannot be reached (down, DNS, timeout). Show a message instead of a 500 page,
+                // and keep any pages already read.
+                Log::warning('GPS tracking: app server unreachable: ' . $e->getMessage());
+
+                if (! $gotAnySuccessfulPage) {
+                    $errorMessage = 'Could not reach the tracking server. Please try again.';
+                }
+                break;
+            }
 
             if (! $response->successful()) {
                 if (! $gotAnySuccessfulPage) {
