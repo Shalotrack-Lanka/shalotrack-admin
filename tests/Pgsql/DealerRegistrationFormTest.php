@@ -84,6 +84,16 @@ class DealerRegistrationFormTest extends PgsqlTestCase
         ]);
     }
 
+    public function test_the_dealer_records_which_administrator_created_it(): void
+    {
+        $this->admin = $this->makeAdmin('ADMIN', ['full_name' => 'Autotest Creator Name']);
+        $data = $this->payload(['form_kind' => 'dealer', 'dealer_status' => 'retailer']);
+
+        $this->submit($data)->assertSessionHasNoErrors();
+
+        $this->assertSame('Autotest Creator Name', $this->dealerOf($data)->created_by);
+    }
+
     public function test_the_distributor_form_always_creates_a_distributor_even_if_the_form_is_forged(): void
     {
         $parent = $this->makeDistributor();

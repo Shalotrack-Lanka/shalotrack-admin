@@ -149,7 +149,6 @@ class SupplierProfileController extends Controller
                 'current_password' => 'required|string|max:255',
                 'new_password'     => ['required', 'string', 'max:' . \App\Support\PasswordPolicy::MAX_LENGTH, 'confirmed', \App\Support\PasswordPolicy::rule()],
             ], [
-                'new_password.min' => 'New password must be at least 8 characters.',
             ]);
 
             if (!Hash::check($request->current_password, $admin->password)) {

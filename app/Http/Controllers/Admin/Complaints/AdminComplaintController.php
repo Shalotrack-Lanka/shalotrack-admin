@@ -40,7 +40,7 @@ class AdminComplaintController extends Controller
         $response = $this->complaintsApi('post', "/api/internal/complaints/{$complaintId}/reply", [
             'message' => $request->input('message'),
             'authorType' => 2, // Admin
-            'authorName' => auth()->user()->name ?? 'ShaloTrack Support',
+            'authorName' => auth()->user()->full_name ?: 'ShaloTrack Support',
         ]);
 
         if (! $response?->successful()) {

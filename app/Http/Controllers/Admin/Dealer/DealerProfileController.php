@@ -93,7 +93,6 @@ class DealerProfileController extends Controller
             'region.in'                    => 'Please select a valid region.',
             'contact_email.unique'         => 'This email is already registered to another dealer.',
             'deposit_date.before_or_equal' => 'Deposit date cannot be in the future.',
-            'password.min'                 => 'Password must be at least 8 characters.',
             'password.confirmed'           => 'The password confirmation does not match.',
         ]);
 
