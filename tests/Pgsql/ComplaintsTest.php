@@ -263,6 +263,15 @@ class ComplaintsTest extends PgsqlTestCase
         $this->assertNotSame('', trim((string) $sent[0]['body']['authorName']));
     }
 
+    public function test_the_reply_is_signed_with_the_admins_own_name(): void
+    {
+        $this->actingAs($this->admin = $this->makeAdmin('ADMIN', ['full_name' => 'Autotest Support Person']));
+
+        $this->post(route('admin.complaints.reply', 'c-100'), ['message' => 'Signed reply']);
+
+        $this->assertSame('Autotest Support Person', $this->postsTo('reply')[0]['body']['authorName']);
+    }
+
     public function test_a_reply_cannot_pretend_to_come_from_someone_else(): void
     {
         $this->asAdmin()->post(route('admin.complaints.reply', 'c-100'), [

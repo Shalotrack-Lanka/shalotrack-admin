@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use App\Models\Dealer;
 use App\Models\Admin;
 
@@ -40,7 +41,8 @@ class DealerAccountController extends Controller
 
         $validated = $request->validate([
             'full_name'     => 'required|string|max:255',
-            'contact_email' => 'required|email|max:255',
+            // The dealers table has a UNIQUE contact_email: without this rule a taken address was a 500 error.
+            'contact_email' => ['required', 'email', 'max:255', Rule::unique('dealers', 'contact_email')->ignore($admin->dealer_id)],
 
             // Phone: optional, but must be a real phone number format if given.
             // Accepts +94 77 123 4567, 077-123-4567, (077) 1234567, etc.
@@ -54,12 +56,11 @@ class DealerAccountController extends Controller
             'country'       => 'nullable|string|max:255',
             'qualification' => 'nullable|string|max:255',
 
-            // Password change is optional. If submitted it must be at least
-            // 8 characters and confirmed via the confirmation field.
+            // Password change is optional. If submitted it must meet PasswordPolicy and be confirmed.
             'new_password'  => ['nullable', 'string', 'max:' . \App\Support\PasswordPolicy::MAX_LENGTH, 'confirmed', \App\Support\PasswordPolicy::rule()],
         ], [
             'phone_number.regex' => 'Phone number must contain only digits, spaces, hyphens, parentheses, or a leading +.',
-            'new_password.min'   => 'New password must be at least 8 characters.',
+            'contact_email.unique' => 'This email is already registered to another dealer.',
         ]);
 
         $auditBefore = $admin->only(['full_name', 'email', 'phone_number']);

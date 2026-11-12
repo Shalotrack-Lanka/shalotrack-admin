@@ -407,6 +407,43 @@ class DealerPagesTest extends PgsqlTestCase
         $this->assertFalse(Hash::check(self::OLD_PASSWORD, $stored));
     }
 
+    public function test_a_dealer_cannot_take_an_email_that_belongs_to_another_dealer(): void
+    {
+        $other  = $this->dealer('Other');
+        $dealer = $this->dealer('Mine', ['full_name' => 'Autotest Mine Unchanged']);
+        $admin  = $this->dealerLogin($dealer);
+
+        $this->from(route('dealer.profile.edit'))
+            ->put(route('dealer.profile.update'), $this->profileForm($dealer, ['contact_email' => $other->contact_email]))
+            ->assertRedirect(route('dealer.profile.edit'))
+            ->assertSessionHasErrors(['contact_email' => 'This email is already registered to another dealer.']);
+
+        $this->assertSame('Autotest Mine Unchanged', $dealer->fresh()->full_name);
+        $this->assertNotSame($other->contact_email, $dealer->fresh()->contact_email);
+        $this->assertNotSame($other->contact_email, $admin->fresh()->email);
+    }
+
+    public function test_a_dealer_can_keep_or_change_to_a_free_email(): void
+    {
+        $dealer = $this->dealer('Keep');
+        $this->dealerLogin($dealer);
+
+        $this->put(route('dealer.profile.update'), $this->profileForm($dealer))->assertSessionHasNoErrors();
+        $this->put(route('dealer.profile.update'), $this->profileForm($dealer, ['contact_email' => 'autotest+free-' . uniqid() . '@example.test']))->assertSessionHasNoErrors();
+    }
+
+    public function test_a_too_short_new_password_names_the_real_minimum_of_ten(): void
+    {
+        $dealer = $this->dealer('Short');
+        $this->dealerLogin($dealer);
+
+        $response = $this->from(route('dealer.profile.edit'))->put(route('dealer.profile.update'), $this->profileForm($dealer, ['new_password' => 'Ab1', 'new_password_confirmation' => 'Ab1']));
+
+        $message = session('errors')->first('new_password');
+        $this->assertStringContainsString('10', $message);
+        $this->assertStringNotContainsString('8 characters', $message);
+    }
+
     public function test_a_blank_address_keeps_the_old_address(): void
     {
         $dealer = $this->dealer('KeepAddr');

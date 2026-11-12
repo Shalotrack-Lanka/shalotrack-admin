@@ -80,7 +80,7 @@ class DealerManagementController extends Controller
         }
 
         $validated['status']     = 'active';
-        $validated['created_by'] = auth()->user()->name ?? 'System';
+        $validated['created_by'] = auth()->user()->full_name ?: 'System';
 
         $generatedUsername = null;
         $generatedPassword = null;
