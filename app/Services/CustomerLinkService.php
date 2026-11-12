@@ -175,15 +175,26 @@ class CustomerLinkService
     public static function findDealerLead(CustomerAd $customer): ?DealerCustomerAd
     {
         $normPhone = self::normalisePhone($customer->phone_number ?? '');
+        $email     = trim((string) $customer->email);
+
+        // Nothing to match on: answer "no lead". Without this guard the empty
+        // where-group is dropped and first() returns an arbitrary dealer lead.
+        if ($email === '' && empty($normPhone)) {
+            return null;
+        }
+
+        // Escape LIKE wildcards so "%" or "_" typed by a caller can never
+        // match somebody else's lead.
+        $like = static fn (string $v): string => addcslashes($v, '\\%_');
 
         return DealerCustomerAd::with('dealer')
-            ->where(function ($q) use ($customer, $normPhone) {
-                if (!empty($customer->email)) {
-                    $q->orWhere('email', 'ilike', $customer->email);
+            ->where(function ($q) use ($email, $normPhone, $like) {
+                if ($email !== '') {
+                    $q->orWhere('email', 'ilike', $like($email));
                 }
                 if (!empty($normPhone)) {
                     // Dealer phone is local format — last 9 digits match
-                    $q->orWhere('contact', 'ilike', '%' . $normPhone);
+                    $q->orWhere('contact', 'ilike', '%' . $like($normPhone));
                 }
             })
             ->first();
