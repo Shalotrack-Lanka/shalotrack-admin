@@ -46,8 +46,13 @@ class ExpireDeviceSubscriptions extends Command
                 // activated_devices row below -- it's a permanent record of
                 // "this customer's subscription lapsed on this date", kept
                 // for follow-up/reporting even after they eventually renew.
-                ExpiredDevice::create([
-                    'vehicle_id'              => $device->vehicle_id,
+                //
+                // One row per vehicle (expired_devices.vehicle_id is UNIQUE): a customer who renews and
+                // lapses again updates their row instead of crashing this command, which would stop the
+                // sweep for every device after it, every minute.
+                ExpiredDevice::updateOrCreate(
+                    ['vehicle_id' => $device->vehicle_id],
+                    [
                     'customer_id'             => $device->customer_id,
                     'customer_name'           => $device->customer_name,
                     'vehicle_number'          => $device->vehicle_number,
@@ -64,7 +69,8 @@ class ExpireDeviceSubscriptions extends Command
                     'bank_invoice'            => null,
                     'bank_slip'               => null,
                     'status'                  => 'Expired',
-                ]);
+                    ]
+                );
 
                 // FIX: no longer deletes the device. Mirrors the same
                 // "not Paid -> null out subscription fields" convention
