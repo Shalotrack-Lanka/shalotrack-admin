@@ -151,7 +151,9 @@ class DashboardController extends Controller
                 }
 
                 try {
-                    return Carbon::parse($resolvedAt)->diffInMinutes(Carbon::parse($createdAt));
+                    // Signed (false) and in this order: Carbon 3 returns a negative number when the first date is
+                    // later, which made every normal complaint (resolved after created) get dropped below.
+                    return Carbon::parse($createdAt)->diffInMinutes(Carbon::parse($resolvedAt), false);
                 } catch (\Throwable $e) {
                     return null;
                 }

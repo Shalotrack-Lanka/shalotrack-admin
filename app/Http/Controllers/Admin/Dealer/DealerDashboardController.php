@@ -35,7 +35,7 @@ class DealerDashboardController extends Controller
 
         if (!$dealer) {
             $dealer = \App\Models\Dealer::create([
-                'full_name'     => $user->name ?: 'Dealer Account',
+                'full_name'     => $user->full_name ?: 'Dealer Account',
                 'contact_email' => $user->email,
                 'status'        => 'active',
                 'region'        => 'Western',
@@ -43,7 +43,7 @@ class DealerDashboardController extends Controller
             ]);
         } else {
             if (in_array($dealer->full_name, ['Dealer Account', 'Default Dealer']) || str_contains($dealer->full_name, '@')) {
-                $dealer->full_name = $user->name ?: 'Dealer';
+                $dealer->full_name = $user->full_name ?: 'Dealer';
                 $dealer->save();
             }
         }
