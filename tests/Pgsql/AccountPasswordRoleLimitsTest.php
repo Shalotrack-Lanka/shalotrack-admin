@@ -542,7 +542,7 @@ class AccountPasswordRoleLimitsTest extends PgsqlTestCase
         $this->assertSame($before, $dealer->fresh()->password);
         $this->assertSame(PasswordResetRequest::PENDING, $req->fresh()->status);
 
-        $typed = 'Typed#Temp' . $this->tag();
+        $typed = 'Typed#Temp1' . $this->tag();
         $res = $this->post(route('admin.profile.password-requests.resolve', $req->id), ['current_password' => self::OWN, 'temporary_password' => $typed]);
         $res->assertRedirect(route('admin.profile'));
         $this->assertFalse($res->getSession()->get('temp_password')['generated']);
@@ -619,7 +619,7 @@ class AccountPasswordRoleLimitsTest extends PgsqlTestCase
         $target = $this->makeAdmin($role);
         $req    = $this->pending($target);
         $oldToken = $target->remember_token;
-        $typed  = 'Typed#Temp' . $this->tag();
+        $typed  = 'Typed#Temp1' . $this->tag();
 
         $res = $this->as($dev)->post(route('admin.accounts.temporary-password', $target->admin_id), [
             'current_password' => self::OWN, 'temporary_password' => $typed,
