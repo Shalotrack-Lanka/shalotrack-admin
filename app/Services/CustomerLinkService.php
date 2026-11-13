@@ -57,6 +57,31 @@ class CustomerLinkService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Phone column match that ignores spaces, dashes, brackets and "+" stored
+    // in the column ("077 123 4567", "+94-77-123-4567"). On PostgreSQL the
+    // column is reduced to digits before the suffix match; elsewhere (SQLite
+    // test suite) the plain suffix match is used.
+    // $normPhone is already digits only (see normalisePhone), so it is safe.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static function orWherePhoneEndsWith($query, string $column, string $normPhone): void
+    {
+        $normPhone = preg_replace('/\D/', '', $normPhone);
+
+        if ($normPhone === '') {
+            return;
+        }
+
+        if ($query->getConnection()->getDriverName() === 'pgsql') {
+            $col = $query->getGrammar()->wrap($column);
+            $query->orWhereRaw("regexp_replace({$col}::text, '\\D', '', 'g') like ?", ['%' . $normPhone]);
+            return;
+        }
+
+        $query->orWhere($column, 'ilike', '%' . $normPhone);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Find real app account for a single dealer lead
     // Returns CustomerAd|null
     // ─────────────────────────────────────────────────────────────────────────
@@ -88,7 +113,7 @@ class CustomerLinkService
                 $q->orWhere('email', 'ilike', $lead->email);
             }
             if (!empty($normalisedPhone)) {
-                $q->orWhere('phone_number', 'ilike', '%' . $normalisedPhone);
+                self::orWherePhoneEndsWith($q, 'phone_number', $normalisedPhone);
             }
         })->first();
     }
@@ -130,7 +155,7 @@ class CustomerLinkService
                     $q->orWhereIn('email', $emails);
                 }
                 foreach ($normalisedPhones as $phone) {
-                    $q->orWhere('phone_number', 'ilike', '%' . $phone);
+                    self::orWherePhoneEndsWith($q, 'phone_number', $phone);
                 }
             })
             ->get()
@@ -194,7 +219,7 @@ class CustomerLinkService
                 }
                 if (!empty($normPhone)) {
                     // Dealer phone is local format — last 9 digits match
-                    $q->orWhere('contact', 'ilike', '%' . $like($normPhone));
+                    self::orWherePhoneEndsWith($q, 'contact', $normPhone);
                 }
             })
             ->first();
@@ -233,7 +258,7 @@ class CustomerLinkService
                     $q->orWhereIn('email', $emails);
                 }
                 foreach ($normPhones as $phone) {
-                    $q->orWhere('contact', 'ilike', '%' . $phone);
+                    self::orWherePhoneEndsWith($q, 'contact', $phone);
                 }
             })
             ->get();
