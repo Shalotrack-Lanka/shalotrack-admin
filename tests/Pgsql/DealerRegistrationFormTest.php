@@ -84,6 +84,29 @@ class DealerRegistrationFormTest extends PgsqlTestCase
         ]);
     }
 
+    public function test_the_address_typed_on_the_form_is_saved(): void
+    {
+        $data = $this->payload(['form_kind' => 'dealer', 'dealer_status' => 'retailer', 'address' => '12 Autotest Lane, Kandy']);
+
+        $this->submit($data)->assertSessionHasNoErrors();
+
+        $this->assertSame('12 Autotest Lane, Kandy', $this->dealerOf($data)->address);
+    }
+
+    public function test_the_admin_dealer_profile_page_saves_a_changed_address(): void
+    {
+        $data = $this->payload(['form_kind' => 'dealer', 'dealer_status' => 'retailer']);
+        $this->submit($data)->assertSessionHasNoErrors();
+        $dealer = $this->dealerOf($data);
+
+        $this->put(route('admin.dealer.profile.update', $dealer->id), [
+            'full_name' => $dealer->full_name, 'dealer_status' => $dealer->dealer_status, 'region' => 'western',
+            'contact_email' => $dealer->contact_email, 'address' => '99 Autotest Road, Galle',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('99 Autotest Road, Galle', $dealer->fresh()->address);
+    }
+
     public function test_the_dealer_records_which_administrator_created_it(): void
     {
         $this->admin = $this->makeAdmin('ADMIN', ['full_name' => 'Autotest Creator Name']);

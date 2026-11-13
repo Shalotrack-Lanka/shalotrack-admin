@@ -69,9 +69,16 @@ class SyncCustomersFromApi extends Command
             $this->warn('Customer sync returned 0 records.');
         }
 
-        $synced = 0;
+        $synced  = 0;
+        $skipped = 0;
 
         foreach ($customers as $customer) {
+            // One malformed record must not stop the whole run (and every customer after it).
+            if (! is_array($customer) || ! is_string($customer['customerId'] ?? null) || ! \Illuminate\Support\Str::isUuid($customer['customerId'])) {
+                $skipped++;
+                continue;
+            }
+
             CustomerAd::updateOrCreate(
                 ['customer_id' => $customer['customerId']],
                 [
@@ -90,6 +97,10 @@ class SyncCustomersFromApi extends Command
         }
 
         $this->info("Customers synced: {$synced}");
+        if ($skipped > 0) {
+            Log::warning('Customer sync skipped records with no valid customerId (a UUID is required).', ['skipped' => $skipped]);
+            $this->warn("Skipped {$skipped} customer record(s) with no valid customerId (a UUID is required).");
+        }
         return self::SUCCESS;
     }
 
@@ -122,9 +133,15 @@ class SyncCustomersFromApi extends Command
             $this->warn('Vehicle sync returned 0 records.');
         }
 
-        $synced = 0;
+        $synced  = 0;
+        $skipped = 0;
 
         foreach ($vehicles as $vehicle) {
+            if (! is_array($vehicle) || ! is_string($vehicle['vehicleId'] ?? null) || ! \Illuminate\Support\Str::isUuid($vehicle['vehicleId'])) {
+                $skipped++;
+                continue;
+            }
+
             VehicleAd::updateOrCreate(
                 ['vehicle_id' => $vehicle['vehicleId']],
                 [
@@ -148,6 +165,10 @@ class SyncCustomersFromApi extends Command
         }
 
         $this->info("Vehicles synced: {$synced}");
+        if ($skipped > 0) {
+            Log::warning('Vehicle sync skipped records with no valid vehicleId (a UUID is required).', ['skipped' => $skipped]);
+            $this->warn("Skipped {$skipped} vehicle record(s) with no valid vehicleId (a UUID is required).");
+        }
         return self::SUCCESS;
     }
 }

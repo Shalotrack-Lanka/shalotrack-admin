@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Customer;
 use App\Support\Input;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerAd;
+use App\Services\Audit;
 use App\Services\CustomerLinkService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -45,8 +46,14 @@ class CustomerSetupController extends Controller
         ]);
 
         $customer             = CustomerAd::findOrFail($customerId);
+        $before               = $customer->cus_status;
         $customer->cus_status = $validated['cus_status'];
         $customer->save();
+
+        // Verifying a customer is a trust decision, so who did it (and from what to what) is kept.
+        if ($before !== $customer->cus_status) {
+            Audit::record('customer.verification_changed', 'customer', $customer->customer_id, $customer->full_name, ['cus_status' => ['from' => $before, 'to' => $customer->cus_status]]);
+        }
 
         $activeCustomers   = $this->getActive();
         $inactiveCustomers = $this->getInactive();

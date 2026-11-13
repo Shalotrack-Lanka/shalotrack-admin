@@ -131,6 +131,43 @@ class CustomerSetupTest extends PgsqlTestCase
         return $this->actingAs($this->admin())->patchJson(route('admin.customer-setup.toggle-status', $id), ['cus_status' => $status]);
     }
 
+    private function verificationLogs(string $customerId)
+    {
+        return \App\Models\AuditLog::where('action', 'customer.verification_changed')->where('subject_id', $customerId)->orderBy('id')->get();
+    }
+
+    public function test_marking_a_customer_verified_or_not_is_written_to_the_audit_log(): void
+    {
+        $c = CustomerAd::create(['customer_id' => (string) \Illuminate\Support\Str::uuid(), 'full_name' => 'Autotest Audit Person', 'cus_status' => 'not_verified']);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->patchJson(route('admin.customer-setup.toggle-status', $c->customer_id), ['cus_status' => 'verified'])->assertOk();
+        $this->actingAs($admin)->patchJson(route('admin.customer-setup.toggle-status', $c->customer_id), ['cus_status' => 'not_verified'])->assertOk();
+
+        $logs = $this->verificationLogs($c->customer_id);
+        $this->assertCount(2, $logs);
+        $this->assertEquals(['cus_status' => ['from' => 'not_verified', 'to' => 'verified']], $logs[0]->changes);
+        $this->assertEquals(['cus_status' => ['from' => 'verified', 'to' => 'not_verified']], $logs[1]->changes);
+        $this->assertSame($admin->admin_id, $logs[0]->actor_id);
+        $this->assertSame('Autotest Audit Person', $logs[0]->subject_label);
+        $this->assertSame('customer', $logs[0]->subject_type);
+    }
+
+    public function test_saving_the_same_status_again_or_a_refused_change_adds_no_audit_entry(): void
+    {
+        $c = CustomerAd::create(['customer_id' => (string) \Illuminate\Support\Str::uuid(), 'full_name' => 'Autotest Same Person', 'cus_status' => 'verified']);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->patchJson(route('admin.customer-setup.toggle-status', $c->customer_id), ['cus_status' => 'verified'])->assertOk();
+        $this->actingAs($admin)->patchJson(route('admin.customer-setup.toggle-status', $c->customer_id), ['cus_status' => 'anything-else'])->assertStatus(422);
+        $this->flushSession();
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($this->makeAdmin('DEALER'))->patchJson(route('admin.customer-setup.toggle-status', $c->customer_id), ['cus_status' => 'not_verified'])->assertForbidden();
+
+        $this->assertCount(0, $this->verificationLogs($c->customer_id));
+        $this->assertSame('verified', $c->fresh()->cus_status);
+    }
+
     private function apiCustomer(string $id, array $over = []): array
     {
         return array_merge([
