@@ -173,6 +173,55 @@ class ConsoleApiSyncCommandsPgTest extends PgsqlTestCase
         $this->assertSame('Autotest Synced', $row->full_name);
     }
 
+    public static function badRecords(): array
+    {
+        return ['no id at all' => [['fullName' => 'No Id']], 'empty id' => [['customerId' => '', 'vehicleId' => '', 'fullName' => 'x']], 'spaces only' => [['customerId' => '   ', 'vehicleId' => '   ']],
+            'null id' => [['customerId' => null, 'vehicleId' => null]], 'not a uuid' => [['customerId' => 'abc-123', 'vehicleId' => 'abc-123']], 'a number' => [['customerId' => 12345, 'vehicleId' => 67890]], 'id is a list' => [['customerId' => ['a'], 'vehicleId' => ['a']]], 'a bare string' => ['oops'], 'a bare number' => [42], 'null' => [null]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('badRecords')]
+    public function test_one_bad_record_is_skipped_and_the_rest_of_the_run_still_syncs(mixed $bad): void
+    {
+        $goodC = $this->customerRow();
+        $goodV = $this->vehicleRow();
+        $this->fakeApi([$bad, $goodC, $bad], [$bad, $goodV]);
+
+        [$code, $out] = $this->run_('customers:sync');
+
+        $this->assertSame(0, $code);
+        $this->assertStringContainsString('Customers synced: 1', $out);
+        $this->assertStringContainsString('Skipped 2 customer record(s) with no valid customerId (a UUID is required).', $out);
+        $this->assertStringContainsString('Vehicles synced: 1', $out);
+        $this->assertStringContainsString('Skipped 1 vehicle record(s) with no valid vehicleId (a UUID is required).', $out);
+        $this->assertSame($goodC['fullName'], CustomerAd::where('customer_id', $goodC['customerId'])->value('full_name'));
+        $this->assertSame($goodV['vehicleNumber'], VehicleAd::where('vehicle_id', $goodV['vehicleId'])->value('vehicle_number'));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('badRecords')]
+    public function test_vehicles_sync_also_skips_a_bad_record_and_keeps_going(mixed $bad): void
+    {
+        $good = $this->vehicleRow();
+        $this->fakeApi([], [$good, $bad]);
+
+        [$code, $out] = $this->run_('vehicles:sync');
+
+        $this->assertSame(0, $code);
+        $this->assertStringContainsString('Synced 1 vehicles.', $out);
+        $this->assertStringContainsString('Skipped 1 vehicle record(s) with no valid vehicleId (a UUID is required).', $out);
+        $this->assertSame($good['vehicleNumber'], VehicleAd::where('vehicle_id', $good['vehicleId'])->value('vehicle_number'));
+    }
+
+    public function test_a_clean_run_prints_no_skip_warning_and_an_uppercase_uuid_is_accepted(): void
+    {
+        $this->fakeApi([$this->customerRow(['customerId' => strtoupper((string) Str::uuid())])], [$this->vehicleRow()]);
+
+        [$code, $out] = $this->run_('customers:sync');
+
+        $this->assertSame(0, $code);
+        $this->assertStringContainsString('Customers synced: 1', $out);
+        $this->assertStringNotContainsString('Skipped', $out);
+    }
+
     public function test_missing_optional_fields_get_safe_defaults(): void
     {
         $cid = (string) Str::uuid();

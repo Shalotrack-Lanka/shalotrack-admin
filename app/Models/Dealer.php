@@ -13,7 +13,7 @@ class Dealer extends Model
         'contact_email','tax_pan','cst_no','vat_tin','gst_pan',
         'security_deposit','deposit_date','network','login_id','password',
         'payment_modes','profile_photo','copy_of_ma','passport_front','passport_last',
-        'status','created_by',
+        'status','created_by','address',
     ];
 
     protected $casts = [

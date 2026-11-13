@@ -88,6 +88,7 @@ class AuditLog extends Model
         'dealer.created'             => [self::CATEGORY_ACCOUNT, 'Dealer created'],
         'dealer.updated'             => [self::CATEGORY_ACCOUNT, 'Dealer profile edited'],
         'dealer.status_changed'      => [self::CATEGORY_ACCOUNT, 'Dealer enabled / disabled'],
+        'customer.verification_changed' => [self::CATEGORY_ACCOUNT, 'Customer marked verified / not verified'],
         'customer_lead.deleted'      => [self::CATEGORY_ACCOUNT, 'Dealer removed a customer'],
         'account.profile_updated'    => [self::CATEGORY_ACCOUNT, 'Own profile edited'],
         'account.role_changed'       => [self::CATEGORY_ACCOUNT, 'Login role changed (dealer / distributor)'],
