@@ -603,8 +603,10 @@ class DealerDashboardController extends Controller
         try {
             $serviceAccount = json_decode(file_get_contents($jsonPath), true);
             $now            = time();
-            $header         = base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
-            $payload        = base64_encode(json_encode([
+            // JWTs use URL-safe base64 without padding. Plain base64 ('+', '/', '=') is refused by Google.
+            $b64url         = fn (string $raw) => rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+            $header         = $b64url(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+            $payload        = $b64url(json_encode([
                 'iss'   => $serviceAccount['client_email'],
                 'sub'   => $serviceAccount['client_email'],
                 'aud'   => 'https://oauth2.googleapis.com/token',
@@ -614,7 +616,7 @@ class DealerDashboardController extends Controller
             ]));
             $signatureInput = $header . '.' . $payload;
             openssl_sign($signatureInput, $rawSignature, $serviceAccount['private_key'], 'SHA256');
-            $jwt           = $signatureInput . '.' . base64_encode($rawSignature);
+            $jwt           = $signatureInput . '.' . $b64url($rawSignature);
             $tokenResponse = Http::asForm()->post('https://oauth2.googleapis.com/token', [
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
                 'assertion'  => $jwt,
