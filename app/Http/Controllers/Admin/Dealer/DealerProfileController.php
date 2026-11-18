@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Rules\EmailFreeForLogin;
 use App\Services\Audit;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
@@ -74,6 +75,8 @@ class DealerProfileController extends Controller
             'contact_email'    => [
                 'nullable', 'email', 'max:255',
                 Rule::unique('dealers', 'contact_email')->ignore($dealer->id),
+                // Copied into the dealer's login below, so no other login may already use it.
+                new EmailFreeForLogin($dealer->id, $dealer->contact_email),
             ],
             'tax_pan'          => 'nullable|string|max:50',
             'cst_no'           => 'nullable|string|max:50',
@@ -134,12 +137,6 @@ class DealerProfileController extends Controller
             $dealer->password = $hashedPassword;
             $dealer->save();
 
-            // Update Users Table ONLY by email (Removed dealer_id check)
-            if (class_exists(\App\Models\User::class)) {
-                \App\Models\User::where('email', $dealer->contact_email)
-                    ->update(['password' => $hashedPassword]);
-            }
-            
             $passwordChanged = true;
         }
 

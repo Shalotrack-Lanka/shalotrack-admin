@@ -3,6 +3,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Rules\EmailFreeForLogin;
 use App\Services\Audit;
 use App\Models\DealerCustomerAd;
 use App\Http\Controllers\Controller;
@@ -68,7 +69,7 @@ class DealerManagementController extends Controller
             'region'           => ['required', 'string', 'max:100'],
             'country'          => 'nullable|string|max:100',
             'pin_code'         => 'nullable|string|max:50',
-            'contact_email'    => 'required|email|max:255|unique:dealers,contact_email',
+            'contact_email'    => ['required', 'email', 'max:255', 'unique:dealers,contact_email', new EmailFreeForLogin()],
             'network'          => 'nullable|string|max:100',
             'password'         => ['nullable', 'string', 'max:' . \App\Support\PasswordPolicy::MAX_LENGTH, \App\Support\PasswordPolicy::rule()],
         ]);
@@ -107,22 +108,6 @@ class DealerManagementController extends Controller
                     'status'    => 'ACTIVE',
                     'dealer_id' => $dealer->id,
                 ]);
-            }
-
-            if (class_exists(\App\Models\User::class)) {
-                $user = \App\Models\User::where('email', $dealer->contact_email)->first();
-
-                if (!$user) {
-                    $user = \App\Models\User::create([
-                        'name'      => $dealer->full_name,
-                        'email'     => $dealer->contact_email ?? ($generatedUsername . '@shalotrack.com'),
-                        'password'  => Hash::make($generatedPassword),
-                        'dealer_id' => $dealer->id,
-                    ]);
-                } else {
-                    $user->dealer_id = $dealer->id;
-                    $user->save();
-                }
             }
         });
 
