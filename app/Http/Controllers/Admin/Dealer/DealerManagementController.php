@@ -76,9 +76,9 @@ class DealerManagementController extends Controller
 
         $dealerFormPassword = $validated['password'] ?? null;
 
-        if (!empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        }
+        // The password is only ever stored on the dealer's login (Admins table, hashed below). The dealer row
+        // must not keep a second copy of the hash, so it is removed before the dealer is created.
+        unset($validated['password']);
 
         $validated['status']     = 'active';
         $validated['created_by'] = auth()->user()->full_name ?: 'System';

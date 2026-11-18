@@ -11,7 +11,7 @@ class Dealer extends Model
         'full_name','qualification',
         'dealer_status','distributor_id','region','country','pin_code',
         'contact_email','tax_pan','cst_no','vat_tin','gst_pan',
-        'security_deposit','deposit_date','network','login_id','password',
+        'security_deposit','deposit_date','network','login_id',
         'payment_modes','profile_photo','copy_of_ma','passport_front','passport_last',
         'status','created_by','address',
     ];
