@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Dealer;
 
+use App\Rules\EmailFreeForLogin;
 use App\Services\Audit;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -42,7 +43,9 @@ class DealerAccountController extends Controller
         $validated = $request->validate([
             'full_name'     => 'required|string|max:255',
             // The dealers table has a UNIQUE contact_email: without this rule a taken address was a 500 error.
-            'contact_email' => ['required', 'email', 'max:255', Rule::unique('dealers', 'contact_email')->ignore($admin->dealer_id)],
+            'contact_email' => ['required', 'email', 'max:255', Rule::unique('dealers', 'contact_email')->ignore($admin->dealer_id),
+                // The same address is copied into this dealer's login, so no other login may already use it.
+                new EmailFreeForLogin((int) $admin->dealer_id, Dealer::whereKey($admin->dealer_id)->value('contact_email'))],
 
             // Phone: optional, but must be a real phone number format if given.
             // Accepts +94 77 123 4567, 077-123-4567, (077) 1234567, etc.
