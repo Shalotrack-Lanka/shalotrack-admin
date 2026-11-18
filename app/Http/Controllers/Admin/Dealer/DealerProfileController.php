@@ -131,11 +131,8 @@ class DealerProfileController extends Controller
 
         // 2. Handle Password Change (Fixed database column error)
         if ($request->filled('password')) {
+            // Only the dealer's login holds the hash; the dealer row keeps no copy.
             $hashedPassword = Hash::make($request->password);
-            
-            // Update Dealers Table
-            $dealer->password = $hashedPassword;
-            $dealer->save();
 
             $passwordChanged = true;
         }
