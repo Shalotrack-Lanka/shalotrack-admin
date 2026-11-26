@@ -13,6 +13,7 @@ use App\Models\CustomerAd;
 use App\Models\VehicleAd;
 use App\Models\DashboardMetricSnapshot;
 use App\Services\GatewayStatus;
+use App\Support\ApiCircuit;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -53,8 +54,11 @@ class DashboardController extends Controller
 
         $devicesOnlineNow = $gatewayStatus['devices_connected'];
         if ($devicesOnlineNow === null) {
-            // Gateway not yet upgraded to the deep /health: fall back to the device list.
-            $devicesOnlineNow = GatewayStatus::connectedDevices()['devices']->count();
+            // Gateway not yet upgraded to the deep /health: fall back to the device list. Not when the gateway is
+            // already known to be down: asking it again only makes every dashboard load wait for a timeout.
+            $devicesOnlineNow = $gatewayStatus['state'] === GatewayStatus::DOWN
+                ? 0
+                : GatewayStatus::connectedDevices()['devices']->count();
         }
         $devicesOnlineNow = (int) $devicesOnlineNow;
 
@@ -68,9 +72,8 @@ class DashboardController extends Controller
 
         try {
             $openComplaints = Cache::remember('dashboard_open_complaints', 30, function () {
-                $response = Http::timeout(5)
-                    ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                    ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+                $response = ApiCircuit::run(fn () => ApiCircuit::http(5)
+                    ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin'));
 
                 if (!$response->successful()) {
                     // Throwing (not returning []) so a failure is neither cached
@@ -122,9 +125,8 @@ class DashboardController extends Controller
 
         try {
             $resolvedComplaints = Cache::remember('dashboard_resolved_complaints', 30, function () {
-                $response = Http::timeout(5)
-                    ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                    ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin/resolved');
+                $response = ApiCircuit::run(fn () => ApiCircuit::http(5)
+                    ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin/resolved'));
 
                 if (!$response->successful()) {
                     throw new \RuntimeException('Resolved complaints API returned HTTP ' . $response->status());

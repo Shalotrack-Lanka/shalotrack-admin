@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\Dealer;
+use App\Support\ApiCircuit;
+use App\Support\ApiRecentlyUnreachable;
 use Illuminate\Support\Carbon;
 
 class AppServiceProvider extends ServiceProvider
@@ -97,9 +99,11 @@ class AppServiceProvider extends ServiceProvider
                 $adminCount = Cache::remember('admin_complaints_count', 1, function () {
                     // The sidebar is on every page: when the mobile API is down it must show 0, never crash the page.
                     try {
-                        $response = Http::timeout(5)
-                            ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin');
+                        $response = ApiCircuit::run(fn () => ApiCircuit::http(5)
+                            ->get(config('services.shalotrack_api.base_url') . '/api/internal/complaints/for-admin'));
+                    } catch (ApiRecentlyUnreachable $e) {
+                        // Already logged when the circuit opened; every page would repeat it otherwise.
+                        return 0;
                     } catch (\Throwable $e) {
                         Log::warning('Admin sidebar: complaint count unavailable: ' . $e->getMessage());
 
@@ -137,9 +141,10 @@ class AppServiceProvider extends ServiceProvider
                     $dealerCount = Cache::remember($dealerCacheKey, 1, function () use ($dealer) {
                         // Same rule as the admin sidebar: an unreachable API shows 0, it never crashes the page.
                         try {
-                            $response = Http::timeout(5)
-                                ->withHeaders(['X-Admin-Sync-Key' => config('services.shalotrack_api.sync_key')])
-                                ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}");
+                            $response = ApiCircuit::run(fn () => ApiCircuit::http(5)
+                                ->get(config('services.shalotrack_api.base_url') . "/api/internal/complaints/by-dealer/{$dealer->id}"));
+                        } catch (ApiRecentlyUnreachable $e) {
+                            return 0;
                         } catch (\Throwable $e) {
                             Log::warning('Dealer sidebar: complaint count unavailable: ' . $e->getMessage());
 
