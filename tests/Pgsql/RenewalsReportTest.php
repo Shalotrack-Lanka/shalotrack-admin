@@ -289,7 +289,32 @@ class RenewalsReportTest extends PgsqlTestCase
         $mine = collect($rows)->first(fn ($r) => ($r[3] ?? null) === $device->imei_number);
         $this->assertSame('Autotest CSV Customer', $mine[0]);
         $this->assertSame('1 Year', $mine[7]);
-        $this->assertContains((int) $mine[6], [4, 5], 'whole local days left');
+        // Whole LOCAL calendar days between today and the end date, worked out here on its own. It is 5 most of the
+        // day but 6 in the last hour before local midnight (end = now + 5 days + 1 hour then lands on the 6th day).
+        $expected = (int) now()->local()->startOfDay()->diffInDays($device->subscription_end_date->copy()->local()->startOfDay(), false);
+        $this->assertContains($expected, [5, 6]);
+        $this->assertSame($expected, (int) $mine[6], 'whole local days left');
+    }
+
+    public static function clockTimes(): array
+    {
+        // Sri Lanka local time. 23:30 is the case that failed in CI at 23:23 local.
+        return ['just after midnight' => ['00:10', 5], 'midday' => ['12:00', 5], 'last hour of the day' => ['23:30', 6]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('clockTimes')]
+    public function test_days_left_in_the_csv_is_right_at_any_hour_of_the_local_day(string $localTime, int $expectedDays): void
+    {
+        \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::parse('2026-11-20 ' . $localTime, 'Asia/Colombo'));
+        try {
+            $device = $this->due(5, ['customer_name' => 'Autotest Clock Customer']);
+            $response = $this->actingAs($this->admin())->get(route('admin.renewals', ['export' => 'csv']))->assertOk();
+            $mine = collect($this->csvBody($response))->first(fn ($r) => ($r[3] ?? null) === $device->imei_number);
+
+            $this->assertSame($expectedDays, (int) $mine[6]);
+        } finally {
+            \Illuminate\Support\Carbon::setTestNow();
+        }
     }
 
     public function test_the_overdue_csv_says_ended_on_and_has_no_days_left(): void

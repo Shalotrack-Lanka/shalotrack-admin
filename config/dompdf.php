@@ -163,7 +163,9 @@ return [
          */
         'default_paper_size' => 'a4',
 
-        'isRemoteEnabled' => true,
+        // Off: none of the PDFs load remote images or fonts. With it on, a PDF could be made to fetch
+        // any URL (server-side request forgery). Turn on only for a trusted, fixed host.
+        'isRemoteEnabled' => false,
 
         /**
          * The default paper orientation.

@@ -59,6 +59,7 @@ class DeviceReplaceAndBankSlipTest extends PgsqlTestCase
         parent::setUp();
         $this->withoutVite();
         Storage::fake('public');
+        Storage::fake('private_slips');
         config(['services.shalotrack_api.base_url' => self::API, 'services.shalotrack_api.sync_key' => 'autotest-sync-key']);
 
         Http::fake(function (ClientRequest $request) {
@@ -658,5 +659,18 @@ class DeviceReplaceAndBankSlipTest extends PgsqlTestCase
         // The file sits on the "public" disk, but the app must hand it out only through the guarded route.
         $this->assertStringContainsString('/device-management/' . $bound->getRouteKey() . '/bank-slip', route('admin.customer-device-management.bank-slip', $bound->getRouteKey()));
         $this->assertNotSame(200, $this->get('/storage/bank_slips/secret.pdf')->getStatusCode());
+    }
+
+    public function test_a_slip_on_the_private_disk_opens_for_admin_and_is_not_on_the_public_disk(): void
+    {
+        Storage::disk('private_slips')->put('bank_slips/private-one.pdf', 'PRIVATE-SLIP-BYTES');
+        $bound = $this->makeBound(['payment_status' => 'Paid', 'bank_slip' => 'bank_slips/private-one.pdf']);
+
+        $this->actingAs($this->makeAdmin('ADMIN'));
+        $response = $this->get(route('admin.customer-device-management.bank-slip', $bound->getRouteKey()));
+
+        $response->assertOk();
+        $this->assertSame('PRIVATE-SLIP-BYTES', $response->streamedContent());
+        Storage::disk('public')->assertMissing('bank_slips/private-one.pdf');
     }
 }

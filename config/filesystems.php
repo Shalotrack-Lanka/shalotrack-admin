@@ -33,7 +33,22 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Off on purpose: nothing in the app makes signed links to this disk, so the built-in
+            // /storage/{path} route (GET and PUT) was only attack surface.
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Payment documents (bank slips). Never reachable by URL: they are streamed only by
+        // CustomerDeviceManagementController::bankSlip() after a role check and an audit entry.
+        // Stored paths stay "bank_slips/<file>", so the root is the PARENT folder. Point BANK_SLIPS_ROOT
+        // at a persistent volume if the server keeps files outside storage/app/private.
+        'private_slips' => [
+            'driver' => 'local',
+            'root' => env('BANK_SLIPS_ROOT', storage_path('app/private')),
+            'serve' => false,
+            'visibility' => 'private',
             'throw' => false,
             'report' => false,
         ],
