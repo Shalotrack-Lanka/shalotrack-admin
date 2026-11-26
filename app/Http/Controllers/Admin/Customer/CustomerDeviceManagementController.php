@@ -6,6 +6,7 @@ use App\Services\Audit;
 use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ActivatedDevice;
+use App\Support\BankSlips;
 use App\Models\PackagePayment;
 use App\Models\RenewalPackage;
 use App\Services\PackagePayments;
@@ -19,7 +20,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -145,7 +145,7 @@ class CustomerDeviceManagementController extends Controller
             }
 
             if ($request->hasFile('bank_slip')) {
-                $validated['bank_slip'] = $request->file('bank_slip')->store('bank_slips', 'public');
+                $validated['bank_slip'] = BankSlips::store($request->file('bank_slip'));
             }
 
             $bound = ActivatedDevice::create([
@@ -220,9 +220,9 @@ class CustomerDeviceManagementController extends Controller
         DB::transaction(function () use ($validated, $activatedDevice, $request, $wasPaid, $beforeKey, $nowPaid, $newPeriod, $previousExpiry) {
             if ($request->hasFile('bank_slip')) {
                 if ($activatedDevice->bank_slip) {
-                    Storage::disk('public')->delete($activatedDevice->bank_slip);
+                    BankSlips::delete($activatedDevice->bank_slip);
                 }
-                $validated['bank_slip'] = $request->file('bank_slip')->store('bank_slips', 'public');
+                $validated['bank_slip'] = BankSlips::store($request->file('bank_slip'));
             } else {
                 unset($validated['bank_slip']);
             }
@@ -403,11 +403,12 @@ class CustomerDeviceManagementController extends Controller
         abort_unless(in_array(auth()->user()?->role, ['ADMIN', 'FINANCE'], true), 403);
 
         $path = $activatedDevice->bank_slip;
-        abort_unless($path && Storage::disk('public')->exists($path), 404, 'This bank slip is no longer stored on the server.');
+        $disk = $path ? BankSlips::diskHolding($path) : null;
+        abort_unless($disk, 404, 'This bank slip is no longer stored on the server.');
 
         Audit::record('bank_slip.viewed', 'vehicle', $activatedDevice->vehicle_id, $activatedDevice->vehicle_number, [], ['imei' => $activatedDevice->imei_number]);
 
-        return Storage::disk('public')->response($path, null, [
+        return $disk->response($path, null, [
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control'          => 'private, max-age=300',
         ]);

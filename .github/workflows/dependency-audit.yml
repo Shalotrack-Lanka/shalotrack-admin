@@ -1,0 +1,39 @@
+name: Dependency audit (daily)
+
+# A new security advisory can appear any day, even when no code changed. This job checks the lock files
+# once a day and turns RED (GitHub emails the repo admins) when a PHP or npm package has a known advisory.
+# It does NOT run on pull requests or deploys, so an urgent fix is never blocked by an unrelated advisory.
+# The public repository makes the minutes free.
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+
+      - name: PHP packages (composer.lock)
+        run: composer audit --locked
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: JS packages (package-lock.json)
+        run: npm audit --package-lock-only --audit-level=high
