@@ -158,7 +158,7 @@ class DeviceCommandController extends Controller
             'role'    => auth()->user()?->role,
             'imei'    => $validated['imei'],
             'command' => $validated['command'],
-            'ip'      => $request->ip(),
+            'ip'      => \App\Support\ClientIp::resolve($request),
         ]);
 
         $payload = [
@@ -344,7 +344,7 @@ class DeviceCommandController extends Controller
             'role'       => $role,
             'imei'       => $imei,
             'vehicle_id' => $vehicleId,
-            'ip'         => request()->ip(),
+            'ip'         => \App\Support\ClientIp::resolve(request()),
         ]);
 
         return response()->json([

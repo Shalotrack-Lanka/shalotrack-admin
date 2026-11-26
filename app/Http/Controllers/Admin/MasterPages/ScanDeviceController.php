@@ -158,7 +158,7 @@ class ScanDeviceController extends Controller
             'type_id'   => $data['device_type_id'],
             'submitted' => count($data['rows']),
             'created'   => count($created),
-            'ip'        => $request->ip(),
+            'ip'        => \App\Support\ClientIp::resolve($request),
         ]);
 
         if ($created !== []) {
@@ -239,7 +239,7 @@ class ScanDeviceController extends Controller
         Log::info('SIM registered from scan intake', [
             'admin_id' => $request->user()?->getAuthIdentifier(),
             'iccid'    => $sim->iccid,
-            'ip'       => $request->ip(),
+            'ip'       => \App\Support\ClientIp::resolve($request),
         ]);
 
         return response()->json(['ok' => true, 'sim_number' => $sim->sim_number, 'iccid' => $sim->iccid], 201);
