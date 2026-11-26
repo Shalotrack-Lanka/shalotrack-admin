@@ -17,8 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
 
-        // Dashboard statistics update middleware
-        $middleware->trustProxies(at: '*');
+        // Only the load balancer / container network (private addresses) may say who the visitor is.
+        // Believing every sender let anyone dodge the login lockout and the route limits by forging
+        // X-Forwarded-For. TRUSTED_PROXIES narrows this further; see App\Support\TrustedProxies.
+        $middleware->trustProxies(at: \App\Support\TrustedProxies::fromEnv(env('TRUSTED_PROXIES')));
 
         // Browser-hardening response headers (CSP report-only, X-Frame-Options, HSTS, nosniff, ...) on EVERY
         // response: 404 / 500 pages, maintenance-mode and too-large-upload responses, and JSON. Global and
@@ -86,7 +88,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'url'          => request()?->fullUrl(),
                     'method'       => request()?->method(),
                     'admin_id'     => auth()->id(),
-                    'ip'           => request()?->ip(),
+                    'ip'           => \App\Support\ClientIp::resolve(request()),
                     'user_agent'   => request()?->userAgent(),
                 ]
             );
