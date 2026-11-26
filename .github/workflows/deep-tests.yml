@@ -1,0 +1,129 @@
+name: Deep tests (Postgres and browser)
+
+# Runs the two big test suites that `php artisan test` does not: the Postgres suite (tests/Pgsql) and the
+# browser tests (tests/Browser, real Chromium). Pull requests only (a push to main was already tested as a
+# pull request), so it costs one run per pull request. A newer push cancels the older run.
+#
+# Safety: everything runs on a throw-away Postgres container that exists only for this run. It holds no
+# real data and no secrets are used. The test code refuses to run unless the schema is "autotest" and the
+# database user starts with "autotest_user", exactly as on a developer PC.
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deep-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deep-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # No password at all: the container is reachable only from this job's runner and lives for minutes.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: shalotrack_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: shalotrack_ci
+      DB_USERNAME: autotest_user_ci
+      DB_SCHEMA: autotest
+      DB_SSLMODE: disable
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # A limited user (not a superuser) that owns only the "autotest" schema, like the real autotest user.
+      - name: Create the test user and schema
+        run: |
+          psql -h 127.0.0.1 -U postgres -d shalotrack_ci -v ON_ERROR_STOP=1 \
+            -c "create role autotest_user_ci login" \
+            -c "create schema autotest authorization autotest_user_ci"
+
+      # The Laravel migrations cannot build the database from nothing (the first one expects tables that were
+      # created in Supabase), so the base schema (tables only, no data) is loaded first. See the file header.
+      - name: Load the base schema
+        run: psql -h 127.0.0.1 -U autotest_user_ci -d shalotrack_ci -v ON_ERROR_STOP=1 -q -f .github/ci/autotest-base-schema.sql
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, bcmath, xml, zip, gd, pdo_pgsql, pdo_sqlite
+          tools: composer:v2
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      # Applies any migration newer than the base schema, so a pull request that adds a migration is tested with it.
+      - name: Run new migrations
+        run: php artisan migrate --force
+
+      - name: Postgres test suite
+        run: php vendor/bin/phpunit -c phpunit.pgsql.xml
+
+      - name: Cache the test browser
+        if: ${{ !cancelled() }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install the test browser
+        if: ${{ !cancelled() }}
+        run: npx playwright install --with-deps chromium
+
+      # Runs even when the Postgres suite failed, so one run shows both results.
+      - name: Browser tests
+        if: ${{ !cancelled() }}
+        run: npm run test:browser
+
+      - name: Keep the browser report of a failed run
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-report
+          path: |
+            tests/Browser/.report
+            tests/Browser/.results
+          retention-days: 7
+          if-no-files-found: ignore

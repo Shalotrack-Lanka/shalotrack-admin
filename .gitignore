@@ -33,3 +33,8 @@ autotest_schema.sql
 /tests/Browser/.report
 /playwright-report
 /test-results
+
+# Saved test output (use a name like run-output.txt); never commit it
+/result.txt
+/*-result.txt
+/run-output.txt
