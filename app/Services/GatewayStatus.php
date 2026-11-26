@@ -94,7 +94,7 @@ class GatewayStatus
     public static function connectedDevices(): array
     {
         try {
-            $response = Http::timeout(3)
+            $response = Http::connectTimeout(1)->timeout(3)
                 ->withHeaders(['X-Command-Api-Key' => self::apiKey()])
                 ->get(self::baseUrl() . '/devices');
 
@@ -123,7 +123,7 @@ class GatewayStatus
     public static function accessReport(): array
     {
         try {
-            $response = Http::timeout(6)
+            $response = Http::connectTimeout(1)->timeout(6)
                 ->withHeaders(['X-Command-Api-Key' => self::apiKey()])
                 ->get(self::baseUrl() . '/access');
 
@@ -281,7 +281,7 @@ class GatewayStatus
 
         // 1. The gateway's own deep health report.
         try {
-            $response = Http::timeout(4)
+            $response = Http::connectTimeout(1)->timeout(4)
                 ->withHeaders(['X-Command-Api-Key' => self::apiKey()])
                 ->get(self::baseUrl() . '/health');
             $body = $response->json();
