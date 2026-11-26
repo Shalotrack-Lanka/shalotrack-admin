@@ -111,7 +111,7 @@
                                         <div class="grid grid-cols-3 items-center gap-2">
                                             <label class="text-sm font-semibold text-gray-700 text-left md:text-right pr-2">Country</label>
                                             <div class="col-span-2">
-                                                <select name="country" x-model="country" class="w-full rounded-lg border-gray-300 text-sm h-10">
+                                                <select name="country" class="w-full rounded-lg border-gray-300 text-sm h-10">
                                                     <option value="Sri Lanka">Sri Lanka</option>
                                                 </select>
                                             </div>
@@ -120,7 +120,7 @@
                                         <div class="grid grid-cols-3 items-center gap-2">
                                             <label class="text-sm font-semibold text-gray-700 text-left md:text-right pr-2">State</label>
                                             <div class="col-span-2">
-                                                <select name="state" x-model="state" class="w-full rounded-lg border-gray-300 text-sm h-10">
+                                                <select name="state" class="w-full rounded-lg border-gray-300 text-sm h-10">
                                                     <option value="No Data">No Data</option>
                                                 </select>
                                             </div>

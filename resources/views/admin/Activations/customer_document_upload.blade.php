@@ -9,7 +9,7 @@
 
 
 </head>
-<body x-data="{ sidebarOpen: false }"> <!-- Added Alpine state for Mobile Menu Toggle -->
+<body x-data="{ sidebarOpen: false, searchBy: 'invoice' }"> <!-- Added Alpine state for Mobile Menu Toggle -->
 
 <div class="flex h-screen overflow-hidden"> <!-- Prevent double scrollbars -->
 

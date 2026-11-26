@@ -27,3 +27,9 @@ Thumbs.db
 *.dump
 public_schema.sql
 autotest_schema.sql
+# Browser tests (Playwright)
+/tests/Browser/.state
+/tests/Browser/.results
+/tests/Browser/.report
+/playwright-report
+/test-results
