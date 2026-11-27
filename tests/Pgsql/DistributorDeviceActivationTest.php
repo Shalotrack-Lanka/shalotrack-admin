@@ -629,4 +629,33 @@ class DistributorDeviceActivationTest extends PgsqlTestCase
 
         $this->assertSame(0, ActivatedDevice::where('imei_number', $device->imei_number)->count());
     }
+
+    public function test_the_renew_page_of_an_own_device_shows_the_priced_plans_and_when_the_current_plan_ends(): void
+    {
+        $dist = $this->distributor('Autotest Renew Page Distributor');
+        $retailer = $this->dealer('Autotest Renew Page Retailer', 'retailer', $dist);
+        $row = $this->bound($retailer, 80);
+        $this->asDistributor($dist);
+
+        $response = $this->actingAs($this->login)->get(route('distributor.devices.renew', $row->activated_device_id))->assertOk();
+
+        $response->assertSee('Current subscription runs until');
+        $response->assertSee($row->subscription_end_date->format('Y-m-d'));
+        $response->assertSee('1 Year');
+        $response->assertSee('6 Months');
+        $response->assertDontSee('3 Months');   // a plan with no price cannot be sold, so it is not offered
+        $response->assertViewHas('row', fn ($r) => $r->activated_device_id === $row->activated_device_id);
+    }
+
+    public function test_the_renew_page_of_an_already_lapsed_device_does_not_promise_a_running_plan(): void
+    {
+        $dist = $this->distributor('Autotest Lapsed Page Distributor');
+        $retailer = $this->dealer('Autotest Lapsed Page Retailer', 'retailer', $dist);
+        $row = $this->bound($retailer, -5);
+        $this->asDistributor($dist);
+
+        $this->actingAs($this->login)->get(route('distributor.devices.renew', $row->activated_device_id))
+            ->assertOk()
+            ->assertDontSee('Current subscription runs until');
+    }
 }
