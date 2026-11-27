@@ -33,6 +33,16 @@ class DealerLoginEmailPgTest extends PgsqlTestCase
 
     private const TAKEN = 'Another account already uses this email.';
 
+    /**
+     * The database index admins_email_lower_unique now makes a duplicate email impossible. These tests prove the
+     * form still copes with one that was created BEFORE the index, so the index is dropped inside the test.
+     * Postgres undoes DDL, so it comes back with the rollback at the end of the test.
+     */
+    private function allowLegacyDuplicateEmails(): void
+    {
+        \Illuminate\Support\Facades\DB::statement('DROP INDEX IF EXISTS admins_email_lower_unique');
+    }
+
     private function freeEmail(): string
     {
         return 'autotest+free-' . Str::random(10) . '@example.test';
@@ -137,6 +147,7 @@ class DealerLoginEmailPgTest extends PgsqlTestCase
 
     public function test_saving_other_fields_still_works_when_an_old_duplicate_already_exists(): void
     {
+        $this->allowLegacyDuplicateEmails();
         $shared = $this->freeEmail();
         $this->makeAdmin('ADMIN', ['email' => $shared]);          // an old duplicate, created before this rule
         [$dealer, $login] = $this->dealerAndLogin($shared);
@@ -180,6 +191,7 @@ class DealerLoginEmailPgTest extends PgsqlTestCase
 
     public function test_an_administrator_can_save_a_dealer_with_an_old_duplicate_email_unchanged(): void
     {
+        $this->allowLegacyDuplicateEmails();
         $boss = $this->makeAdmin('ADMIN');
         $shared = $this->freeEmail();
         $this->makeAdmin('FINANCE', ['email' => $shared]);
